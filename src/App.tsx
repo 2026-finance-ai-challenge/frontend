@@ -6,6 +6,7 @@ import { DisclosureDetailPage, DisclosurePage } from './pages/DisclosurePage'
 import { TaxPage } from './pages/TaxPage'
 import { MyPage } from './pages/MyPage'
 import { LoginPage, SignupPage } from './pages/AuthPage'
+import { SearchPage } from './pages/SearchPage'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
       <Route path="/my" element={<MyPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/search" element={<SearchPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
