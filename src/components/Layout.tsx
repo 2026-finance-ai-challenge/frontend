@@ -208,11 +208,6 @@ export function Header({
           )}
         </nav>
       </div>
-      {focused && query && (
-        <button className="agent-launcher" aria-label="Open K-Agent">
-          <img src="/assets/agent-launcher.svg" alt="" />
-        </button>
-      )}
       </header>
     </>
   );
