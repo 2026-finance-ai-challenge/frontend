@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 const newsItems = [
   [
@@ -55,6 +55,10 @@ export function TrendTag({ type }: { type: string }) {
 
 export function StockNewsFeed() {
   const [filter, setFilter] = useState("All");
+  const { pathname } = useLocation();
+  const returnTo = pathname.startsWith("/stocks/")
+    ? `${pathname}?tab=news`
+    : pathname;
 
   return (
     <>
@@ -86,6 +90,7 @@ export function StockNewsFeed() {
         {newsItems.map((item, index) => (
           <Link
             to="/news/fy2025-dividend"
+            state={{ returnTo }}
             className="news-row"
             key={`${item[1]}-${index}`}
           >
