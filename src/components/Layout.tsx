@@ -37,7 +37,12 @@ export function Header({
     <header className={`site-header ${white ? "is-white" : ""}`}>
       <div className="nav-shell">
         <Link className="brand" to="/" aria-label="KART home">
-          <img src="/assets/logo.svg" alt="KART" />
+          <img className="brand-menu" src="/assets/logo-menu.svg" alt="" />
+          <img
+            className="brand-wordmark"
+            src="/assets/logo-wordmark.svg"
+            alt="KART"
+          />
         </Link>
         <form
           className={`global-search ${focused && query ? "is-active" : ""}`}
@@ -148,9 +153,9 @@ export function Footer() {
         <div>
           <h3>Product</h3>
           <Link to="/news">AI news summary</Link>
-          <Link to="/disclosures">Dart filing</Link>
+          <Link to="/disclosures">Dart filings</Link>
           <a href="#foreign">Foreigner ownership limits</a>
-          <Link to="/tax">Check tax rate</Link>
+          <Link to="/tax">Check my tax rate</Link>
         </div>
       </div>
       <div className="footer-meta">
