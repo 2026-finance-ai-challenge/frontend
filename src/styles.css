@@ -20,10 +20,17 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 25px;
+  letter-spacing: -0.04em;
 }
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
+  letter-spacing: inherit;
 }
 button,
 a {
@@ -101,6 +108,8 @@ a {
   padding: 0 12px;
   color: #222;
   font-size: 18px;
+  line-height: 25px;
+  letter-spacing: -0.04em;
   min-width: 0;
 }
 .global-search > button {
@@ -145,6 +154,7 @@ a {
   gap: 14px;
   align-items: center;
   font-size: 18px;
+  line-height: 25px;
 }
 .language img {
   width: 27px;
@@ -244,6 +254,7 @@ a {
   justify-content: space-between;
   gap: 20px;
   font-size: 18px;
+  line-height: 25px;
 }
 .market-bar span {
   white-space: nowrap;
@@ -291,10 +302,10 @@ a {
 }
 .hero-content h1 {
   font-size: 96px;
-  line-height: 1;
-  letter-spacing: -0.055em;
+  line-height: 96px;
+  letter-spacing: -0.04em;
   margin: 0 0 85px;
-  font-weight: 500;
+  font-weight: 600;
   max-width: 900px;
 }
 .hero-content h1 u {
@@ -324,6 +335,7 @@ a {
   gap: 10px;
   font-size: 18px;
   font-weight: 500;
+  line-height: 25px;
 }
 .quick-actions img {
   width: 20px;
@@ -331,7 +343,7 @@ a {
   object-fit: contain;
 }
 .home-content {
-  padding-bottom: 277px;
+  padding-bottom: 73px;
 }
 .section-block {
   padding-top: 145px;
@@ -344,7 +356,7 @@ a {
 }
 .section-heading h2 {
   font-size: 42px;
-  line-height: 1.1;
+  line-height: normal;
   letter-spacing: -0.04em;
   margin: 0 0 15px;
   font-weight: 600;
@@ -356,7 +368,7 @@ a {
 .section-heading p {
   color: #777;
   font-size: 18px;
-  line-height: 1.4;
+  line-height: 25px;
   margin: 0;
 }
 .slider-controls {
@@ -379,6 +391,9 @@ a {
   grid-template-columns: 1fr 1fr;
   gap: 30px;
 }
+.news-section .section-heading {
+  margin-bottom: 40px;
+}
 .news-card {
   height: 390px;
   border-radius: 12px;
@@ -400,7 +415,8 @@ a {
 .tags span,
 .filing-row > span:nth-last-child(-n + 2),
 .filing-row > span:last-child {
-  font-size: 15px;
+  font-size: 18px;
+  line-height: 25px;
   border-radius: 7px;
   padding: 6px 10px;
   background: #f5f5f7;
@@ -432,11 +448,15 @@ a {
   color: var(--green) !important;
 }
 .news-card h3 {
-  font-size: 23px;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
+  letter-spacing: -0.04em;
   margin: 0 0 10px;
 }
 .news-card .meta {
-  font-size: 14px;
+  font-size: 18px;
+  line-height: 25px;
   color: #aaa;
 }
 .news-card > img {
@@ -464,14 +484,17 @@ a {
   display: grid;
   grid-template-columns: 58px 1fr;
   margin: 10px 0;
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: 18px;
+  line-height: 25px;
 }
 .insight b {
   color: var(--gold);
 }
 .filing-section {
-  padding-top: 180px;
+  padding-top: 149px;
+}
+.filing-section .section-heading {
+  margin-bottom: 35px;
 }
 .filing-table {
   border-radius: 12px;
@@ -497,7 +520,8 @@ a {
   align-items: center;
   padding: 14px 30px;
   border-bottom: 1px solid #eee;
-  font-size: 15px;
+  font-size: 18px;
+  line-height: 25px;
 }
 .filing-row.active {
   border: 1px solid var(--gold);
@@ -508,14 +532,18 @@ a {
   display: block;
 }
 .filing-row b {
-  font-size: 18px;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
 }
 .filing-row small {
   color: #777;
   margin-top: 4px;
 }
 .filing-row strong {
+  font-size: 20px;
   font-weight: 500;
+  line-height: 28px;
 }
 .filing-row em {
   font-style: normal;
@@ -532,14 +560,22 @@ a {
   padding: 18px;
 }
 .ownership-section {
-  padding-top: 145px;
+  padding-top: 162px;
+}
+.ownership-section .section-heading {
+  margin-bottom: 30px;
 }
 .status-copy {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 28px;
+  gap: 10px;
+  margin-top: 25px;
   color: #555;
+}
+.status-copy > span {
+  min-height: 39px;
+  display: flex;
+  align-items: center;
 }
 .status-copy b {
   margin-right: 6px;
@@ -569,6 +605,7 @@ a {
 }
 .ownership-card:first-child {
   border: 1px solid var(--gold);
+  min-height: 388px;
 }
 .ownership-card:nth-child(n + 2) {
   opacity: 0.48;
@@ -579,7 +616,9 @@ a {
   align-items: flex-start;
 }
 .card-title h3 {
-  font-size: 23px;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
   margin: 0 0 7px;
 }
 .card-title p {
@@ -590,7 +629,8 @@ a {
   padding: 6px 10px;
   background: #f5f5f7;
   border-radius: 7px;
-  font-size: 14px;
+  font-size: 18px;
+  line-height: 25px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -636,13 +676,16 @@ a {
   margin-top: 7px;
 }
 .card-foot {
-  font-size: 14px;
+  font-size: 18px;
   color: #555;
-  line-height: 1.35;
+  line-height: 25px;
   margin-top: 32px;
 }
 .tax-section {
-  padding-top: 145px;
+  padding-top: 150px;
+}
+.tax-section .section-heading {
+  margin-bottom: 36px;
 }
 .tax-grid {
   display: grid;
@@ -655,6 +698,9 @@ a {
   border-radius: 12px;
   box-shadow: 0 0 70px rgba(0, 0, 0, 0.05);
   min-height: 350px;
+}
+.tax-card {
+  min-height: 411px;
 }
 .tax-rates {
   display: grid;
@@ -684,9 +730,9 @@ a {
   font-weight: 400;
 }
 .tax-card > p {
-  font-size: 15px;
+  font-size: 18px;
   color: #555;
-  line-height: 1.4;
+  line-height: 25px;
   margin: 32px 0 24px;
 }
 .primary-button {
@@ -698,7 +744,8 @@ a {
   grid-template-columns: 1.5fr repeat(3, 1fr);
   padding: 12px 4px;
   border-bottom: 1px solid #e8e8e8;
-  font-size: 15px;
+  font-size: 18px;
+  line-height: 25px;
 }
 .treaty-head {
   color: #888;
@@ -708,7 +755,9 @@ a {
   margin-left: auto;
   padding-left: 30px;
   color: #888;
-  line-height: 1.4;
+  line-height: 25px;
+  position: relative;
+  top: -59px;
 }
 .site-footer {
   height: 490px;
