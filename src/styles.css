@@ -559,10 +559,10 @@ a {
   margin-bottom: 35px;
 }
 .filing-table {
+  position: relative;
   border-radius: 12px;
   box-shadow: 0 0 70px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  padding-bottom: 8px;
 }
 .table-day {
   height: 65px;
@@ -574,16 +574,50 @@ a {
   color: #555;
 }
 .filing-row {
-  min-height: 89px;
+  height: 89px;
   margin: 0 0;
   display: grid;
-  grid-template-columns: 160px 250px 1.2fr 120px 130px 115px;
+  grid-template-columns: 170px 221px minmax(0, 1fr) 120px max-content max-content;
   gap: 18px;
   align-items: center;
-  padding: 14px 30px;
+  padding: 0 30px;
   border-bottom: 1px solid #eee;
   font-size: 18px;
   line-height: 25px;
+  position: relative;
+}
+.filing-row::before {
+  content: "";
+  position: absolute;
+  left: 174px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #deddd5;
+}
+.filing-table > .filing-row:nth-child(2) {
+  margin-top: 5px;
+}
+.filing-table > .filing-row:nth-child(2)::before {
+  top: -5px;
+}
+.filing-table > .filing-row:nth-child(4) {
+  margin-bottom: 5px;
+}
+.filing-table > .filing-row:nth-child(4)::before {
+  bottom: 50%;
+}
+.filing-table > .filing-row:nth-child(6) {
+  height: 99px;
+}
+.filing-row .filing-timeline-dot {
+  position: absolute;
+  z-index: 1;
+  left: 168px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
 }
 .filing-row.active {
   border: 1px solid var(--gold);
@@ -610,16 +644,37 @@ a {
 .filing-row em {
   font-style: normal;
   color: #888;
+  font-size: 20px;
+  line-height: 28px;
+  text-align: right;
 }
 .filing-row .medium {
   background: #fbedd6 !important;
   color: #784b00 !important;
 }
+.filing-row .neutral {
+  background: #f5f5f7;
+  color: #555;
+}
+.filing-row > span:nth-last-child(-n + 2) {
+  justify-self: end;
+  white-space: nowrap;
+}
+.filing-row .neutral img {
+  width: 16px;
+  height: 2px;
+}
 .view-all {
-  display: block;
-  text-align: center;
+  height: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   color: var(--gold);
-  padding: 18px;
+}
+.view-all img {
+  width: 5px;
+  height: 10px;
 }
 .ownership-section {
   padding-top: 162px;
