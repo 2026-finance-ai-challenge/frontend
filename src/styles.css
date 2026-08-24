@@ -2879,12 +2879,16 @@ mark {
   gap: 10px;
 }
 .profile-row > div span {
-  background: #efeee8;
-  border-radius: 6px;
+  background: #f5f5f7;
+  color: #555;
+  border-radius: 8px;
   padding: 7px 10px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+.profile-row > div span.safe {
+  background: #ecf6e8;
 }
 .profile-row > div span img {
   width: 27px;
@@ -2892,13 +2896,16 @@ mark {
 }
 .profile-row > a {
   margin-left: auto;
-  background: #111;
+  background: #000;
   color: #fff;
   border-radius: 8px;
-  padding: 14px 18px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
   gap: 10px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
 }
 .profile-row > a img {
   width: 7px;
@@ -2920,12 +2927,22 @@ mark {
 .dashboard-title p {
   color: #888;
 }
+.carousel-controls {
+  display: flex;
+  gap: 20px;
+}
 .dashboard-title button {
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   border: 0;
-  border-radius: 50%;
-  margin-left: 12px;
+  border-radius: 8px;
+  padding: 0;
+  background: transparent;
+}
+.dashboard-title button img {
+  display: block;
+  width: 50px;
+  height: 50px;
 }
 .activity-list,
 .watchlist {
@@ -2958,8 +2975,8 @@ mark {
   gap: 10px;
 }
 .activity-list > a > div:last-child span {
-  padding: 7px 10px;
-  border-radius: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
   background: #f5f5f7;
   display: inline-flex;
   align-items: center;
@@ -2975,8 +2992,8 @@ mark {
   color: #784b00;
 }
 .info-tag {
-  background: #efedff !important;
-  color: #4e43b7 !important;
+  background: #ebeafb !important;
+  color: #3f3eae !important;
 }
 .watchlist {
   padding: 30px;
@@ -3045,14 +3062,20 @@ mark {
   color: #888;
 }
 .watch-row > span:last-child {
-  padding: 7px;
-  border-radius: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
 }
 .watch-change,
 .watch-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  width: max-content;
+  justify-self: end;
+}
+.watch-status:not(.stock-danger):not(.warning-chip) {
+  background: #f5f5f7;
+  color: #555;
 }
 .watch-change img {
   width: 13px;
@@ -3073,8 +3096,10 @@ mark {
   gap: 9px;
 }
 .watchlist > a img {
-  width: 10px;
-  height: 6px;
+  width: 5px;
+  height: 10px;
+  margin: 0 2.5px;
+  transform: rotate(90deg);
 }
 @media (max-width: 800px) {
   .my-shell {

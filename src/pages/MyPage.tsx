@@ -108,6 +108,7 @@ export function MyPage() {
         <DashboardSection
           title="Recently viewed"
           description="News and filings you opened, with their summaries kept for reference."
+          showControls
         >
           <ActivityList />
         </DashboardSection>
@@ -189,7 +190,7 @@ export function MyPage() {
             ))}
             <Link to="/stocks/005930">
               View more watchlist{" "}
-              <img src="/assets/chevron-down-gold.svg" alt="" />
+              <img src="/assets/chevron-right-gold.svg" alt="" />
             </Link>
           </div>
         </DashboardSection>
@@ -208,10 +209,12 @@ function DashboardSection({
   title,
   description,
   children,
+  showControls = false,
 }: {
   title: string;
   description: string;
   children: ReactNode;
+  showControls?: boolean;
 }) {
   return (
     <section className="dashboard-section">
@@ -220,14 +223,16 @@ function DashboardSection({
           <h2>{title}</h2>
           <p>{description}</p>
         </div>
-        <div className="carousel-controls">
-          <button aria-label="Previous">
-            <img src="/assets/carousel-prev.svg" alt="" />
-          </button>
-          <button aria-label="Next">
-            <img src="/assets/carousel-next.svg" alt="" />
-          </button>
-        </div>
+        {showControls ? (
+          <div className="carousel-controls">
+            <button aria-label="Previous">
+              <img src="/assets/carousel-prev.svg" alt="" />
+            </button>
+            <button aria-label="Next">
+              <img src="/assets/carousel-next.svg" alt="" />
+            </button>
+          </div>
+        ) : null}
       </div>
       {children}
     </section>
