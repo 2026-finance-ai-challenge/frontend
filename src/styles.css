@@ -202,6 +202,9 @@ a {
   padding: 8px 14px;
   font-size: 18px;
 }
+.login-button {
+  white-space: nowrap;
+}
 .search-popover {
   position: absolute;
   z-index: 40;
@@ -825,6 +828,20 @@ a {
 .primary-button {
   display: inline-block;
   padding: 10px 20px;
+}
+.eligibility-button {
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+}
+.eligibility-button img {
+  width: 7px;
+  height: 14px;
+  filter: brightness(0) invert(1);
 }
 .treaty-card > div {
   display: grid;
@@ -1993,6 +2010,60 @@ mark {
   padding: 35px;
   overflow: auto;
 }
+.home-page.agent-open .site-header {
+  right: 717px;
+}
+.tax-eligibility-panel {
+  display: flex;
+  flex-direction: column;
+}
+.tax-eligibility-panel .context-chip img {
+  width: 20px;
+  height: 20px;
+}
+.tax-agent-chat {
+  margin-top: 35px;
+}
+.tax-agent-form {
+  width: 380px;
+  max-width: 90%;
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 16px 16px 16px 4px;
+  background: #efeee8;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tax-agent-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.tax-agent-form select {
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  padding: 10px;
+  background: #fff;
+}
+.tax-agent-form button {
+  border: 0;
+  border-radius: 7px;
+  padding: 10px 16px;
+  background: #111;
+  color: #fff;
+}
+.tax-agent-result {
+  margin-top: 20px;
+}
+.tax-eligibility-panel .ai-message > p:last-child {
+  color: #111;
+  border-top: 0;
+  padding-top: 0;
+}
+.tax-eligibility-panel .chat-input {
+  margin-top: auto;
+}
 .agent-panel > button {
   border: 0;
   background: transparent;
@@ -2123,7 +2194,8 @@ mark {
     width: 100%;
   }
   .article-page.agent-open .site-header,
-  .filing-detail.agent-open .site-header {
+  .filing-detail.agent-open .site-header,
+  .home-page.agent-open .site-header {
     right: 0;
   }
   .agent-panel {

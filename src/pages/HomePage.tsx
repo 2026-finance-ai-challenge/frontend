@@ -1,5 +1,7 @@
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Footer, Header, MarketBar } from "../components/Layout";
+import { TaxEligibilityPanel } from "../components/TaxEligibilityPanel";
 
 const quickActions = [
   ["/assets/news.svg", "Today’s news", "/news"],
@@ -92,8 +94,15 @@ const ownershipState = {
 };
 
 export function HomePage() {
+  const [taxAgentOpen, setTaxAgentOpen] = useState(false);
+  const eligibilityButtonRef = useRef<HTMLButtonElement>(null);
+  const closeTaxAgent = () => {
+    setTaxAgentOpen(false);
+    window.requestAnimationFrame(() => eligibilityButtonRef.current?.focus());
+  };
+
   return (
-    <div className="app-page home-page">
+    <div className={`app-page home-page ${taxAgentOpen ? "agent-open" : ""}`}>
       <div className="hero-surface">
         <Header />
         <MarketBar />
@@ -346,9 +355,17 @@ export function HomePage() {
                 Without a pre-filed application, a refund claim may still be
                 possible within the statutory period.
               </p>
-              <Link className="primary-button" to="/tax">
-                Check eligibility ›
-              </Link>
+              <button
+                className="primary-button eligibility-button"
+                type="button"
+                aria-expanded={taxAgentOpen}
+                aria-controls="tax-eligibility-panel"
+                onClick={() => setTaxAgentOpen(true)}
+                ref={eligibilityButtonRef}
+              >
+                Check eligibility
+                <img src="/assets/chevron-right-gold.svg" alt="" />
+              </button>
             </article>
             <article className="treaty-card">
               <div className="treaty-head">
@@ -381,6 +398,7 @@ export function HomePage() {
         </section>
       </main>
       <Footer />
+      {taxAgentOpen ? <TaxEligibilityPanel close={closeTaxAgent} /> : null}
     </div>
   );
 }
