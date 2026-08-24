@@ -652,20 +652,28 @@ a {
 .ownership-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  align-items: start;
   gap: 30px;
+  min-height: 388px;
 }
 .ownership-card {
+  height: 333px;
   border-radius: 12px;
   box-shadow: 0 0 70px rgba(0, 0, 0, 0.05);
   padding: 30px;
-  min-height: 333px;
+  overflow: hidden;
+  border: 0;
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  background: #fff;
+  transition:
+    height 0.25s ease,
+    outline-color 0.2s ease;
 }
-.ownership-card:first-child {
-  border: 1px solid var(--gold);
-  min-height: 388px;
-}
-.ownership-card:nth-child(n + 2) {
-  opacity: 0.48;
+.ownership-card:hover,
+.ownership-card:focus-visible {
+  height: 388px;
+  outline-color: var(--gold);
 }
 .card-title {
   display: flex;
@@ -701,6 +709,10 @@ a {
 }
 .card-title > span.warning {
   background: #fbedd6;
+  color: #784b00 !important;
+}
+.card-title > span.safe {
+  color: #555 !important;
 }
 .ownership-card > strong {
   font-size: 42px;
@@ -725,6 +737,16 @@ a {
   height: 100%;
   background: currentColor;
 }
+.ownership-card > strong.warning,
+.gauge span.warning {
+  color: #dc8a00 !important;
+}
+.ownership-card > strong.safe {
+  color: #111 !important;
+}
+.gauge span.safe {
+  color: #7ac25c !important;
+}
 .gauge-labels {
   display: flex;
   justify-content: space-between;
@@ -737,6 +759,14 @@ a {
   color: #555;
   line-height: 25px;
   margin-top: 32px;
+  padding-top: 29px;
+  border-top: 1px solid var(--line);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.ownership-card:hover .card-foot,
+.ownership-card:focus-visible .card-foot {
+  opacity: 1;
 }
 .tax-section {
   padding-top: 150px;
