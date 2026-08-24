@@ -56,7 +56,7 @@ const filings = [
 const ownership = [
   {
     name: "KT Corp.",
-    code: "030200 · KOSPI",
+    code: "030200 · Telecom",
     value: "0.00",
     width: "100%",
     used: 49,
@@ -65,7 +65,7 @@ const ownership = [
   },
   {
     name: "SK Telecom",
-    code: "017670 · KOSPI",
+    code: "017670 · Telecom",
     value: "2.90",
     width: "89.65%",
     used: 46.1,
@@ -74,7 +74,7 @@ const ownership = [
   },
   {
     name: "Korea Electric Power",
-    code: "015760 · KOSPI",
+    code: "015760 · Utilities",
     value: "19.37",
     width: "41.42%",
     used: 20.64,
@@ -278,7 +278,7 @@ export function HomePage() {
               </div>
             </div>
             <Link className="text-link icon-link" to="/stocks/005930">
-              View all gauges
+              View all gauge
               <img src="/assets/chevron-right-gold.svg" alt="" />
             </Link>
           </div>
@@ -298,9 +298,9 @@ export function HomePage() {
                       <p>{item.code}</p>
                     </div>
                     <span className={tone}>
-                      {tone === "danger" && (
+                      {tone === "danger" ? (
                         <img src="/assets/status-warning.svg" alt="" />
-                      )}
+                      ) : null}
                       {ownershipState[tone]}
                     </span>
                   </div>
@@ -308,8 +308,9 @@ export function HomePage() {
                     {item.value}
                     <small>% remaining</small>
                   </strong>
-                  <div className="gauge">
+                  <div className={`gauge gauge-${tone}`}>
                     <span className={tone} style={{ width: item.width }} />
+                    <i style={{ left: item.width }} />
                   </div>
                   <div className="gauge-labels">
                     <span>Used {item.used.toFixed(2)}%</span>
