@@ -1,41 +1,42 @@
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { WatchlistHeart } from "./WatchlistHeart";
 
 const results = [
   {
     id: "samsung-electronics-primary",
+    watchlistId: "samsung-electronics",
     name: "Samsung Electronics",
     code: "005930",
     market: "KOSPI",
-    saved: true,
   },
   {
     id: "samsung-sdi",
+    watchlistId: "samsung-sdi",
     name: "Samsung SDI",
     code: "005930",
     market: "KOSPI",
-    saved: true,
   },
   {
     id: "samsung-biologics",
+    watchlistId: "samsung-biologics",
     name: "Samsung Biologics",
     code: "005930",
     market: "KOSPI",
-    saved: false,
   },
   {
     id: "samsung-ct",
+    watchlistId: "samsung-ct",
     name: "Samsung C&T",
     code: "005930",
     market: "KOSPI",
-    saved: false,
   },
   {
     id: "samsung-electronics-secondary",
+    watchlistId: "samsung-electronics",
     name: "Samsung Electronics",
     code: "005930",
     market: "KOSPI",
-    saved: false,
   },
 ];
 
@@ -52,9 +53,6 @@ export function Header({
 }: HeaderProps) {
   const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
-  const [savedResults, setSavedResults] = useState(
-    () => new Set(results.flatMap((item) => (item.saved ? [item.id] : []))),
-  );
   const navigate = useNavigate();
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -111,35 +109,13 @@ export function Header({
                         {item.code} · {item.market}
                       </small>
                     </button>
-                    <button
+                    <WatchlistHeart
                       className="search-heart-button"
-                      type="button"
-                      aria-label={
-                        savedResults.has(item.id)
-                          ? `Remove ${item.name} from watchlist`
-                          : `Add ${item.name} to watchlist`
-                      }
-                      aria-pressed={savedResults.has(item.id)}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() =>
-                        setSavedResults((current) => {
-                          const next = new Set(current);
-                          if (next.has(item.id)) next.delete(item.id);
-                          else next.add(item.id);
-                          return next;
-                        })
-                      }
-                    >
-                      <img
-                        className="search-heart"
-                        src={
-                          savedResults.has(item.id)
-                            ? "/assets/heart-filled.svg"
-                            : "/assets/heart-outline.svg"
-                        }
-                        alt=""
-                      />
-                    </button>
+                      iconClassName="search-heart"
+                      itemId={item.watchlistId}
+                      itemName={item.name}
+                      keepFocus
+                    />
                   </div>
                 ))}
               <button

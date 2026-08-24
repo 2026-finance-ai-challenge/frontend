@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
+import { WatchlistHeart } from "../components/WatchlistHeart";
 
 const newsItems = [
   [
@@ -62,7 +63,10 @@ function StockNewsHeader() {
         <div>
           <h1>
             Samsung Electronics{" "}
-            <img src="/assets/heart-filled.svg" alt="Saved" />
+            <WatchlistHeart
+              itemId="samsung-electronics"
+              itemName="Samsung Electronics"
+            />
           </h1>
           <span className="mini-price">
             <strong>₩288,020</strong>

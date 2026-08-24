@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
+import { WatchlistHeart } from "../components/WatchlistHeart";
 
 const metrics = [
   ["High", "123,000"],
@@ -57,12 +58,11 @@ export function StockPage() {
               <div>
                 <h1>
                   Samsung Electronics{" "}
-                  <button
+                  <WatchlistHeart
                     className="heart-button"
-                    aria-label="Remove from watchlist"
-                  >
-                    <img src="/assets/heart.svg" alt="" />
-                  </button>
+                    itemId="samsung-electronics"
+                    itemName="Samsung Electronics"
+                  />
                 </h1>
                 <p>005930&nbsp;&nbsp; · &nbsp;&nbsp;KOSPI</p>
                 <p>
