@@ -53,29 +53,43 @@ const ownership = [
     code: "030200 · KOSPI",
     value: "0.00",
     width: "100%",
-    state: "Near reached",
-    tone: "danger",
+    used: 49,
+    cap: 49,
     foot: "Foreign buy orders are rejected at the exchange until the quota frees up.",
   },
   {
     name: "SK Telecom",
     code: "017670 · KOSPI",
     value: "2.90",
-    width: "91%",
-    state: "Near cap",
-    tone: "warning",
+    width: "89.65%",
+    used: 46.1,
+    cap: 49,
     foot: "The cap can be reached intraday; your buy order may be rejected.",
   },
   {
     name: "Korea Electric Power",
     code: "015760 · KOSPI",
     value: "19.37",
-    width: "42%",
-    state: "Open",
-    tone: "safe",
+    width: "41.42%",
+    used: 20.64,
+    cap: 40,
     foot: "Foreign buy orders are rejected at the exchange.",
   },
 ];
+
+function getOwnershipTone(used: number, cap: number) {
+  const usageRatio = used / cap;
+
+  if (usageRatio >= 1) return "danger";
+  if (usageRatio >= 0.9) return "warning";
+  return "safe";
+}
+
+const ownershipState = {
+  danger: "Near reached",
+  warning: "Near cap",
+  safe: "Open",
+};
 
 export function HomePage() {
   return (
@@ -255,41 +269,42 @@ export function HomePage() {
             </Link>
           </div>
           <div className="ownership-grid">
-            {ownership.map((item) => (
-              <article className="ownership-card" key={item.name}>
-                <div className="card-title">
-                  <div>
-                    <h3>{item.name}</h3>
-                    <p>{item.code}</p>
+            {ownership.map((item) => {
+              const tone = getOwnershipTone(item.used, item.cap);
+
+              return (
+                <article
+                  className="ownership-card"
+                  key={item.name}
+                  tabIndex={0}
+                >
+                  <div className="card-title">
+                    <div>
+                      <h3>{item.name}</h3>
+                      <p>{item.code}</p>
+                    </div>
+                    <span className={tone}>
+                      {tone === "danger" && (
+                        <img src="/assets/status-warning.svg" alt="" />
+                      )}
+                      {ownershipState[tone]}
+                    </span>
                   </div>
-                  <span className={item.tone}>
-                    {item.tone === "danger" && (
-                      <img src="/assets/status-warning.svg" alt="" />
-                    )}
-                    {item.state}
-                  </span>
-                </div>
-                <strong className={item.tone}>
-                  {item.value}
-                  <small>% remaining</small>
-                </strong>
-                <div className="gauge">
-                  <span className={item.tone} style={{ width: item.width }} />
-                </div>
-                <div className="gauge-labels">
-                  <span>
-                    Used{" "}
-                    {item.tone === "danger"
-                      ? "40.00%"
-                      : item.tone === "warning"
-                        ? "46.10%"
-                        : "20.64%"}
-                  </span>
-                  <span>Cap {item.tone === "safe" ? "40.00%" : "49.00%"}</span>
-                </div>
-                <p className="card-foot">{item.foot}</p>
-              </article>
-            ))}
+                  <strong className={tone}>
+                    {item.value}
+                    <small>% remaining</small>
+                  </strong>
+                  <div className="gauge">
+                    <span className={tone} style={{ width: item.width }} />
+                  </div>
+                  <div className="gauge-labels">
+                    <span>Used {item.used.toFixed(2)}%</span>
+                    <span>Cap {item.cap.toFixed(2)}%</span>
+                  </div>
+                  <p className="card-foot">{item.foot}</p>
+                </article>
+              );
+            })}
           </div>
         </section>
 
