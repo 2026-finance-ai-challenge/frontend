@@ -8,6 +8,12 @@ const metrics = [
   ["Volume", "20.1M"],
   ["Prev close", "192.06"],
 ];
+const alertMetrics = [
+  ["High", "196.68"],
+  ["Low", "186.12"],
+  ["Volume", "20.1M"],
+  ["Prev close", "192.06"],
+];
 const peers = [
   [
     "Overall business",
@@ -29,8 +35,16 @@ const peers = [
 export function StockPage() {
   const [params] = useSearchParams();
   const [insights, setInsights] = useState(params.get("insights") === "1");
-  const [alert, setAlert] = useState(params.get("alert") === "1");
+  const initialAlert = params.get("alert");
+  const [alert, setAlert] = useState<"vi" | "price-limit" | null>(
+    initialAlert === "price-limit"
+      ? "price-limit"
+      : initialAlert === "1" || initialAlert === "vi"
+        ? "vi"
+        : null,
+  );
   const [period, setPeriod] = useState("1M");
+  const isAlertSnapshot = alert !== null;
 
   return (
     <div className={`stock-page ${insights ? "panel-open" : ""}`}>
@@ -57,29 +71,39 @@ export function StockPage() {
                 </p>
               </div>
               <div className="stock-price">
-                <strong>₩288,020</strong>
+                <strong>{isAlertSnapshot ? "$188.10" : "₩288,020"}</strong>
                 <span>
                   -1,000 <img src="/assets/price-down.svg" alt="" /> -1.2%
                 </span>
               </div>
             </div>
             <div className="stock-metrics">
-              {metrics.map(([label, value]) => (
-                <div key={label}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
-                </div>
-              ))}
+              {(isAlertSnapshot ? alertMetrics : metrics).map(
+                ([label, value]) => (
+                  <div key={label}>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </div>
+                ),
+              )}
             </div>
             <div className="stock-badges">
-              <span className="stock-danger">
+              <button
+                className="stock-danger"
+                onClick={() => setAlert("price-limit")}
+              >
                 <img src="/assets/status-warning.svg" alt="" />
                 Near reached
-              </span>
-              <button onClick={() => setAlert(true)}>
-                <img src="/assets/timer.svg" alt="" />
-                VI Triggered (01:43)
               </button>
+              <button onClick={() => setAlert("vi")}>
+                {!isAlertSnapshot && <img src="/assets/timer.svg" alt="" />}
+                {isAlertSnapshot
+                  ? "VI Triggered single price auction"
+                  : "VI Triggered (01:43)"}
+              </button>
+              {isAlertSnapshot && (
+                <span className="stock-resume">Resumes 15:34 KST</span>
+              )}
             </div>
             <button
               className="insight-banner"
@@ -225,25 +249,46 @@ export function StockPage() {
       {alert && (
         <div className="modal-backdrop" role="presentation">
           <div
-            className="alert-modal"
+            className={`alert-modal ${alert === "price-limit" ? "is-price-limit" : ""}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="alert-title"
           >
-            <img src="/assets/warning.svg" alt="" />
-            <h2 id="alert-title">Volatility Interruption Triggered</h2>
-            <p>
-              A VI has been triggered for this stock.
-              <br />
-              Continuous matching is suspended and orders will be processed
-              <br />
-              through a two-minute single-price call auction.
-            </p>
-            <strong>
-              <img src="/assets/timer.svg" alt="" />
-              01:30 left
-            </strong>
-            <button onClick={() => setAlert(false)}>Confirm</button>
+            <img
+              src={
+                alert === "price-limit"
+                  ? "/assets/price-limit-warning.svg"
+                  : "/assets/warning.svg"
+              }
+              alt=""
+            />
+            {alert === "price-limit" ? (
+              <>
+                <h2 id="alert-title">Daily Price Limit Reached</h2>
+                <p>
+                  This stock has reached the daily price limit.
+                  <br />
+                  Orders may be delayed due to pending orders at the limit
+                  price.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 id="alert-title">Volatility Interruption Triggered</h2>
+                <p>
+                  A VI has been triggered for this stock.
+                  <br />
+                  Continuous matching is suspended and orders will be processed
+                  <br />
+                  through a two-minute single-price call auction.
+                </p>
+                <strong>
+                  <img src="/assets/timer.svg" alt="" />
+                  01:30 left
+                </strong>
+              </>
+            )}
+            <button onClick={() => setAlert(null)}>Cofirm</button>
           </div>
         </div>
       )}

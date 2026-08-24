@@ -56,10 +56,24 @@ a {
   align-items: center;
   gap: 78px;
 }
+.brand {
+  width: 109px;
+  height: 27px;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
 .brand img {
-  width: 65px;
-  height: 50px;
   display: block;
+  flex: 0 0 auto;
+}
+.brand .brand-menu {
+  width: 24px;
+  height: 12.3px;
+}
+.brand .brand-wordmark {
+  width: 55px;
+  height: 27px;
 }
 .global-search {
   height: 50px;
@@ -707,8 +721,9 @@ a {
   grid-template-columns: 1fr 1fr 1fr;
 }
 .footer-logo {
-  width: 65px;
-  height: 65px;
+  width: 61px;
+  height: 30px;
+  margin-top: 15px;
 }
 .footer-grid > div {
   display: flex;
@@ -789,10 +804,20 @@ a {
   }
   .nav-shell {
     height: 88px;
-    grid-template-columns: 58px 1fr;
+    grid-template-columns: 70px 1fr;
+    gap: 12px;
   }
-  .brand img {
-    width: 46px;
+  .brand {
+    width: 68px;
+    gap: 10px;
+  }
+  .brand .brand-menu {
+    width: 24px;
+    height: 12.3px;
+  }
+  .brand .brand-wordmark {
+    width: 34px;
+    height: 17px;
   }
   .global-search {
     height: 44px;
@@ -1014,6 +1039,14 @@ a {
 .stock-badges button {
   background: #fbedd6;
   color: #784b00;
+}
+.stock-badges .stock-danger {
+  background: #ffe7e5;
+  color: var(--red);
+}
+.stock-badges .stock-resume {
+  background: #f5f5f7;
+  color: #888;
 }
 .insight-banner {
   height: 120px;
@@ -1340,23 +1373,29 @@ a {
 }
 .alert-modal {
   width: min(580px, calc(100% - 32px));
+  height: 480px;
   background: #fff;
   border-radius: 12px;
-  padding: 44px 40px 40px;
+  padding: 40px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .alert-modal > img {
   width: 100px;
   height: 100px;
 }
 .alert-modal h2 {
-  font-size: 28px;
-  margin: 28px 0 18px;
+  font-size: 30px;
+  letter-spacing: -1.2px;
+  margin: 30px 0 20px;
 }
 .alert-modal p {
   color: #888;
   font-size: 18px;
-  line-height: 1.5;
+  line-height: 25px;
+  margin: 0;
 }
 .alert-modal > strong {
   display: flex;
@@ -1364,7 +1403,7 @@ a {
   align-items: center;
   gap: 8px;
   color: #784b00;
-  margin: 20px 0 40px;
+  margin: 20px 0 0;
 }
 .alert-modal > strong img {
   width: 18px;
@@ -1373,11 +1412,15 @@ a {
 .alert-modal > button {
   height: 48px;
   width: 100%;
+  margin-top: 40px;
   border: 0;
   border-radius: 7px;
   background: #000;
   color: #fff;
   font-size: 18px;
+}
+.alert-modal.is-price-limit {
+  height: 407px;
 }
 @media (max-width: 1100px) {
   .panel-open .stock-main {
