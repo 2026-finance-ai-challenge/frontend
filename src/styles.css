@@ -1261,6 +1261,7 @@ a {
   padding-bottom: 211px;
 }
 .stock-news-content {
+  padding-top: 80px;
   padding-bottom: 228px;
 }
 .stock-tabs {
@@ -2374,41 +2375,53 @@ mark {
   border-radius: 12px;
   box-shadow: 0 0 70px rgba(0, 0, 0, 0.05);
 }
+.filing-filter-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #888;
+}
+.filing-filter-heading .reset {
+  border: 0;
+  padding: 0;
+  color: var(--gold);
+  background: transparent;
+  text-decoration: underline;
+}
 .date-filter {
   display: flex;
   gap: 12px;
   align-items: center;
 }
-.date-filter span {
-  width: 100px;
-  color: #888;
-}
 .date-filter input {
-  width: 130px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 9px;
+  width: 138px;
+  height: 47px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0 20px;
+  background: #f4f3f7;
 }
 .date-filter input:first-of-type {
   border-color: var(--gold);
 }
 .date-filter button {
   border: 0;
-  background: #f5f5f7;
-  padding: 9px 17px;
+  width: 70px;
+  height: 37px;
+  padding: 6px 0;
+  color: #888;
+  background: #f4f3f7;
+  border-radius: 4px;
 }
 .date-filter button.active {
   background: #fff;
-  box-shadow: 0 2px 8px #ddd;
-}
-.date-filter .reset {
-  margin-left: auto;
-  background: transparent;
-  color: var(--gold);
+  color: #111;
+  border-radius: 6px;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.05);
 }
 .checkbox-row {
   display: flex;
-  gap: 18px;
+  gap: 14px 30px;
   align-items: center;
   flex-wrap: wrap;
   margin-top: 22px;
@@ -2418,9 +2431,15 @@ mark {
   color: #888;
 }
 .checkbox-row label {
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
 }
 .checkbox-row input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
   accent-color: var(--gold);
 }
 .disclosure-rows {
@@ -2443,10 +2462,10 @@ mark {
   grid-template-columns: 110px 12px 190px 1fr 100px 120px 100px;
   gap: 14px;
   align-items: center;
-  min-height: 89px;
+  min-height: 97px;
   padding: 10px 25px;
   border-bottom: 1px solid #eee;
-  font-size: 14px;
+  font-size: 18px;
 }
 .disclosure-rows a.active {
   border: 1px solid var(--gold);
@@ -2467,6 +2486,10 @@ mark {
 .disclosure-rows b,
 .disclosure-rows small {
   display: block;
+}
+.disclosure-rows b {
+  font-size: 20px;
+  line-height: 28px;
 }
 .disclosure-rows small {
   color: #888;
@@ -2505,7 +2528,7 @@ mark {
 }
 .filing-hero {
   background: var(--cream);
-  padding: 90px 0;
+  padding: 90px 0 104px;
 }
 .filing-title {
   display: flex;
@@ -2530,6 +2553,9 @@ mark {
 }
 .filing-title h1 {
   font-size: 42px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  margin: 30px 0 0;
 }
 .filing-title > div:last-child {
   display: flex;
@@ -2558,7 +2584,7 @@ mark {
 .filing-meta {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  margin-top: 60px;
+  margin-top: 74px;
 }
 .filing-meta span {
   color: #888;
@@ -2572,6 +2598,27 @@ mark {
 .filing-body-shell {
   padding: 100px 0 180px;
 }
+.filing-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 883px) minmax(0, 427px);
+  gap: 30px;
+}
+.filing-detail .ai-summary {
+  position: relative;
+}
+.filing-detail .ai-summary h2 {
+  padding-bottom: 33px;
+}
+.filing-detail .ai-summary h2 img {
+  position: absolute;
+  top: 30px;
+  right: 30px;
+  width: 58px;
+  height: 70px;
+}
+.filing-division {
+  height: 166px;
+}
 .translation {
   margin-top: 30px;
   padding: 30px;
@@ -2582,6 +2629,7 @@ mark {
 .translation h2 {
   display: flex;
   justify-content: space-between;
+  margin: 0 0 39px;
 }
 .translation h2 > span:first-child {
   display: flex;
@@ -2609,14 +2657,14 @@ mark {
 }
 .translation > img {
   width: 100%;
-  margin-top: 30px;
+  margin-top: 25px;
 }
 @media (min-width: 1001px) {
   .filing-detail:not(.agent-open) .filing-body-shell {
     padding-bottom: 0;
   }
   .filing-detail:not(.agent-open) .translation {
-    height: 1285px;
+    height: 1466px;
   }
 }
 .agent-panel header {

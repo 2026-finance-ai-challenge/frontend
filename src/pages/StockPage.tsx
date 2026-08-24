@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { StockNewsFeed } from "../components/StockNewsFeed";
 import { WatchlistHeart } from "../components/WatchlistHeart";
+import { StockDisclosureFeed } from "./DisclosurePage";
 
 const metrics = [
   ["High", "123,000"],
@@ -46,8 +47,13 @@ export function StockPage() {
         : null,
   );
   const [period, setPeriod] = useState("1M");
-  const [activeTab, setActiveTab] = useState<"chart" | "news">(
-    params.get("tab") === "news" ? "news" : "chart",
+  const initialTab = params.get("tab");
+  const [activeTab, setActiveTab] = useState<
+    "chart" | "news" | "disclosure"
+  >(
+    initialTab === "news" || initialTab === "disclosure"
+      ? initialTab
+      : "chart",
   );
   const isAlertSnapshot = alert !== null;
 
@@ -130,7 +136,7 @@ export function StockPage() {
         </div>
 
         <main
-          className={`page-shell chart-content ${activeTab === "news" ? "stock-news-content" : ""}`}
+          className={`page-shell chart-content ${activeTab !== "chart" ? "stock-news-content" : ""}`}
         >
           <div className="stock-tabs">
             <button
@@ -147,10 +153,18 @@ export function StockPage() {
             >
               News
             </button>
-            <Link to="/disclosures">Disclosure</Link>
+            <button
+              type="button"
+              className={activeTab === "disclosure" ? "active" : ""}
+              onClick={() => setActiveTab("disclosure")}
+            >
+              Disclosure
+            </button>
           </div>
           {activeTab === "news" ? (
             <StockNewsFeed />
+          ) : activeTab === "disclosure" ? (
+            <StockDisclosureFeed />
           ) : (
             <div className="chart-layout">
               <section className="chart-card">

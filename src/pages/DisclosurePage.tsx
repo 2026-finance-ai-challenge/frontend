@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { WatchlistHeart } from "../components/WatchlistHeart";
 
@@ -79,6 +79,11 @@ const filingGroups = [
 ] as const;
 
 function FilingRows() {
+  const { pathname } = useLocation();
+  const returnTo = pathname.startsWith("/stocks/")
+    ? `${pathname}?tab=disclosure`
+    : pathname;
+
   return (
     <div className="disclosure-rows">
       {filingGroups.map((group, groupIndex) => (
@@ -92,6 +97,8 @@ function FilingRows() {
             return (
               <Link
                 to="/disclosures/20260814001"
+                state={{ returnTo }}
+                onClick={() => window.scrollTo(0, 0)}
                 className={index === 1 && groupIndex === 0 ? "active" : ""}
                 key={`${groupIndex}-${index}`}
               >
@@ -213,11 +220,7 @@ export function DisclosurePage() {
           <Link to="/news">News</Link>
           <button className="active">Disclosure</button>
         </div>
-        <FilingFilters />
-        <FilingRows />
-        <button className="more-filings">
-          View more filings <img src="/assets/chevron-down-gold.svg" alt="" />
-        </button>
+        <StockDisclosureFeed />
       </main>
     </div>
   );
@@ -227,13 +230,19 @@ function FilingFilters() {
   const [range, setRange] = useState("1M");
   return (
     <section className="filing-filters">
-      <div className="date-filter">
+      <div className="filing-filter-heading">
         <span>Date range</span>
-        <input placeholder="mm/dd/yyyy" />
+        <button type="button" className="reset">
+          Reset
+        </button>
+      </div>
+      <div className="date-filter">
+        <input placeholder="mm/dd/yyyy" aria-label="Start date" />
         <b>–</b>
-        <input placeholder="mm/dd/yyyy" />
+        <input placeholder="mm/dd/yyyy" aria-label="End date" />
         {["1D", "1W", "1M", "3M", "1Y"].map((item) => (
           <button
+            type="button"
             className={range === item ? "active" : ""}
             onClick={() => setRange(item)}
             key={item}
@@ -241,14 +250,13 @@ function FilingFilters() {
             {item}
           </button>
         ))}
-        <button className="reset">Reset</button>
       </div>
       {[
         [
           "Reporting & Governance",
           "Periodic Reports",
           "Audit Reports",
-          "Author Change",
+          "Auditor Change",
           "Corporate Governance",
           "Fair Trade",
           "Credit Rating",
@@ -271,6 +279,8 @@ function FilingFilters() {
           "Business Transfer",
           "Strategic Alliances",
           "Ownership Disclosure",
+          "Listing/Delisting",
+          "Lawsuit/Arbitration",
         ],
       ].map((group) => (
         <div className="checkbox-row" key={group[0]}>
@@ -290,16 +300,33 @@ function FilingFilters() {
   );
 }
 
+export function StockDisclosureFeed() {
+  return (
+    <>
+      <FilingFilters />
+      <FilingRows />
+      <button type="button" className="more-filings">
+        View more filings <img src="/assets/chevron-down-gold.svg" alt="" />
+      </button>
+    </>
+  );
+}
+
 export function DisclosureDetailPage() {
+  const location = useLocation();
   const [agent, setAgent] = useState(false);
   const [menu, setMenu] = useState(false);
+  const returnTo =
+    (location.state as { returnTo?: string } | null)?.returnTo ??
+    "/disclosures";
+
   return (
     <div className={`filing-detail ${agent ? "agent-open" : ""}`}>
       <div className="filing-detail-main">
         <Header />
         <div className="filing-hero">
           <div className="page-shell">
-            <BackLink to="/disclosures" />
+            <BackLink to={returnTo} />
             <div className="filing-title">
               <div>
                 <div className="entity-chips">
@@ -338,9 +365,8 @@ export function DisclosureDetailPage() {
           </div>
         </div>
         <main className="page-shell filing-body-shell">
-          <div className="article-grid">
-            <div>
-              <section className="ai-summary">
+          <div className="filing-summary-grid">
+            <section className="ai-summary">
                 <h2>
                   AI Insight summary{" "}
                   <img src="/assets/agent-badge.svg" alt="AI" />
@@ -364,36 +390,8 @@ export function DisclosureDetailPage() {
                     <span>{row[1]}</span>
                   </p>
                 ))}
-              </section>
-              <section className="translation">
-                <h2>
-                  <span>
-                    <img src="/assets/translation.svg" alt="" />
-                    English translation
-                  </span>
-                  <span className="translation-actions">
-                    <button aria-label="Print">
-                      <img src="/assets/print.svg" alt="" />
-                    </button>
-                    <button aria-label="Share">
-                      <img src="/assets/share.svg" alt="" />
-                    </button>
-                  </span>
-                </h2>
-                <button
-                  className="selection-hint"
-                  onClick={() => setAgent(true)}
-                >
-                  <img src="/assets/selection-info.svg" alt="" /> Drag over any
-                  highlighted term to look it up.
-                </button>
-                <img
-                  src="/assets/disclosure-table.png"
-                  alt="Translated disclosure ownership tables"
-                />
-              </section>
-            </div>
-            <aside className="mentioned">
+            </section>
+            <aside className="mentioned filing-division">
               <h2>Division</h2>
               <div className="tags">
                 <span className="positive">
@@ -405,15 +403,39 @@ export function DisclosureDetailPage() {
               </div>
             </aside>
           </div>
+          <section className="translation">
+            <h2>
+              <span>
+                <img src="/assets/translation.svg" alt="" />
+                English translation
+              </span>
+              <span className="translation-actions">
+                <button aria-label="Print">
+                  <img src="/assets/print.svg" alt="" />
+                </button>
+                <button aria-label="Share">
+                  <img src="/assets/share.svg" alt="" />
+                </button>
+              </span>
+            </h2>
+            <button className="selection-hint" onClick={() => setAgent(true)}>
+              <img src="/assets/selection-info.svg" alt="" /> Drag over any
+              highlighted term to look it up.
+            </button>
+            <img
+              src="/assets/disclosure-table.png"
+              alt="Translated disclosure ownership tables"
+            />
+          </section>
         </main>
       </div>
-      {agent && (
+      {agent ? (
         <FilingAgent
           menu={menu}
-          onMenu={() => setMenu(!menu)}
+          onMenu={() => setMenu((isOpen) => !isOpen)}
           close={() => setAgent(false)}
         />
-      )}
+      ) : null}
     </div>
   );
 }
@@ -441,7 +463,7 @@ function FilingAgent({
         <button className="agent-overflow-button" onClick={onMenu}>
           <img src="/assets/overflow.svg" alt="Menu" />
         </button>
-        {menu && (
+        {menu ? (
           <div className="agent-menu">
             <button>
               <img src="/assets/history.svg" alt="" /> History
@@ -450,7 +472,7 @@ function FilingAgent({
               <img src="/assets/delete.svg" alt="" /> Delete
             </button>
           </div>
-        )}
+        ) : null}
       </header>
       <div className="context-chip">
         <img src="/assets/agent-context.svg" alt="" /> Context Attached: Samsung
