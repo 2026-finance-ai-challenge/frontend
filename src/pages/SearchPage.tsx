@@ -1,12 +1,25 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
+import { WatchlistHeart } from "../components/WatchlistHeart";
 
 const stocks = [
-  ["Samsung Electronics", "005930 · KOSPI"],
-  ["Samsung SDI", "005930 · KOSPI"],
-  ["Samsung Biologics", "005930 · KOSPI"],
-  ["Samsung Engineering", "005930 · KOSPI"],
+  {
+    id: "samsung-electronics",
+    name: "Samsung Electronics",
+    description: "005930 · KOSPI",
+  },
+  { id: "samsung-sdi", name: "Samsung SDI", description: "005930 · KOSPI" },
+  {
+    id: "samsung-biologics",
+    name: "Samsung Biologics",
+    description: "005930 · KOSPI",
+  },
+  {
+    id: "samsung-engineering",
+    name: "Samsung Engineering",
+    description: "005930 · KOSPI",
+  },
 ];
 
 const filingGroups = [
@@ -178,27 +191,25 @@ export function SearchPage() {
             </div>
           </div>
           <div className="search-stock-grid">
-            {stocks.map((stock, index) => (
-              <Link to="/stocks/005930" key={stock[0]}>
-                <div>
-                  <h2>{stock[0]}</h2>
-                  <span>{stock[1]}</span>
-                </div>
-                <img
+            {stocks.map((stock) => (
+              <article className="search-stock-card" key={stock.id}>
+                <Link to="/stocks/005930">
+                  <div>
+                    <h2>{stock.name}</h2>
+                    <span>{stock.description}</span>
+                  </div>
+                  <strong>₩230,420</strong>
+                  <p>
+                    <span>▲ 4320</span>
+                    <span>+2.52%</span>
+                  </p>
+                </Link>
+                <WatchlistHeart
                   className="stock-result-heart"
-                  src={
-                    index === 0
-                      ? "/assets/heart-filled.svg"
-                      : "/assets/heart-outline.svg"
-                  }
-                  alt=""
+                  itemId={stock.id}
+                  itemName={stock.name}
                 />
-                <strong>₩230,420</strong>
-                <p>
-                  <span>▲ 4320</span>
-                  <span>+2.52%</span>
-                </p>
-              </Link>
+              </article>
             ))}
           </div>
         </div>
