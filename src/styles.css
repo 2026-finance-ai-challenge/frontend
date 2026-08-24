@@ -3284,9 +3284,16 @@ mark {
   padding-top: 60px;
   gap: 30px;
 }
-.forgot {
-  border: 0;
-  background: transparent;
+.signup-prompt {
+  margin: -10px 0 0;
+  text-align: center;
+  color: #555;
+}
+.signup-prompt a {
+  color: var(--gold);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 @media (max-width: 600px) {
   .auth-page main {

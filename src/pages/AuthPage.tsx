@@ -223,9 +223,9 @@ export function LoginPage() {
             </p>
           )}
           <button className="auth-primary">Log in</button>
-          <button type="button" className="forgot">
-            Forgot your <u>password?</u>
-          </button>
+          <p className="signup-prompt">
+            New to KART? <Link to="/signup">Sign up</Link>
+          </p>
         </form>
       </main>
     </div>
