@@ -127,7 +127,7 @@ export function HomePage() {
             </div>
           </div>
           <div className="news-grid">
-            <article className="news-card featured">
+            <Link className="news-card" to="/news/fy2025-dividend">
               <div className="tags">
                 <span className="negative">
                   <img src="/assets/trend-down.svg" alt="" />
@@ -158,8 +158,8 @@ export function HomePage() {
                   after the open.
                 </p>
               </div>
-            </article>
-            <article className="news-card">
+            </Link>
+            <Link className="news-card" to="/news/short-selling-review">
               <div className="tags">
                 <span className="positive">
                   <img src="/assets/trend-up.svg" alt="" />
@@ -189,7 +189,7 @@ export function HomePage() {
                   short-interest names.
                 </p>
               </div>
-            </article>
+            </Link>
           </div>
         </section>
 
