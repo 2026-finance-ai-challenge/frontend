@@ -2,11 +2,36 @@ import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 const results = [
-  { name: "Samsung Electronics", code: "005930", market: "KOSPI", saved: true },
-  { name: "Samsung SDI", code: "005930", market: "KOSPI", saved: true },
-  { name: "Samsung Biologics", code: "005930", market: "KOSPI", saved: false },
-  { name: "Samsung C&T", code: "005930", market: "KOSPI", saved: false },
   {
+    id: "samsung-electronics-primary",
+    name: "Samsung Electronics",
+    code: "005930",
+    market: "KOSPI",
+    saved: true,
+  },
+  {
+    id: "samsung-sdi",
+    name: "Samsung SDI",
+    code: "005930",
+    market: "KOSPI",
+    saved: true,
+  },
+  {
+    id: "samsung-biologics",
+    name: "Samsung Biologics",
+    code: "005930",
+    market: "KOSPI",
+    saved: false,
+  },
+  {
+    id: "samsung-ct",
+    name: "Samsung C&T",
+    code: "005930",
+    market: "KOSPI",
+    saved: false,
+  },
+  {
+    id: "samsung-electronics-secondary",
     name: "Samsung Electronics",
     code: "005930",
     market: "KOSPI",
@@ -27,6 +52,9 @@ export function Header({
 }: HeaderProps) {
   const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
+  const [savedResults, setSavedResults] = useState(
+    () => new Set(results.flatMap((item) => (item.saved ? [item.id] : []))),
+  );
   const navigate = useNavigate();
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -68,32 +96,51 @@ export function Header({
                     item.name.toLowerCase().includes(query.toLowerCase()) ||
                     item.code.includes(query),
                 )
-                .map((item, index) => (
-                  <button
-                    key={`${item.name}-${index}`}
-                    type="button"
-                    onMouseDown={() => navigate(`/stocks/${item.code}`)}
+                .map((item) => (
+                  <div
+                    className="search-result-row"
+                    key={item.id}
                   >
-                    <span>
+                    <button
+                      className="search-result-link"
+                      type="button"
+                      onClick={() => navigate(`/stocks/${item.code}`)}
+                    >
                       <strong>{item.name}</strong>
                       <small>
                         {item.code} · {item.market}
                       </small>
-                    </span>
-                    <img
-                      className="search-heart"
-                      src={
-                        item.saved
-                          ? "/assets/heart-filled.svg"
-                          : "/assets/heart-outline.svg"
+                    </button>
+                    <button
+                      className="search-heart-button"
+                      type="button"
+                      aria-label={
+                        savedResults.has(item.id)
+                          ? `Remove ${item.name} from watchlist`
+                          : `Add ${item.name} to watchlist`
                       }
-                      alt={
-                        item.saved
-                          ? "Saved to watchlist"
-                          : "Not saved to watchlist"
+                      aria-pressed={savedResults.has(item.id)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() =>
+                        setSavedResults((current) => {
+                          const next = new Set(current);
+                          if (next.has(item.id)) next.delete(item.id);
+                          else next.add(item.id);
+                          return next;
+                        })
                       }
-                    />
-                  </button>
+                    >
+                      <img
+                        className="search-heart"
+                        src={
+                          savedResults.has(item.id)
+                            ? "/assets/heart-filled.svg"
+                            : "/assets/heart-outline.svg"
+                        }
+                        alt=""
+                      />
+                    </button>
+                  </div>
                 ))}
               <button
                 className="all-results"
