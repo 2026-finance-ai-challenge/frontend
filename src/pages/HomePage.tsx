@@ -14,11 +14,12 @@ const filings = [
   [
     "13:02:41 KST",
     "NAVER Corp",
-    "035420 · KOSPI",
+    "035420 · KOSDAQ",
     "Convertible bond issuance decision",
     "M&A",
     "Low priority",
     "Neutral",
+    "neutral",
   ],
   [
     "11:40:08 KST",
@@ -28,6 +29,7 @@ const filings = [
     "Earning",
     "High priority",
     "Positive",
+    "positive",
   ],
   [
     "09:15:22 KST",
@@ -37,6 +39,7 @@ const filings = [
     "Goverment",
     "Medium priority",
     "Positive",
+    "positive",
   ],
   [
     "13:02:41 KST",
@@ -46,6 +49,7 @@ const filings = [
     "Goverment",
     "Medium priority",
     "Positive",
+    "negative",
   ],
 ];
 
@@ -237,11 +241,12 @@ export function HomePage() {
             ))}
             <div className="table-day">
               <span>Wednesday, Aug 13</span>
-              <span>1 filing</span>
+              <span>1 filings</span>
             </div>
             <FilingRow row={filings[3]} />
             <Link className="view-all" to="/disclosures">
-              View all filings ›
+              View all filings
+              <img src="/assets/chevron-right-gold.svg" alt="" />
             </Link>
           </div>
         </section>
@@ -410,11 +415,18 @@ function FilingRow({
   row: string[];
   active?: boolean;
 }) {
+  const isNeutral = row[6] === "Neutral";
+
   return (
     <Link
       className={`filing-row ${active ? "active" : ""}`}
       to="/disclosures/20260814001"
     >
+      <img
+        className="filing-timeline-dot"
+        src={`/assets/timeline-${row[7]}.svg`}
+        alt=""
+      />
       <span>{row[0]}</span>
       <span>
         <b>{row[1]}</b>
@@ -433,8 +445,11 @@ function FilingRow({
       >
         {row[5]}
       </span>
-      <span className="positive">
-        <img src="/assets/trend-up.svg" alt="" />
+      <span className={isNeutral ? "neutral" : "positive"}>
+        <img
+          src={isNeutral ? "/assets/trend-neutral.svg" : "/assets/trend-up.svg"}
+          alt=""
+        />
         {row[6]}
       </span>
     </Link>
