@@ -46,7 +46,9 @@ export function StockPage() {
         : null,
   );
   const [period, setPeriod] = useState("1M");
-  const [activeTab, setActiveTab] = useState<"chart" | "news">("chart");
+  const [activeTab, setActiveTab] = useState<"chart" | "news">(
+    params.get("tab") === "news" ? "news" : "chart",
+  );
   const isAlertSnapshot = alert !== null;
 
   return (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { StockNewsFeed, TrendTag } from "../components/StockNewsFeed";
 import { WatchlistHeart } from "../components/WatchlistHeart";
@@ -85,20 +85,24 @@ export function NewsPage() {
 }
 
 export function NewsDetailPage() {
+  const location = useLocation();
   const [agent, setAgent] = useState(false);
   const [selected, setSelected] = useState(true);
+  const returnTo =
+    (location.state as { returnTo?: string } | null)?.returnTo ?? "/news";
+
   return (
     <div className={`article-page ${agent ? "agent-open" : ""}`}>
       <div className="article-main">
         <Header />
         <main className="page-shell article-shell">
-          <BackLink to="/news" />
+          <BackLink to={returnTo} />
           <section className="article-hero">
             <div>
               <div className="tags">
                 <TrendTag type="Negative" />
-                <span>Medium priority</span>
-                <span>Foreign selling</span>
+                <span className="warning-chip">Medium priority</span>
+                <span className="info-tag">Foreign selling</span>
               </div>
               <h1>
                 Samsung Electronics confirms
@@ -195,14 +199,29 @@ export function NewsDetailPage() {
                 <p>
                   Looking ahead, Samsung Electronics plans to strengthen its
                   ecosystem of{" "}
-                  <mark
-                    onClick={() => {
-                      setSelected(true);
-                      setAgent(true);
-                    }}
-                  >
-                    connected
-                  </mark>{" "}
+                  <span className="highlight-term-wrapper">
+                    <button
+                      type="button"
+                      className="highlighted-term"
+                      aria-expanded={selected}
+                      aria-controls={selected ? "article-term-tooltip" : undefined}
+                      onClick={() => setSelected((current) => !current)}
+                    >
+                      connected
+                    </button>
+                    {selected ? (
+                      <button
+                        type="button"
+                        id="article-term-tooltip"
+                        className="selection-popup"
+                        onClick={() => setAgent(true)}
+                      >
+                        <img src="/assets/tooltip-arrow.svg" alt="" />
+                        <span>Want to know what this mean?</span>
+                        <b>Click</b>
+                      </button>
+                    ) : null}
+                  </span>{" "}
                   devices and explore new ways to combine hardware, software and
                   artificial intelligence. The company says its long-term
                   ambition is to transform technology from a collection of
@@ -212,14 +231,6 @@ export function NewsDetailPage() {
                   This article is a fictional dummy article created for design
                   and layout purposes.
                 </p>
-                {selected && (
-                  <button
-                    className="selection-popup"
-                    onClick={() => setAgent(true)}
-                  >
-                    Want to know what this mean? <b>Click</b>
-                  </button>
-                )}
                 <div className="article-tags">
                   <span>KODAQ</span>
                   <span>Tech</span>
@@ -235,7 +246,7 @@ export function NewsDetailPage() {
           </div>
         </main>
       </div>
-      {agent && <AgentPanel close={() => setAgent(false)} />}
+      {agent ? <AgentPanel close={() => setAgent(false)} /> : null}
     </div>
   );
 }
@@ -259,7 +270,7 @@ function AgentPanel({ close }: { close: () => void }) {
         · “ants”
       </div>
       <div className="chat">
-        <p className="user-message">What is the definition of Tittatable?</p>
+        <p className="user-message">What is the definition of Ttattable?</p>
         <div className="ai-message">
           <p>
             KT has reached its 49% cap, so buy orders from foreign investors
@@ -268,7 +279,7 @@ function AgentPanel({ close }: { close: () => void }) {
             substantial room.
           </p>
           <blockquote>
-            <b>Data Point Reference:</b>
+            <b>Market Sentiment Shift</b>
             <p>- SEOUL, South Korea — Samsung Electronics</p>
             <p>- accelerating its efforts to create a more connected</p>
           </blockquote>
