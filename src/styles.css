@@ -1260,6 +1260,9 @@ a {
   padding-top: 100px;
   padding-bottom: 211px;
 }
+.stock-news-content {
+  padding-bottom: 228px;
+}
 .stock-tabs {
   height: 70px;
   display: flex;

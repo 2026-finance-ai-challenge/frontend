@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
+import { StockNewsFeed } from "../components/StockNewsFeed";
 import { WatchlistHeart } from "../components/WatchlistHeart";
 
 const metrics = [
@@ -45,6 +46,7 @@ export function StockPage() {
         : null,
   );
   const [period, setPeriod] = useState("1M");
+  const [activeTab, setActiveTab] = useState<"chart" | "news">("chart");
   const isAlertSnapshot = alert !== null;
 
   return (
@@ -125,79 +127,97 @@ export function StockPage() {
           </div>
         </div>
 
-        <main className="page-shell chart-content">
+        <main
+          className={`page-shell chart-content ${activeTab === "news" ? "stock-news-content" : ""}`}
+        >
           <div className="stock-tabs">
-            <button className="active">Chart</button>
-            <button>News</button>
-            <button>Disclosure</button>
+            <button
+              type="button"
+              className={activeTab === "chart" ? "active" : ""}
+              onClick={() => setActiveTab("chart")}
+            >
+              Chart
+            </button>
+            <button
+              type="button"
+              className={activeTab === "news" ? "active" : ""}
+              onClick={() => setActiveTab("news")}
+            >
+              News
+            </button>
+            <Link to="/disclosures">Disclosure</Link>
           </div>
-          <div className="chart-layout">
-            <section className="chart-card">
-              <div className="chart-tools">
-                <div>
-                  {["1D", "1W", "1M", "3M", "1Y"].map((item) => (
-                    <button
-                      className={period === item ? "active" : ""}
-                      onClick={() => setPeriod(item)}
-                      key={item}
-                    >
-                      {item}
-                    </button>
-                  ))}
+          {activeTab === "news" ? (
+            <StockNewsFeed />
+          ) : (
+            <div className="chart-layout">
+              <section className="chart-card">
+                <div className="chart-tools">
+                  <div>
+                    {["1D", "1W", "1M", "3M", "1Y"].map((item) => (
+                      <button
+                        className={period === item ? "active" : ""}
+                        onClick={() => setPeriod(item)}
+                        key={item}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="chart-tool-icons">
+                    <img
+                      src="/assets/chart-candles.svg"
+                      alt="Candlestick chart"
+                    />
+                    <img src="/assets/chart-line.svg" alt="Line chart" />
+                    <img src="/assets/chart-expand.svg" alt="Expand chart" />
+                  </div>
                 </div>
-                <div className="chart-tool-icons">
-                  <img
-                    src="/assets/chart-candles.svg"
-                    alt="Candlestick chart"
-                  />
-                  <img src="/assets/chart-line.svg" alt="Line chart" />
-                  <img src="/assets/chart-expand.svg" alt="Expand chart" />
+                <img
+                  src="/assets/stock-chart.png"
+                  alt={`Samsung Electronics ${period} price and foreign ownership chart`}
+                />
+              </section>
+              <aside className="ownership-panel">
+                <h2>Foreign ownership</h2>
+                <p>ML prediction &amp; statutory limit</p>
+                <div className="ownership-line">
+                  <span />
                 </div>
-              </div>
-              <img
-                src="/assets/stock-chart.png"
-                alt={`Samsung Electronics ${period} price and foreign ownership chart`}
-              />
-            </section>
-            <aside className="ownership-panel">
-              <h2>Foreign ownership</h2>
-              <p>ML prediction &amp; statutory limit</p>
-              <div className="ownership-line">
-                <span />
-              </div>
-              <div className="ownership-values">
-                <div>
-                  <span>Previous ownership</span>
-                  <strong>20.61%</strong>
+                <div className="ownership-values">
+                  <div>
+                    <span>Previous ownership</span>
+                    <strong>20.61%</strong>
+                  </div>
+                  <div>
+                    <span>Legal limit</span>
+                    <strong>40.01%</strong>
+                  </div>
                 </div>
-                <div>
-                  <span>Legal limit</span>
-                  <strong>40.01%</strong>
+                <div className="prediction">
+                  <div>
+                    <b>Today’s current prediction</b>
+                    <span>95% CI</span>
+                  </div>
+                  <div>
+                    <span>
+                      Min<small>20.64%</small>
+                    </span>
+                    <span>
+                      Base<small>20.64%</small>
+                    </span>
+                    <span>
+                      Max<small>20.64%</small>
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="prediction">
-                <div>
-                  <b>Today’s current prediction</b>
-                  <span>95% CI</span>
-                </div>
-                <div>
-                  <span>
-                    Min<small>20.64%</small>
-                  </span>
-                  <span>
-                    Base<small>20.64%</small>
-                  </span>
-                  <span>
-                    Max<small>20.64%</small>
-                  </span>
-                </div>
-              </div>
-              <p className="prediction-note">
-                The estimated maximum stays well below the cap, so foreign buy
-                orders should execute normally today.
-              </p>
-            </aside>
-          </div>
+                <p className="prediction-note">
+                  The estimated maximum stays well below the cap, so foreign
+                  buy orders should execute normally today.
+                </p>
+              </aside>
+            </div>
+          )}
         </main>
       </div>
 
