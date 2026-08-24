@@ -1,4 +1,9 @@
-import { type FormEvent, useState } from "react";
+import {
+  type FormEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { WatchlistHeart } from "./WatchlistHeart";
 
@@ -46,6 +51,31 @@ type HeaderProps = {
   white?: boolean;
 };
 
+type HeaderSurface = "cream" | "white" | "dark";
+
+function readHeaderSurface(header: HTMLElement): HeaderSurface {
+  const previousVisibility = header.style.visibility;
+  header.style.visibility = "hidden";
+  const sampleY = Math.min(window.innerHeight - 1, header.offsetHeight + 1);
+  const elementBelow = document.elementFromPoint(16, sampleY);
+  header.style.visibility = previousVisibility;
+
+  let current = elementBelow;
+  while (current && current !== document.documentElement) {
+    const color = window.getComputedStyle(current).backgroundColor;
+    const channels = color.match(/[\d.]+/g)?.map(Number);
+    if (channels && channels.length >= 3 && (channels[3] ?? 1) > 0) {
+      const [red, green, blue] = channels;
+      if (red < 80 && green < 80 && blue < 80) return "dark";
+      if (red > 252 && green > 252 && blue > 252) return "white";
+      return "cream";
+    }
+    current = current.parentElement;
+  }
+
+  return "white";
+}
+
 export function Header({
   authenticated = false,
   initialQuery = "",
@@ -53,14 +83,44 @@ export function Header({
 }: HeaderProps) {
   const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
+  const [surface, setSurface] = useState<HeaderSurface>(
+    white ? "white" : "cream",
+  );
+  const headerRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
+  useEffect(() => {
+    let frame = 0;
+    const updateSurface = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        if (headerRef.current) {
+          setSurface(readHeaderSurface(headerRef.current));
+        }
+      });
+    };
+
+    updateSurface();
+    window.addEventListener("scroll", updateSurface, { passive: true });
+    window.addEventListener("resize", updateSurface);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", updateSurface);
+      window.removeEventListener("resize", updateSurface);
+    };
+  }, []);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
   };
 
   return (
-    <header className={`site-header ${white ? "is-white" : ""}`}>
+    <>
+      <div className="site-header-slot" aria-hidden="true" />
+      <header
+        ref={headerRef}
+        className={`site-header is-${surface}`}
+        data-surface={surface}
+      >
       <div className="nav-shell">
         <Link className="brand" to="/" aria-label="KART home">
           <img className="brand-menu" src="/assets/logo-menu.svg" alt="" />
@@ -153,7 +213,8 @@ export function Header({
           <img src="/assets/agent-launcher.svg" alt="" />
         </button>
       )}
-    </header>
+      </header>
+    </>
   );
 }
 

@@ -48,10 +48,34 @@ a {
   height: 120px;
   background: var(--cream);
   border-bottom: 1px solid var(--line);
-  position: relative;
-  z-index: 20;
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  transition:
+    right 250ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+.site-header-slot {
+  height: 120px;
 }
 .site-header.is-white {
+  background: #fff;
+}
+.site-header.is-dark {
+  color: #fff;
+  background: #141414;
+  border-bottom-color: #333;
+}
+.site-header.is-dark .brand img,
+.site-header.is-dark .icon-button img {
+  filter: brightness(0) invert(1);
+}
+.site-header.is-dark .language {
+  color: #fff;
+}
+.site-header.is-dark .login-button {
+  color: #111;
   background: #fff;
 }
 .nav-shell {
@@ -873,6 +897,9 @@ a {
   .site-header {
     height: 88px;
   }
+  .site-header-slot {
+    height: 88px;
+  }
   .nav-shell {
     height: 88px;
     grid-template-columns: 70px 1fr;
@@ -1340,6 +1367,9 @@ a {
 .panel-open .stock-main {
   width: calc(100% - 500px);
 }
+.panel-open .site-header {
+  right: 500px;
+}
 .panel-open .stock-main .page-shell {
   width: min(1340px, calc(100% - 48px));
 }
@@ -1496,6 +1526,9 @@ a {
 @media (max-width: 1100px) {
   .panel-open .stock-main {
     width: 100%;
+  }
+  .panel-open .site-header {
+    right: 0;
   }
   .peer-panel {
     width: min(540px, 100%);
@@ -1769,6 +1802,10 @@ a {
 }
 .article-page.agent-open .article-main {
   width: calc(100% - 717px);
+}
+.article-page.agent-open .site-header,
+.filing-detail.agent-open .site-header {
+  right: 717px;
 }
 .article-shell {
   padding-top: 95px;
@@ -2046,6 +2083,10 @@ mark {
 @media (max-width: 1000px) {
   .article-page.agent-open .article-main {
     width: 100%;
+  }
+  .article-page.agent-open .site-header,
+  .filing-detail.agent-open .site-header {
+    right: 0;
   }
   .agent-panel {
     width: min(717px, 100%);
@@ -3153,7 +3194,8 @@ mark {
   .profile-options {
     grid-template-columns: 1fr;
   }
-  .auth-page .site-header {
+  .auth-page .site-header,
+  .auth-page .site-header-slot {
     display: none;
   }
   .auth-page main {
