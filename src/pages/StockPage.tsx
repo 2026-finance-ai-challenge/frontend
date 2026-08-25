@@ -37,7 +37,7 @@ const peers = [
 
 export function StockPage() {
   const [params] = useSearchParams();
-  const [insights, setInsights] = useState(params.get("insights") === "1");
+  const [insights, setInsights] = useState(true);
   const initialAlert = params.get("alert");
   const [alert, setAlert] = useState<"vi" | "price-limit" | null>(
     initialAlert === "price-limit"
