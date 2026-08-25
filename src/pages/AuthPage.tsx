@@ -215,6 +215,7 @@ function ConsentStep() {
       ))}
       <button className="auth-primary" onClick={() => navigate("/my")}>
         Create Account
+        <img src="/assets/chevron-right-white.svg" alt="" />
       </button>
     </section>
   );

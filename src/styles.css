@@ -3735,6 +3735,9 @@ mark {
 }
 .consent-card h2 {
   font-size: 18px;
+  font-weight: 400;
+  line-height: 25px;
+  letter-spacing: -0.72px;
   margin: 0;
 }
 .consent-card {
@@ -3742,6 +3745,7 @@ mark {
   min-height: 534px;
   margin-top: 101px;
   gap: 0;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.25);
 }
 .consent-card .profile-options {
   margin-top: 10px;
@@ -3751,6 +3755,10 @@ mark {
 }
 .consent-card .consent {
   margin-top: 20px;
+  gap: 8px;
+  font-size: 18px;
+  line-height: 25px;
+  letter-spacing: -0.72px;
 }
 .consent-policy-link {
   color: var(--gold);
@@ -3764,22 +3772,41 @@ mark {
 }
 .consent-card .auth-primary {
   margin-top: auto;
+  height: 49px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 8px;
+  font-weight: 400;
+  line-height: 25px;
+  letter-spacing: -0.72px;
+}
+.consent-card .auth-primary img {
+  width: 5px;
+  height: 10px;
 }
 .profile-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 .profile-options button {
   border: 0;
   border-radius: 8px;
-  background: #efeee8;
-  padding: 14px;
+  background: #edece5;
+  padding: 10px 16px;
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   position: relative;
+}
+.profile-options b {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 25px;
+  letter-spacing: -0.72px;
 }
 .profile-options button.active {
   background: var(--gold);
@@ -3799,16 +3826,31 @@ mark {
   font-size: 11px;
 }
 .profile-options span {
-  font-size: 14px;
+  color: #555;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: -0.64px;
+}
+.profile-options button.active span {
+  color: #ddd;
 }
 .auth-card label.consent {
   flex-direction: row;
   align-items: flex-start;
 }
 .consent input {
+  appearance: none;
+  flex: 0 0 auto;
   height: 20px;
   width: 20px;
-  accent-color: var(--gold);
+  margin: 2px 0 0;
+  padding: 0;
+  border: 2px solid #ddd;
+  border-radius: 2px;
+}
+.consent input:checked {
+  border: 0;
+  background: url("/assets/checkbox-checked.svg") center / 20px 20px no-repeat;
 }
 .consent u {
   color: var(--gold);
