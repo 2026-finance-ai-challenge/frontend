@@ -244,7 +244,11 @@ export function HomePage() {
               <span>1 filings</span>
             </div>
             <FilingRow row={filings[3]} />
-            <Link className="view-all" to="/disclosures">
+            <Link
+              className="view-all"
+              to="/disclosures"
+              onClick={() => window.scrollTo(0, 0)}
+            >
               View all filings
               <img src="/assets/chevron-right-gold.svg" alt="" />
             </Link>
