@@ -2,6 +2,9 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Header } from "../components/Layout";
 
+const PASSWORD_PATTERN =
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{8,}$/;
+
 function FormError({ children }: { children: string }) {
   return (
     <small className="auth-error">
@@ -19,9 +22,14 @@ export function SignupPage() {
   const [nationality, setNationality] = useState("");
   const [checked, setChecked] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+  const [confirmTouched, setConfirmTouched] = useState(false);
+  const passwordIsValid = PASSWORD_PATTERN.test(password);
   const emailError = submitted && !email.includes("@");
-  const passwordError = submitted && password.length < 8;
-  const confirmError = submitted && password !== confirm;
+  const passwordError =
+    (submitted || passwordTouched) && !passwordIsValid;
+  const confirmError =
+    (submitted || confirmTouched) && (!confirm || password !== confirm);
   const nationalityError = submitted && !nationality;
   const next = (event: FormEvent) => {
     event.preventDefault();
@@ -29,7 +37,7 @@ export function SignupPage() {
     if (
       !emailError &&
       email.includes("@") &&
-      password.length >= 8 &&
+      passwordIsValid &&
       password === confirm &&
       nationality
     )
@@ -72,6 +80,8 @@ export function SignupPage() {
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                onBlur={() => setPasswordTouched(true)}
+                aria-invalid={passwordError}
                 placeholder="Create a password"
               />
               {passwordError && (
@@ -87,6 +97,8 @@ export function SignupPage() {
                 type="password"
                 value={confirm}
                 onChange={(event) => setConfirm(event.target.value)}
+                onBlur={() => setConfirmTouched(true)}
+                aria-invalid={confirmError}
                 placeholder="Enter password again"
               />
               {confirmError && <FormError>Password does not match</FormError>}
@@ -100,8 +112,8 @@ export function SignupPage() {
               >
                 <option value="">Select your nationality</option>
                 <option>United States</option>
-                <option>Japan</option>
-                <option>Singapore</option>
+                <option disabled>Japan</option>
+                <option disabled>Singapore</option>
               </select>
               {nationalityError && (
                 <FormError>Select your nationality</FormError>
