@@ -4,7 +4,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { WatchlistHeart } from "./WatchlistHeart";
 
 const results = [
@@ -53,6 +53,14 @@ type HeaderProps = {
 
 type HeaderSurface = "cream" | "white" | "dark";
 
+const primaryNavigation = [
+  { label: "AI News Summary", to: "/news" },
+  { label: "Dart filings", to: "/disclosures" },
+  { label: "Foreigner ownership limits", to: "/#foreign" },
+  { label: "Check my tax rate", to: "/tax" },
+  { label: "My page & Watchlist", to: "/my" },
+];
+
 function readHeaderSurface(header: HTMLElement): HeaderSurface {
   const previousVisibility = header.style.visibility;
   header.style.visibility = "hidden";
@@ -83,11 +91,15 @@ export function Header({
 }: HeaderProps) {
   const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [surface, setSurface] = useState<HeaderSurface>(
     white ? "white" : "cream",
   );
   const headerRef = useRef<HTMLElement>(null);
+  const menuRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   useEffect(() => {
     let frame = 0;
     const updateSurface = () => {
@@ -108,6 +120,42 @@ export function Header({
       window.removeEventListener("resize", updateSurface);
     };
   }, []);
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        !menuRef.current?.contains(target) &&
+        !menuButtonRef.current?.contains(target)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+
+    menuRef.current?.focus({ preventScroll: true });
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
+  useEffect(() => {
+    if (!location.hash) return;
+
+    const targetId = decodeURIComponent(location.hash.slice(1));
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.hash, location.pathname]);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
@@ -122,14 +170,26 @@ export function Header({
         data-surface={surface}
       >
       <div className="nav-shell">
-        <Link className="brand" to="/" aria-label="KART home">
-          <img className="brand-menu" src="/assets/logo-menu.svg" alt="" />
-          <img
-            className="brand-wordmark"
-            src="/assets/logo-wordmark.svg"
-            alt="KART"
-          />
-        </Link>
+        <div className="brand">
+          <button
+            ref={menuButtonRef}
+            className="brand-menu-button"
+            type="button"
+            aria-label="Open primary navigation"
+            aria-expanded={menuOpen}
+            aria-controls="primary-navigation-menu"
+            onClick={() => setMenuOpen(true)}
+          >
+            <img className="brand-menu" src="/assets/logo-menu.svg" alt="" />
+          </button>
+          <Link className="brand-home" to="/" aria-label="KART home">
+            <img
+              className="brand-wordmark"
+              src="/assets/logo-wordmark.svg"
+              alt="KART"
+            />
+          </Link>
+        </div>
         <form
           className={`global-search ${focused && query ? "is-active" : ""}`}
           onSubmit={submit}
@@ -208,6 +268,46 @@ export function Header({
           )}
         </nav>
       </div>
+      {menuOpen ? (
+        <nav
+          ref={menuRef}
+          className="primary-navigation-menu"
+          id="primary-navigation-menu"
+          aria-label="Primary navigation"
+          tabIndex={-1}
+        >
+          <button
+            className="primary-navigation-close"
+            type="button"
+            aria-label="Close primary navigation"
+            onClick={() => {
+              setMenuOpen(false);
+              menuButtonRef.current?.focus();
+            }}
+          >
+            <img src="/assets/gnb-close.svg" alt="" />
+          </button>
+          <div className="primary-navigation-links">
+            {primaryNavigation.map((item) => {
+              const active =
+                (item.to !== "/#foreign" &&
+                  location.pathname.startsWith(item.to)) ||
+                (location.pathname === "/" && item.to === "/disclosures");
+
+              return (
+                <Link
+                  className={active ? "is-active" : ""}
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      ) : null}
       </header>
     </>
   );
