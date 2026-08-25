@@ -2390,6 +2390,10 @@ mark {
 .agent-overflow-button {
   margin-left: auto;
 }
+.agent-overflow-wrap {
+  position: relative;
+  margin-left: auto;
+}
 .agent-overflow {
   width: 24px;
   height: 24px;
@@ -2398,10 +2402,73 @@ mark {
   width: 28px;
   height: 28px;
   padding: 0;
+  border: 0;
+  background: transparent;
 }
 .agent-overflow-button img {
   width: 100%;
   height: 100%;
+}
+.agent-history {
+  background: #fbf9f4;
+  padding: 35px 20px;
+  animation: agent-panel-enter 220ms ease-out both;
+}
+.agent-history > .agent-close {
+  margin-left: 10px;
+}
+.agent-history > h2 {
+  height: 69px;
+  margin: 26px -20px 0;
+  padding: 0 30px;
+  display: flex;
+  align-items: flex-start;
+  background: #fff;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -1.2px;
+}
+.agent-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 20px;
+}
+.agent-history-list > button {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+}
+.agent-history-list > button.selected {
+  border-color: #927c00;
+}
+.agent-history-list span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.agent-history-list b {
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 500;
+  letter-spacing: -0.88px;
+}
+.agent-history-list small {
+  color: #888;
+  font-size: 18px;
+  line-height: 25px;
+  letter-spacing: -0.72px;
+}
+.agent-history-list > button > img {
+  width: 10px;
+  height: 30px;
 }
 .chat {
   margin-top: 69px;
@@ -2985,24 +3052,38 @@ mark {
 .agent-menu {
   position: absolute;
   right: 0;
-  top: 75px;
+  top: 44px;
+  z-index: 2;
+  width: 150px;
+  height: 110px;
   background: #fff;
-  box-shadow: 0 6px 24px #ccc;
-  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+  padding: 8px 16px;
   display: flex;
   flex-direction: column;
 }
 .agent-menu button {
+  width: 118px;
+  height: 47px;
   border: 0;
   background: #fff;
-  padding: 10px;
+  padding: 0;
   display: flex;
   align-items: center;
   gap: 10px;
+  color: #555;
+  font-size: 18px;
+  line-height: 25px;
+  letter-spacing: -0.72px;
+  text-align: left;
+}
+.agent-menu button + button {
+  border-top: 1px solid #deddd5;
 }
 .agent-menu button img {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 @media (max-width: 1000px) {
   .filing-detail.agent-open .filing-detail-main {
