@@ -7,6 +7,7 @@ import { TaxPage } from './pages/TaxPage'
 import { MyPage } from './pages/MyPage'
 import { LoginPage, SignupPage } from './pages/AuthPage'
 import { SearchPage } from './pages/SearchPage'
+import { LegalPage } from './pages/LegalPage'
 import { KAgentFloating } from './components/KAgentFloating'
 
 export default function App() {
@@ -23,6 +24,9 @@ export default function App() {
         <Route path="/my" element={<MyPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/legal/terms" element={<LegalPage document="terms" />} />
+        <Route path="/legal/privacy" element={<LegalPage document="privacy" />} />
+        <Route path="/legal/fsc-disclaimer" element={<LegalPage document="fsc" />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
