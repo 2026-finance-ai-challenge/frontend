@@ -98,13 +98,86 @@ a {
   display: block;
   flex: 0 0 auto;
 }
+.brand-menu-button {
+  width: 24px;
+  height: 27px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
 .brand .brand-menu {
   width: 24px;
   height: 12.3px;
 }
+.brand-home {
+  display: block;
+  width: 55px;
+  height: 27px;
+}
 .brand .brand-wordmark {
   width: 55px;
   height: 27px;
+}
+.brand-menu-button:focus-visible,
+.brand-home:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+.primary-navigation-menu {
+  position: fixed;
+  z-index: 52;
+  top: 22px;
+  left: max(24px, calc((100vw - 1340px) / 2 - 26px));
+  width: 338px;
+  height: 340px;
+  padding: 76px 20px 22px 21px;
+  border-radius: 12px;
+  background: var(--cream);
+  box-shadow: 0 4px 30px rgb(0 0 0 / 25%);
+  outline: none;
+}
+.primary-navigation-close {
+  position: absolute;
+  top: 29px;
+  left: 29px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.primary-navigation-close img {
+  width: 18.6px;
+  height: 18.6px;
+  display: block;
+}
+.primary-navigation-close:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+.primary-navigation-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.primary-navigation-links a {
+  width: 100%;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  letter-spacing: -0.04em;
+}
+.primary-navigation-links a:hover,
+.primary-navigation-links a:focus-visible,
+.primary-navigation-links a.is-active {
+  border-color: var(--gold);
+  outline: none;
 }
 .global-search {
   height: 50px;
@@ -708,6 +781,7 @@ a {
 }
 .ownership-section {
   padding-top: 150px;
+  scroll-margin-top: 120px;
 }
 .ownership-section .section-heading {
   position: relative;
