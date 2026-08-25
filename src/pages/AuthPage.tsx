@@ -169,16 +169,44 @@ function ConsentStep() {
           />
           {index === 0 ? (
             <span>
-              I agree the <u>Terms of Service.</u> <em>(Req.)</em>
+              I agree the {" "}
+              <Link
+                className="consent-policy-link"
+                to="/legal/terms"
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+              >
+                Terms of Service.
+              </Link>{" "}
+              <em>(Req.)</em>
             </span>
           ) : index === 1 ? (
             <span>
-              I have read and consent to the <u>Privacy Policy.</u>{" "}
+              I have read and consent to the {" "}
+              <Link
+                className="consent-policy-link"
+                to="/legal/privacy"
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+              >
+                Privacy Policy.
+              </Link>{" "}
               <em>(Req.)</em>
             </span>
           ) : (
             <span>
-              I acknowledge the <u>FSC Information Disclaimer</u>
+              I acknowledge the {" "}
+              <Link
+                className="consent-policy-link"
+                to="/legal/fsc-disclaimer"
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+              >
+                FSC Information Disclaimer
+              </Link>
               <br />
               regarding AI-generated insights. <em>(Req.)</em>
             </span>

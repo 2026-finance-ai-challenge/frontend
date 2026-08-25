@@ -3752,6 +3752,16 @@ mark {
 .consent-card .consent {
   margin-top: 20px;
 }
+.consent-policy-link {
+  color: var(--gold);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.consent-policy-link:hover,
+.consent-policy-link:focus-visible {
+  color: #6f5e00;
+}
 .consent-card .auth-primary {
   margin-top: auto;
 }
@@ -3823,6 +3833,101 @@ mark {
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.legal-page {
+  min-height: 100vh;
+  background: #fbf9f4;
+}
+.legal-shell {
+  width: min(1040px, calc(100% - 48px));
+  padding: 70px 0 120px;
+}
+.legal-back {
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.legal-heading {
+  margin-top: 45px;
+  padding-bottom: 38px;
+  border-bottom: 1px solid #d3ccbe;
+}
+.legal-heading > span {
+  color: var(--gold);
+  font-size: 18px;
+}
+.legal-heading h1 {
+  margin: 12px 0 18px;
+  font-size: 54px;
+  line-height: 1;
+  letter-spacing: -2.16px;
+}
+.legal-heading p {
+  max-width: 760px;
+  margin: 0 0 20px;
+  color: #555;
+  font-size: 22px;
+  line-height: 32px;
+}
+.legal-heading small {
+  color: #888;
+  font-size: 16px;
+}
+.legal-draft-notice {
+  margin: 32px 0;
+  padding: 20px 24px;
+  border: 1px solid #d3ccbe;
+  border-radius: 10px;
+  background: #fff;
+  color: #555;
+  font-size: 17px;
+  line-height: 27px;
+}
+.legal-draft-notice b {
+  display: block;
+  margin-bottom: 4px;
+  color: #111;
+}
+.legal-document {
+  padding: 10px 58px 50px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 0 70px rgba(0, 0, 0, 0.05);
+}
+.legal-document section {
+  padding: 36px 0;
+  border-bottom: 1px solid #deddd5;
+}
+.legal-document h2 {
+  margin: 0 0 14px;
+  font-size: 24px;
+}
+.legal-document p {
+  margin: 0;
+  color: #555;
+  font-size: 18px;
+  line-height: 30px;
+}
+.legal-document .legal-reference {
+  margin-top: 30px;
+  color: #777;
+  font-size: 16px;
+}
+.legal-reference a {
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .legal-shell {
+    padding-top: 45px;
+  }
+  .legal-heading h1 {
+    font-size: 40px;
+  }
+  .legal-document {
+    padding: 0 24px 35px;
+  }
 }
 @media (max-width: 600px) {
   .auth-page main {
