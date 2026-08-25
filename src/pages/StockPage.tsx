@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { StockNewsFeed } from "../components/StockNewsFeed";
@@ -35,17 +35,27 @@ const peers = [
   ],
 ];
 
+type StockAlert = "vi" | "price-limit";
+
+function selectInitialAlert(alertParam: string | null): StockAlert {
+  if (alertParam === "price-limit") return "price-limit";
+  if (alertParam === "1" || alertParam === "vi") return "vi";
+  return Math.random() < 0.5 ? "vi" : "price-limit";
+}
+
+function formatCountdown(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+
 export function StockPage() {
   const [params] = useSearchParams();
   const [insights, setInsights] = useState(true);
-  const initialAlert = params.get("alert");
-  const [alert, setAlert] = useState<"vi" | "price-limit" | null>(
-    initialAlert === "price-limit"
-      ? "price-limit"
-      : initialAlert === "1" || initialAlert === "vi"
-        ? "vi"
-        : null,
+  const [alert, setAlert] = useState<StockAlert | null>(() =>
+    selectInitialAlert(params.get("alert")),
   );
+  const [remainingSeconds, setRemainingSeconds] = useState(120);
   const [period, setPeriod] = useState("1M");
   const initialTab = params.get("tab");
   const [activeTab, setActiveTab] = useState<
@@ -56,6 +66,25 @@ export function StockPage() {
       : "chart",
   );
   const isAlertSnapshot = alert !== null;
+  useEffect(() => {
+    if (alert !== "vi") return;
+
+    const timer = window.setInterval(() => {
+      setRemainingSeconds((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [alert]);
+
+  const openAlert = (nextAlert: StockAlert) => {
+    if (nextAlert === "vi") setRemainingSeconds(120);
+    setAlert(nextAlert);
+  };
 
   return (
     <div className={`stock-page ${insights ? "panel-open" : ""}`}>
@@ -100,12 +129,12 @@ export function StockPage() {
             <div className="stock-badges">
               <button
                 className="stock-danger"
-                onClick={() => setAlert("price-limit")}
+                onClick={() => openAlert("price-limit")}
               >
                 <img src="/assets/status-warning.svg" alt="" />
                 Near reached
               </button>
-              <button onClick={() => setAlert("vi")}>
+              <button onClick={() => openAlert("vi")}>
                 {!isAlertSnapshot && <img src="/assets/timer.svg" alt="" />}
                 {isAlertSnapshot
                   ? "VI Triggered single price auction"
@@ -320,11 +349,13 @@ export function StockPage() {
                 </p>
                 <strong>
                   <img src="/assets/timer.svg" alt="" />
-                  01:30 left
+                  {formatCountdown(remainingSeconds)} left
                 </strong>
               </>
             )}
-            <button onClick={() => setAlert(null)}>Cofirm</button>
+            <button type="button" onClick={() => setAlert(null)}>
+              Confirm
+            </button>
           </div>
         </div>
       )}
