@@ -162,10 +162,20 @@ const news = [
   ],
 ];
 
+const RELATED_NEWS_TOTAL = 34;
+const RELATED_NEWS_PAGE_SIZE = 4;
+
 export function SearchPage() {
   const [params] = useSearchParams();
   const [range, setRange] = useState("1M");
+  const [visibleNewsCount, setVisibleNewsCount] = useState(
+    RELATED_NEWS_PAGE_SIZE,
+  );
   const query = params.get("q") || "samsung";
+  const relatedNews = Array.from(
+    { length: Math.min(visibleNewsCount, RELATED_NEWS_TOTAL) },
+    (_, index) => news[index % news.length],
+  );
 
   return (
     <div className="search-page">
@@ -302,10 +312,13 @@ export function SearchPage() {
         <section className="related-news">
           <div className="search-section-title">
             <h2>Related news</h2>
-            <span>34 news</span>
+            <span>{RELATED_NEWS_TOTAL} news</span>
           </div>
-          {news.map((item, index) => (
-            <Link to="/news/fy2025-dividend" key={index}>
+          {relatedNews.map((item, index) => (
+            <Link
+              to="/news/fy2025-dividend"
+              key={`${item[1]}-${index}`}
+            >
               <img src={item[0]} alt="" />
               <div>
                 <div className="tags">
@@ -347,10 +360,23 @@ export function SearchPage() {
               </div>
             </Link>
           ))}
-          <button className="more-filings">
-            View more news
-            <img src="/assets/chevron-down-gold.svg" alt="" />
-          </button>
+          {visibleNewsCount < RELATED_NEWS_TOTAL ? (
+            <button
+              type="button"
+              className="more-filings"
+              onClick={() =>
+                setVisibleNewsCount((current) =>
+                  Math.min(
+                    current + RELATED_NEWS_PAGE_SIZE,
+                    RELATED_NEWS_TOTAL,
+                  ),
+                )
+              }
+            >
+              View more news
+              <img src="/assets/chevron-down-gold.svg" alt="" />
+            </button>
+          ) : null}
         </section>
       </main>
     </div>
