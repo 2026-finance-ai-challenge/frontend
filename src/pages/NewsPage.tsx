@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { StockNewsFeed, TrendTag } from "../components/StockNewsFeed";
 import { WatchlistHeart } from "../components/WatchlistHeart";
+
+const AGENT_OPENING_ANSWER =
+  "KT has reached its 49% cap, so buy orders from foreign investors will be rejected. SK Telecom sits at 46.10% of a 49% cap — about 94% used — and could reach the cap intraday. KEPCO and KOGAS both have substantial room.";
 
 function StockNewsHeader() {
   return (
@@ -252,8 +255,58 @@ export function NewsDetailPage() {
 }
 
 function AgentPanel({ close }: { close: () => void }) {
+  const [phase, setPhase] = useState<
+    "panel" | "user" | "thinking" | "typing" | "complete"
+  >("panel");
+  const [typedAnswer, setTypedAnswer] = useState("");
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (reducedMotion) {
+      setPhase("complete");
+      setTypedAnswer(AGENT_OPENING_ANSWER);
+      return;
+    }
+
+    let typingTimer: number | undefined;
+    const showUserTimer = window.setTimeout(() => setPhase("user"), 420);
+    const showThinkingTimer = window.setTimeout(
+      () => setPhase("thinking"),
+      980,
+    );
+    const startTypingTimer = window.setTimeout(() => {
+      setPhase("typing");
+      let characterIndex = 0;
+      typingTimer = window.setInterval(() => {
+        characterIndex += 1;
+        setTypedAnswer(AGENT_OPENING_ANSWER.slice(0, characterIndex));
+        if (characterIndex >= AGENT_OPENING_ANSWER.length) {
+          window.clearInterval(typingTimer);
+          setPhase("complete");
+        }
+      }, 18);
+    }, 1750);
+
+    return () => {
+      window.clearTimeout(showUserTimer);
+      window.clearTimeout(showThinkingTimer);
+      window.clearTimeout(startTypingTimer);
+      if (typingTimer !== undefined) window.clearInterval(typingTimer);
+    };
+  }, []);
+
+  const showUserMessage = phase !== "panel";
+  const showAnswer = phase === "typing" || phase === "complete";
+
   return (
-    <aside className="agent-panel">
+    <aside
+      className="agent-panel article-agent-panel"
+      aria-label="K-Agent chat"
+      data-phase={phase}
+    >
       <button className="agent-close" onClick={close}>
         <img src="/assets/close.svg" alt="" /> Close
       </button>
@@ -270,33 +323,53 @@ function AgentPanel({ close }: { close: () => void }) {
         · “ants”
       </div>
       <div className="chat">
-        <p className="user-message">What is the definition of Ttattable?</p>
-        <div className="ai-message">
-          <p>
-            KT has reached its 49% cap, so buy orders from foreign investors
-            will be rejected. SK Telecom sits at 46.10% of a 49% cap — about 94%
-            used — and could reach the cap intraday. KEPCO and KOGAS both have
-            substantial room.
+        {showUserMessage ? (
+          <p className="user-message user-message-enter">
+            What is the definition of Ttattable?
           </p>
-          <blockquote>
-            <b>Market Sentiment Shift</b>
-            <p>- SEOUL, South Korea — Samsung Electronics</p>
-            <p>- accelerating its efforts to create a more connected</p>
-          </blockquote>
-          <p>
-            so buy orders from foreign investors will be rejected. SK Telecom
-            sits at 46.10% of a 49% cap.
-          </p>
-          <p>
-            Source: <u>KRX foreign ownership snapshot, 15:30 KST</u>
-          </p>
+        ) : null}
+        {phase === "thinking" ? (
+          <div className="agent-thinking" role="status" aria-live="polite">
+            <span className="agent-thinking-label">K-Agent is thinking</span>
+            <i />
+            <i />
+            <i />
+          </div>
+        ) : null}
+        {showAnswer ? (
+          <div className="ai-message ai-message-enter">
+            <p className="typewriter-answer" aria-label={AGENT_OPENING_ANSWER}>
+              <span aria-hidden="true">{typedAnswer}</span>
+              {phase === "typing" ? (
+                <span className="typing-cursor" aria-hidden="true" />
+              ) : null}
+            </p>
+            {phase === "complete" ? (
+              <>
+                <blockquote className="answer-detail-enter">
+                  <b>Market Sentiment Shift</b>
+                  <p>- SEOUL, South Korea — Samsung Electronics</p>
+                  <p>- accelerating its efforts to create a more connected</p>
+                </blockquote>
+                <p className="answer-detail-enter">
+                  so buy orders from foreign investors will be rejected. SK
+                  Telecom sits at 46.10% of a 49% cap.
+                </p>
+                <p className="answer-detail-enter">
+                  Source: <u>KRX foreign ownership snapshot, 15:30 KST</u>
+                </p>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      {phase === "complete" ? (
+        <div className="faq answer-detail-enter">
+          <span>Frequently asked</span>
+          <button>Why is the KOSPI down today?</button>
+          <button>Which stocks are near their foreign ownership cap?</button>
         </div>
-      </div>
-      <div className="faq">
-        <span>Frequently asked</span>
-        <button>Why is the KOSPI down today?</button>
-        <button>Which stocks are near their foreign ownership cap?</button>
-      </div>
+      ) : null}
       <div className="chat-input">
         Ask anything about this market{" "}
         <button>
