@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
+import {
+  AgentHistoryView,
+  AgentOverflowMenu,
+} from "../components/AgentHistory";
 import { StockNewsFeed, TrendTag } from "../components/StockNewsFeed";
 import { WatchlistHeart } from "../components/WatchlistHeart";
 
@@ -255,6 +259,7 @@ export function NewsDetailPage() {
 }
 
 function AgentPanel({ close }: { close: () => void }) {
+  const [history, setHistory] = useState(false);
   const [phase, setPhase] = useState<
     "panel" | "user" | "thinking" | "typing" | "complete"
   >("panel");
@@ -301,6 +306,15 @@ function AgentPanel({ close }: { close: () => void }) {
   const showUserMessage = phase !== "panel";
   const showAnswer = phase === "typing" || phase === "complete";
 
+  if (history) {
+    return (
+      <AgentHistoryView
+        close={close}
+        onConversation={() => setHistory(false)}
+      />
+    );
+  }
+
   return (
     <aside
       className="agent-panel article-agent-panel"
@@ -316,7 +330,7 @@ function AgentPanel({ close }: { close: () => void }) {
           <h2>K-Agent</h2>
           <p>AI Financial Intelligence</p>
         </div>
-        <img className="agent-overflow" src="/assets/overflow.svg" alt="" />
+        <AgentOverflowMenu onHistory={() => setHistory(true)} />
       </header>
       <div className="context-chip">
         <img src="/assets/agent-context.svg" alt="" /> Selected from the article

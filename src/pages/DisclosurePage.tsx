@@ -2,6 +2,10 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { WatchlistHeart } from "../components/WatchlistHeart";
+import {
+  AgentHistoryView,
+  AgentOverflowMenu,
+} from "../components/AgentHistory";
 
 const filings = [
   [
@@ -315,7 +319,6 @@ export function StockDisclosureFeed() {
 export function DisclosureDetailPage() {
   const location = useLocation();
   const [agent, setAgent] = useState(false);
-  const [menu, setMenu] = useState(false);
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ??
     "/disclosures";
@@ -430,25 +433,24 @@ export function DisclosureDetailPage() {
         </main>
       </div>
       {agent ? (
-        <FilingAgent
-          menu={menu}
-          onMenu={() => setMenu((isOpen) => !isOpen)}
-          close={() => setAgent(false)}
-        />
+        <FilingAgent close={() => setAgent(false)} />
       ) : null}
     </div>
   );
 }
 
-function FilingAgent({
-  menu,
-  onMenu,
-  close,
-}: {
-  menu: boolean;
-  onMenu: () => void;
-  close: () => void;
-}) {
+function FilingAgent({ close }: { close: () => void }) {
+  const [history, setHistory] = useState(false);
+
+  if (history) {
+    return (
+      <AgentHistoryView
+        close={close}
+        onConversation={() => setHistory(false)}
+      />
+    );
+  }
+
   return (
     <aside className="agent-panel filing-agent">
       <button className="agent-close" onClick={close}>
@@ -460,19 +462,7 @@ function FilingAgent({
           <h2>K-Agent</h2>
           <p>AI Financial Intelligence</p>
         </div>
-        <button className="agent-overflow-button" onClick={onMenu}>
-          <img src="/assets/overflow.svg" alt="Menu" />
-        </button>
-        {menu ? (
-          <div className="agent-menu">
-            <button>
-              <img src="/assets/history.svg" alt="" /> History
-            </button>
-            <button>
-              <img src="/assets/delete.svg" alt="" /> Delete
-            </button>
-          </div>
-        ) : null}
+        <AgentOverflowMenu onHistory={() => setHistory(true)} />
       </header>
       <div className="context-chip">
         <img src="/assets/agent-context.svg" alt="" /> Context Attached: Samsung
