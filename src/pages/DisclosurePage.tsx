@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
-import { WatchlistHeart } from "../components/WatchlistHeart";
 import {
   AgentHistoryView,
   AgentOverflowMenu,
@@ -150,81 +149,22 @@ function FilingRows() {
   );
 }
 
-function StockDisclosureHeader() {
-  return (
-    <div className="news-stock-hero">
-      <Header />
-      <div className="page-shell mini-stock">
-        <BackLink to="/stocks/005930" />
-        <div>
-          <h1>
-            Samsung Electronics{" "}
-            <WatchlistHeart
-              itemId="samsung-electronics"
-              itemName="Samsung Electronics"
-            />
-          </h1>
-          <span className="mini-price">
-            <strong>₩288,020</strong>
-            <small>
-              -1,000 <img src="/assets/price-down.svg" alt="" /> -1.2%
-            </small>
-          </span>
-        </div>
-        <p>005930 · KOSPI</p>
-        <p>Market closed · Aug 14, 15:30 KST · Converted at 1,318.40 KRW/USD</p>
-        <div className="mini-metrics">
-          <span>
-            High<b>123,000</b>
-          </span>
-          <span>
-            Low<b>123,000</b>
-          </span>
-          <span>
-            Volume<b>20.1M</b>
-          </span>
-          <span>
-            Prev close<b>192.06</b>
-          </span>
-        </div>
-        <div className="stock-badges">
-          <span className="stock-danger">
-            <img src="/assets/status-warning.svg" alt="" />
-            Near reached
-          </span>
-          <span className="warning-chip">
-            <img src="/assets/timer.svg" alt="" />
-            VI Triggered (01:43)
-          </span>
-        </div>
-        <Link className="mini-insight" to="/stocks/005930?insights=1">
-          <img src="/assets/info.svg" alt="" />
-          <span>
-            <b>Quick check company insight!</b>
-            <small>
-              See which global companies this business most closely resembles.
-            </small>
-          </span>
-          <em>
-            View insights <img src="/assets/chevron-right-gold.svg" alt="" />
-          </em>
-        </Link>
-      </div>
-    </div>
-  );
-}
-
 export function DisclosurePage() {
   return (
-    <div className="disclosure-page">
-      <StockDisclosureHeader />
-      <main className="page-shell disclosure-main">
-        <div className="stock-tabs">
-          <Link to="/stocks/005930">Chart</Link>
-          <Link to="/news">News</Link>
-          <button className="active">Disclosure</button>
-        </div>
-        <StockDisclosureFeed />
+    <div className="disclosure-page disclosure-index-page">
+      <Header white />
+      <main className="page-shell disclosure-index-main">
+        <BackLink to="/" />
+        <h1>DART filings pulse</h1>
+        <p className="disclosure-index-description">
+          Disclosures summarised into What / Why / Impact, with an agent that
+          answers follow-up questions from the original text.
+        </p>
+        <FilingFilters />
+        <FilingRows />
+        <button type="button" className="more-filings">
+          View more filings <img src="/assets/chevron-down-gold.svg" alt="" />
+        </button>
       </main>
     </div>
   );
