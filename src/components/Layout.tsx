@@ -63,11 +63,8 @@ const primaryNavigation = [
 ];
 
 function readHeaderSurface(header: HTMLElement): HeaderSurface {
-  const previousVisibility = header.style.visibility;
-  header.style.visibility = "hidden";
   const sampleY = Math.min(window.innerHeight - 1, header.offsetHeight + 1);
   const elementBelow = document.elementFromPoint(16, sampleY);
-  header.style.visibility = previousVisibility;
 
   let current = elementBelow;
   while (current && current !== document.documentElement) {
@@ -120,7 +117,7 @@ export function Header({
       window.removeEventListener("scroll", updateSurface);
       window.removeEventListener("resize", updateSurface);
     };
-  }, []);
+  }, [location.pathname]);
   useEffect(() => {
     if (!menuOpen) return;
 
