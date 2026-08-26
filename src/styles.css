@@ -3657,8 +3657,10 @@ mark {
   width: 16px;
   height: 16px;
 }
-.watchlist > a {
-  display: block;
+.watchlist-more {
+  width: 100%;
+  border: 0;
+  background: transparent;
   text-align: center;
   color: var(--gold);
   padding: 20px;
@@ -3667,7 +3669,7 @@ mark {
   align-items: center;
   gap: 9px;
 }
-.watchlist > a img {
+.watchlist-more img {
   width: 5px;
   height: 10px;
   margin: 0 2.5px;
