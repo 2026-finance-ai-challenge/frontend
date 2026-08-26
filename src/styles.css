@@ -2276,6 +2276,47 @@ mark {
 .article-agent-panel > * {
   flex-shrink: 0;
 }
+.global-agent-panel {
+  overflow: hidden;
+}
+.global-agent-chat {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 36px;
+  padding-right: 4px;
+  overflow-y: auto;
+}
+.global-agent-chat .ai-message,
+.global-agent-chat .user-message,
+.global-agent-chat .agent-thinking {
+  margin-bottom: 22px;
+}
+.global-agent-chat .ai-message > p:last-child {
+  color: #111;
+  border-top: 0;
+  padding-top: 0;
+}
+.global-agent-input {
+  flex-shrink: 0;
+  gap: 16px;
+}
+.global-agent-input input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #111;
+  font: inherit;
+}
+.global-agent-input input::placeholder {
+  color: #666;
+  opacity: 1;
+}
+.global-agent-input button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
 @keyframes agent-panel-enter {
   from {
     opacity: 0;
