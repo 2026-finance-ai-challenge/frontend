@@ -3725,7 +3725,7 @@ mark {
   gap: 30px;
 }
 .signup-card {
-  min-height: 856px;
+  min-height: 751px;
   padding-top: 60px;
 }
 .auth-card h1 {
@@ -3734,7 +3734,7 @@ mark {
   margin: 0;
 }
 .signup-card h1 {
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 .auth-card label {
   display: flex;
