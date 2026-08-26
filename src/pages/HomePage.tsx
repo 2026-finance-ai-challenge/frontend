@@ -61,7 +61,6 @@ const ownership = [
     width: "100%",
     used: 49,
     cap: 49,
-    foot: "Foreign buy orders are rejected at the exchange until the quota frees up.",
   },
   {
     name: "SK Telecom",
@@ -70,7 +69,6 @@ const ownership = [
     width: "89.65%",
     used: 46.1,
     cap: 49,
-    foot: "The cap can be reached intraday; your buy order may be rejected.",
   },
   {
     name: "Korea Electric Power",
@@ -79,7 +77,6 @@ const ownership = [
     width: "41.42%",
     used: 20.64,
     cap: 40,
-    foot: "Foreign buy orders are rejected at the exchange.",
   },
 ];
 
@@ -320,7 +317,6 @@ export function HomePage() {
                     <span>Used {item.used.toFixed(2)}%</span>
                     <span>Cap {item.cap.toFixed(2)}%</span>
                   </div>
-                  <p className="card-foot">{item.foot}</p>
                 </article>
               );
             })}

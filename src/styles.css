@@ -845,10 +845,10 @@ a {
   grid-template-columns: repeat(3, 1fr);
   align-items: start;
   gap: 30px;
-  min-height: 388px;
+  min-height: 335px;
 }
 .ownership-card {
-  height: 333px;
+  height: 335px;
   border-radius: 12px;
   box-shadow: 0 0 70px rgba(0, 0, 0, 0.05);
   padding: 30px;
@@ -857,13 +857,10 @@ a {
   outline: 1px solid transparent;
   outline-offset: -1px;
   background: #fff;
-  transition:
-    height 0.25s ease,
-    outline-color 0.2s ease;
+  transition: outline-color 0.2s ease;
 }
 .ownership-card:hover,
 .ownership-card:focus-visible {
-  height: 388px;
   outline-color: var(--gold);
 }
 .card-title {
@@ -972,24 +969,6 @@ a {
   color: #777;
   font-size: 13px;
   margin-top: 14px;
-}
-.card-foot {
-  font-size: 18px;
-  color: #555;
-  line-height: 25px;
-  margin-top: 30px;
-  padding-top: 29px;
-  border-top: 1px solid var(--line);
-  opacity: 0.08;
-  transition: opacity 0.2s ease;
-}
-.ownership-card:not(:hover):not(:focus-visible) .card-foot {
-  padding-top: 0;
-  border-top: 0;
-}
-.ownership-card:hover .card-foot,
-.ownership-card:focus-visible .card-foot {
-  opacity: 1;
 }
 .tax-section {
   padding-top: 150px;
