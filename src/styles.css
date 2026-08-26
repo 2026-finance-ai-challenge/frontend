@@ -1663,16 +1663,20 @@ a {
 .context-chip {
   background: var(--cream);
   border-radius: 8px;
+  height: 70px;
   padding: 20px;
   color: var(--gold);
-  font-size: 20px;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
+  letter-spacing: -0.88px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
 }
 .context-chip img {
-  width: 20px;
-  height: 20px;
+  width: 21px;
+  height: 26px;
 }
 .peer-intro {
   margin: 30px -35px 0;
@@ -2263,17 +2267,19 @@ mark {
   right: 0;
   width: 717px;
   height: 100vh;
-  background: #fff;
+  background: linear-gradient(to bottom, #fff 0 290px, #fbf9f4 290px);
   box-shadow: -20px 0 60px rgba(0, 0, 0, 0.08);
-  padding: 35px;
+  padding: 35px 30px 30px;
   overflow: auto;
 }
-.article-agent-panel {
+.article-agent-panel,
+.filing-agent {
   display: flex;
   flex-direction: column;
   animation: agent-panel-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.article-agent-panel > * {
+.article-agent-panel > *,
+.filing-agent > * {
   flex-shrink: 0;
 }
 .global-agent-panel {
@@ -2296,9 +2302,15 @@ mark {
   border-top: 0;
   padding-top: 0;
 }
-.global-agent-input {
+.chat-input.global-agent-input {
   flex-shrink: 0;
   gap: 16px;
+  position: relative;
+  top: 0;
+  bottom: auto;
+  height: 120px;
+  min-height: 120px;
+  padding-top: 29px;
 }
 .global-agent-input input {
   min-width: 0;
@@ -2387,23 +2399,32 @@ mark {
   color: var(--gold);
 }
 .agent-close {
+  width: 64px;
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
+  min-height: 25px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 25px;
+  letter-spacing: -0.72px;
 }
 .agent-close img {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 .agent-panel header {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 20px;
+  height: 70px;
   margin: 30px 0;
 }
 .agent-logo {
-  width: 68px;
-  height: 68px;
+  width: 58px;
+  height: 69px;
+  flex: 0 0 58px;
 }
 .agent-panel header h2,
 .agent-panel header p {
@@ -2411,11 +2432,13 @@ mark {
 }
 .agent-panel header h2 {
   font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -1.2px;
 }
 .agent-panel header p {
   font-size: 18px;
-}
-.agent-panel header p {
+  line-height: 25px;
+  letter-spacing: -0.72px;
   color: #888;
 }
 .agent-overflow,
@@ -2431,19 +2454,22 @@ mark {
   height: 24px;
 }
 .agent-overflow-button {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 42px;
   padding: 0;
   border: 0;
   background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 .agent-overflow-button img {
-  width: 100%;
-  height: 100%;
+  width: 10px;
+  height: 30px;
 }
 .agent-history {
-  background: #fbf9f4;
-  padding: 35px 20px;
+  background: linear-gradient(to bottom, #fff 0 159px, #fbf9f4 159px);
+  padding: 34px 20px 35px;
   animation: agent-panel-enter 220ms ease-out both;
 }
 .agent-history > .agent-close {
@@ -2451,12 +2477,13 @@ mark {
 }
 .agent-history > h2 {
   height: 69px;
-  margin: 26px -20px 0;
+  margin: 30px -20px 0;
   padding: 0 30px;
   display: flex;
   align-items: flex-start;
   background: #fff;
   font-size: 30px;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: -1.2px;
 }
@@ -2468,7 +2495,7 @@ mark {
 }
 .agent-history-list > button {
   width: 100%;
-  min-height: 80px;
+  height: 77px;
   padding: 10px;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -2479,6 +2506,7 @@ mark {
   text-align: left;
 }
 .agent-history-list > button.selected {
+  height: 79px;
   border-color: #927c00;
 }
 .agent-history-list span {
@@ -2501,9 +2529,10 @@ mark {
 .agent-history-list > button > img {
   width: 10px;
   height: 30px;
+  transform: translateX(1px);
 }
 .chat {
-  margin-top: 69px;
+  margin-top: 60px;
 }
 .user-message {
   margin: 0 0 30px auto;
@@ -2516,6 +2545,15 @@ mark {
   font-size: 22px;
   line-height: 34px;
 }
+.filing-agent .user-message {
+  width: 524px;
+  max-width: 524px;
+  height: 70px;
+  white-space: nowrap;
+}
+.filing-agent .ai-message {
+  height: 536px;
+}
 .user-message-enter {
   animation: chat-message-enter 240ms ease-out both;
 }
@@ -2526,7 +2564,7 @@ mark {
   gap: 7px;
   padding: 20px 22px;
   border-radius: 16px 16px 16px 4px;
-  background: #efeee8;
+  background: #edece5;
   animation: chat-message-enter 220ms ease-out both;
 }
 .agent-thinking i {
@@ -2558,11 +2596,19 @@ mark {
   }
 }
 .ai-message {
-  background: #efeee8;
+  width: 540px;
+  background: #edece5;
   padding: 20px;
   border-radius: 16px 16px 16px 4px;
   font-size: 22px;
   line-height: 34px;
+  letter-spacing: -0.88px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.ai-message > p {
+  margin: 0;
 }
 .ai-message-enter,
 .answer-detail-enter {
@@ -2601,46 +2647,92 @@ mark {
   }
 }
 .ai-message blockquote {
-  background: #fff;
-  padding: 18px;
-  border-left: 2px solid var(--gold);
-  margin: 18px 0;
+  width: 500px;
+  min-height: 144px;
+  background: #fbf9f4;
+  padding: 20px;
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  margin: 0;
+  color: #555;
+  font-size: 18px;
+  line-height: 32px;
+  letter-spacing: -0.72px;
+}
+.ai-message blockquote b {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--gold);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
+  letter-spacing: -0.88px;
 }
 .ai-message blockquote p {
-  margin: 8px 0;
+  margin: 0;
 }
 .ai-message > p:last-child {
   color: var(--gold);
-  border-top: 1px solid #d7d4c9;
-  padding-top: 18px;
+  border-top: 1px solid #deddd5;
+  padding-top: 20px;
 }
 .faq {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
-  margin-top: 105px;
+  gap: 16px;
+  margin-top: 148px;
 }
 .faq > span {
   color: var(--gold);
   font-size: 18px;
 }
 .faq button {
-  border: 1px solid #ddd;
+  border: 1px solid #deddd5;
   background: #fff;
-  border-radius: 7px;
-  padding: 12px 16px;
+  height: 50px;
+  border-radius: 8px;
+  padding: 0 16px;
   font-size: 18px;
+  line-height: 25px;
+  color: #555;
 }
 .chat-input {
   position: sticky;
   bottom: 0;
-  background: #efeee8;
-  padding: 18px;
+  min-height: 120px;
+  margin-right: -30px;
+  margin-left: -30px;
+  margin-bottom: -30px;
+  border-top: 1px solid #d3ccbe;
+  background: #fbf9f4;
+  padding: 30px 30px 30px 50px;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-top: 28px;
+  margin-top: 30px;
   font-size: 18px;
+  line-height: 25px;
+  color: #555;
+  isolation: isolate;
+}
+.filing-agent .chat-input {
+  position: relative;
+  bottom: auto;
+  height: 120px;
+  min-height: 120px;
+  padding-top: 29px;
+}
+.chat-input::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 30px;
+  right: 92px;
+  bottom: 30px;
+  left: 30px;
+  border-radius: 8px 0 0 8px;
+  background: #edece5;
 }
 .article-agent-panel .chat-input {
   margin-top: auto;
@@ -2648,10 +2740,14 @@ mark {
 .chat-input button {
   border: 0;
   background: transparent;
+  width: 60px;
+  height: 60px;
+  padding: 0;
 }
 .chat-input button img {
-  width: 24px;
-  height: 24px;
+  width: 60px;
+  height: 60px;
+  display: block;
 }
 @media (prefers-reduced-motion: reduce) {
   .article-agent-panel,
@@ -3120,20 +3216,22 @@ mark {
 .agent-menu {
   position: absolute;
   right: 0;
-  top: 44px;
+  top: 50px;
   z-index: 2;
   width: 150px;
   height: 110px;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
-  padding: 8px 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
+  gap: 28px;
 }
 .agent-menu button {
   width: 118px;
-  height: 47px;
+  height: 25px;
+  flex: 0 0 25px;
   border: 0;
   background: #fff;
   padding: 0;
@@ -3147,6 +3245,14 @@ mark {
   text-align: left;
 }
 .agent-menu button + button {
+  position: relative;
+}
+.agent-menu button + button::before {
+  content: "";
+  position: absolute;
+  top: -14px;
+  left: 0;
+  width: 118px;
   border-top: 1px solid #deddd5;
 }
 .agent-menu button img {

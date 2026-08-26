@@ -61,11 +61,16 @@ export function AgentHistoryView({
   onConversation,
 }: AgentHistoryViewProps) {
   return (
-    <aside className="agent-panel agent-history" aria-label="Chat history">
+    <aside
+      className="agent-panel agent-history"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Chat history"
+    >
       <button className="agent-close" type="button" onClick={close}>
         <img src="/assets/close.svg" alt="" /> Close
       </button>
-      <h2>Previous Conversations</h2>
+      <h2>Previous conversations</h2>
       <div className="agent-history-list">
         {conversations.map((conversation, index) => (
           <button
