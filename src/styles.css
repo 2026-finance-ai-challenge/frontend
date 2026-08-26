@@ -813,6 +813,17 @@ a {
   gap: 10px;
   white-space: nowrap;
 }
+.ownership-controls {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+.ownership-controls button:disabled {
+  cursor: default;
+}
+.ownership-controls img.is-reversed {
+  transform: rotate(180deg);
+}
 .status-copy {
   display: flex;
   flex-direction: column;
@@ -842,7 +853,7 @@ a {
 }
 .ownership-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   align-items: start;
   gap: 30px;
   min-height: 335px;
@@ -865,18 +876,30 @@ a {
 }
 .card-title {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: flex-start;
+  gap: 14px;
+}
+.card-title > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .card-title h3 {
-  font-size: 22px;
-  font-weight: 500;
-  line-height: 30px;
-  margin: 0 0 19px;
+  width: 100%;
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: -1.2px;
+  white-space: nowrap;
 }
 .card-title p {
   margin: 0;
-  color: #888;
+  color: #555;
+  font-size: 18px;
+  line-height: 25px;
+  letter-spacing: -0.72px;
 }
 .card-title > span {
   padding: 6px 10px;
@@ -906,7 +929,7 @@ a {
   font-size: 42px;
   line-height: 65px;
   display: block;
-  margin-top: 20px;
+  margin-top: 30px;
   letter-spacing: -0.04em;
 }
 .ownership-card > strong small {

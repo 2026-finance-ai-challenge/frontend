@@ -55,6 +55,7 @@ const filings = [
 
 const ownership = [
   {
+    id: "kt-corp",
     name: "KT Corp.",
     code: "030200 · Telecom",
     value: "0.00",
@@ -63,6 +64,7 @@ const ownership = [
     cap: 49,
   },
   {
+    id: "sk-telecom-primary",
     name: "SK Telecom",
     code: "017670 · Telecom",
     value: "2.90",
@@ -71,12 +73,22 @@ const ownership = [
     cap: 49,
   },
   {
+    id: "korea-electric-power",
     name: "Korea Electric Power",
     code: "015760 · Utilities",
     value: "19.37",
     width: "41.42%",
     used: 20.64,
     cap: 40,
+  },
+  {
+    id: "sk-telecom-secondary",
+    name: "SK Telecom",
+    code: "017670 · Telecom",
+    value: "2.90",
+    width: "89.65%",
+    used: 46.1,
+    cap: 49,
   },
 ];
 
@@ -96,11 +108,15 @@ const ownershipState = {
 
 export function HomePage() {
   const [taxAgentOpen, setTaxAgentOpen] = useState(false);
+  const [ownershipStart, setOwnershipStart] = useState(0);
   const eligibilityButtonRef = useRef<HTMLButtonElement>(null);
   const closeTaxAgent = () => {
     setTaxAgentOpen(false);
     window.requestAnimationFrame(() => eligibilityButtonRef.current?.focus());
   };
+  const visibleOwnership = ownership.map(
+    (_, index) => ownership[(index + ownershipStart) % ownership.length],
+  );
 
   return (
     <div className={`app-page home-page ${taxAgentOpen ? "agent-open" : ""}`}>
@@ -278,32 +294,61 @@ export function HomePage() {
                 </span>
               </div>
             </div>
-            <Link className="text-link icon-link" to="/stocks/005930">
-              View all gauge
-              <img src="/assets/chevron-right-gold.svg" alt="" />
-            </Link>
+            <div className="slider-controls ownership-controls">
+              <button
+                type="button"
+                aria-label="Previous ownership card"
+                disabled={ownershipStart === 0}
+                onClick={() =>
+                  setOwnershipStart((current) =>
+                    current === 0 ? ownership.length - 1 : current - 1,
+                  )
+                }
+              >
+                <img
+                  className={ownershipStart === 0 ? "" : "is-reversed"}
+                  src={
+                    ownershipStart === 0
+                      ? "/assets/carousel-prev.svg"
+                      : "/assets/carousel-next.svg"
+                  }
+                  alt=""
+                />
+              </button>
+              <button
+                type="button"
+                aria-label="Next ownership card"
+                onClick={() =>
+                  setOwnershipStart(
+                    (current) => (current + 1) % ownership.length,
+                  )
+                }
+              >
+                <img src="/assets/carousel-next.svg" alt="" />
+              </button>
+            </div>
           </div>
           <div className="ownership-grid">
-            {ownership.map((item) => {
+            {visibleOwnership.map((item) => {
               const tone = getOwnershipTone(item.used, item.cap);
 
               return (
                 <article
                   className="ownership-card"
-                  key={item.name}
+                  key={item.id}
                   tabIndex={0}
                 >
                   <div className="card-title">
-                    <div>
-                      <h3>{item.name}</h3>
-                      <p>{item.code}</p>
-                    </div>
                     <span className={tone}>
                       {tone === "danger" ? (
                         <img src="/assets/status-warning.svg" alt="" />
                       ) : null}
                       {ownershipState[tone]}
                     </span>
+                    <div>
+                      <h3>{item.name}</h3>
+                      <p>{item.code}</p>
+                    </div>
                   </div>
                   <strong className={tone}>
                     {item.value}
