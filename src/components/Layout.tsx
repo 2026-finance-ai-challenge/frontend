@@ -1,5 +1,6 @@
 import {
   type FormEvent,
+  type MouseEvent,
   useEffect,
   useRef,
   useState,
@@ -158,6 +159,28 @@ export function Header({
     event.preventDefault();
     if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
   };
+  const scrollHomeToTop = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      location.pathname !== "/" ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    if (location.hash) navigate("/", { replace: true });
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  };
 
   return (
     <>
@@ -180,7 +203,12 @@ export function Header({
           >
             <img className="brand-menu" src="/assets/logo-menu.svg" alt="" />
           </button>
-          <Link className="brand-home" to="/" aria-label="KART home">
+          <Link
+            className="brand-home"
+            to="/"
+            aria-label="KART home"
+            onClick={scrollHomeToTop}
+          >
             <img
               className="brand-wordmark"
               src="/assets/logo-wordmark.svg"
