@@ -68,17 +68,24 @@ const stocks = [
     "-1.55%",
     "Near reached",
   ],
+  ["Hyundai Motor", "005380 · KOSPI", "287,500", "+3,500", "+1.23%", "Open"],
+  ["Kakao", "035720 · KOSPI", "61,400", "-900", "-1.44%", "Open"],
+  [
+    "POSCO Holdings",
+    "005490 · KOSPI",
+    "342,000",
+    "+5,000",
+    "+1.48%",
+    "Near cap",
+  ],
 ];
 
 export function MyPage() {
-  const [selected, setSelected] = useState([
-    true,
-    false,
-    true,
-    true,
-    false,
-    false,
-  ]);
+  const [selected, setSelected] = useState(() =>
+    stocks.map((_, index) => [0, 2, 3].includes(index)),
+  );
+  const [watchlistExpanded, setWatchlistExpanded] = useState(false);
+  const visibleStocks = stocks.slice(0, watchlistExpanded ? stocks.length : 6);
   const toggle = (index: number) =>
     setSelected((values) =>
       values.map((value, current) => (current === index ? !value : value)),
@@ -136,7 +143,7 @@ export function MyPage() {
               <span>%</span>
               <span>Regulatory status</span>
             </div>
-            {stocks.map((stock, index) => (
+            {visibleStocks.map((stock, index) => (
               <div className="watch-row" key={`${stock[0]}-${index}`}>
                 <div className="watch-company">
                   <button
@@ -188,10 +195,16 @@ export function MyPage() {
                 </span>
               </div>
             ))}
-            <Link to="/stocks/005930">
-              View more watchlist{" "}
-              <img src="/assets/chevron-right-gold.svg" alt="" />
-            </Link>
+            {!watchlistExpanded ? (
+              <button
+                type="button"
+                className="watchlist-more"
+                onClick={() => setWatchlistExpanded(true)}
+              >
+                View more watchlist
+                <img src="/assets/chevron-right-gold.svg" alt="" />
+              </button>
+            ) : null}
           </div>
         </DashboardSection>
         <DashboardSection
