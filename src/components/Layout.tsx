@@ -6,6 +6,7 @@ import {
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { WatchlistHeart } from "./WatchlistHeart";
+import { getKoreaMarketSnapshot } from "../utils/koreaMarketClock";
 
 const results = [
   {
@@ -356,6 +357,16 @@ export function BackLink({ to }: { to: string }) {
 }
 
 export function MarketBar() {
+  const [market, setMarket] = useState(() => getKoreaMarketSnapshot());
+
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setMarket(getKoreaMarketSnapshot()),
+      1_000,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <div className="market-bar page-shell">
       <span>
@@ -374,12 +385,15 @@ export function MarketBar() {
         <em>Foreign net flow</em> -820B <b className="down">5th</b>
       </span>
       <i />
-      <span className="market-open">
+      <span
+        className={`market-open ${market.isOpen ? "is-open" : "is-closed"}`}
+        aria-live="polite"
+      >
         <img src="/assets/market-open.svg" alt="" />
         <span>
-          Market open
+          {market.label}
           <br />
-          Aug 14, 9:30 KST
+          <time dateTime={market.dateTime}>{market.timeLabel}</time>
         </span>
       </span>
     </div>

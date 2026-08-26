@@ -445,6 +445,10 @@ a {
   width: 20px;
   height: 20px;
 }
+.market-open.is-closed > img {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
 .hero-surface {
   height: 827px;
   background: var(--cream);
