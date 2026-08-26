@@ -392,8 +392,13 @@ function FilingAgent({ close }: { close: () => void }) {
   }
 
   return (
-    <aside className="agent-panel filing-agent">
-      <button className="agent-close" onClick={close}>
+    <aside
+      className="agent-panel filing-agent"
+      role="dialog"
+      aria-modal="true"
+      aria-label="K-Agent chat"
+    >
+      <button className="agent-close" type="button" onClick={close}>
         <img src="/assets/close.svg" alt="" /> Close
       </button>
       <header>
@@ -440,7 +445,7 @@ function FilingAgent({ close }: { close: () => void }) {
       </div>
       <div className="chat-input">
         Ask anything about this market{" "}
-        <button>
+        <button type="button">
           <img src="/assets/agent-send.svg" alt="Send" />
         </button>
       </div>
