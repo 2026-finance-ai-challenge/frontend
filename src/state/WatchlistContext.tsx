@@ -1,63 +1,84 @@
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
-
-const STORAGE_KEY = "kart-watchlist";
-const initialWatchlist = ["samsung-electronics", "samsung-sdi"];
+import { api } from "../api";
+import { useProfile } from "../hooks/useRemote";
+import type { Stock } from "../types";
 
 type WatchlistContextValue = {
-  isSaved: (itemId: string) => boolean;
-  toggle: (itemId: string) => void;
+  isSaved: (stockCode: string) => boolean;
+  toggle: (stockCode: string) => Promise<void>;
+  loading: boolean;
 };
 
 const WatchlistContext = createContext<WatchlistContextValue | null>(null);
 
-function loadWatchlist() {
-  try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    return new Set<string>(saved ? JSON.parse(saved) : initialWatchlist);
-  } catch {
-    return new Set(initialWatchlist);
-  }
-}
-
 export function WatchlistProvider({ children }: { children: ReactNode }) {
-  const [savedItems, setSavedItems] = useState(loadWatchlist);
+  const profile = useProfile();
+  const [savedItems, setSavedItems] = useState<Set<string>>(() => new Set());
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...savedItems]));
-  }, [savedItems]);
+    if (!profile) {
+      setSavedItems(new Set());
+      return;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    api<{ items: Stock[] }>("/api/v1/me/watchlist", { signal: controller.signal })
+      .then(({ items }) => setSavedItems(new Set(items.map((item) => item.stockCode))))
+      .catch(() => undefined)
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [profile]);
 
-  const value = useMemo<WatchlistContextValue>(
-    () => ({
-      isSaved: (itemId) => savedItems.has(itemId),
-      toggle: (itemId) =>
-        setSavedItems((current) => {
-          const next = new Set(current);
-          if (next.has(itemId)) next.delete(itemId);
-          else next.add(itemId);
-          return next;
-        }),
-    }),
-    [savedItems],
-  );
+  const toggle = useCallback(async (stockCode: string) => {
+    if (!profile) {
+      const returnTo = `${window.location.pathname}${window.location.search}`;
+      window.location.assign(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+      return;
+    }
+    const wasSaved = savedItems.has(stockCode);
+    setSavedItems((current) => {
+      const next = new Set(current);
+      if (wasSaved) next.delete(stockCode);
+      else next.add(stockCode);
+      return next;
+    });
+    try {
+      await api(`/api/v1/me/watchlist/${stockCode}`, {
+        method: wasSaved ? "DELETE" : "PUT",
+      });
+    } catch (error) {
+      setSavedItems((current) => {
+        const next = new Set(current);
+        if (wasSaved) next.add(stockCode);
+        else next.delete(stockCode);
+        return next;
+      });
+      throw error;
+    }
+  }, [profile, savedItems]);
 
-  return (
-    <WatchlistContext.Provider value={value}>
-      {children}
-    </WatchlistContext.Provider>
-  );
+  const value = useMemo<WatchlistContextValue>(() => ({
+    isSaved: (stockCode) => savedItems.has(stockCode),
+    toggle,
+    loading,
+  }), [loading, savedItems, toggle]);
+
+  return <WatchlistContext.Provider value={value}>{children}</WatchlistContext.Provider>;
 }
 
 export function useWatchlist() {
   const context = useContext(WatchlistContext);
-  if (!context) {
-    throw new Error("useWatchlist must be used within WatchlistProvider");
-  }
+  if (!context) throw new Error("useWatchlist must be used within WatchlistProvider");
   return context;
 }

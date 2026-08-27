@@ -1,7 +1,11 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Footer, Header, MarketBar } from "../components/Layout";
 import { TaxEligibilityPanel } from "../components/TaxEligibilityPanel";
+import { api } from "../api";
+import { RemoteState, formatDate } from "../components/RemoteState";
+import { useRemote } from "../hooks/useRemote";
+import type { Filing, NewsArticle, Stock, StockDetail } from "../types";
 
 const quickActions = [
   ["/assets/news.svg", "Today’s news", "/news"],
@@ -10,97 +14,15 @@ const quickActions = [
   ["/assets/tax.svg", "Check my tax rate", "/tax"],
 ];
 
-const filings = [
-  [
-    "13:02:41 KST",
-    "NAVER Corp",
-    "035420 · KOSDAQ",
-    "Convertible bond issuance decision",
-    "M&A",
-    "Low priority",
-    "Neutral",
-    "neutral",
-  ],
-  [
-    "11:40:08 KST",
-    "SK Hynix",
-    "000660 · KOSPI",
-    "Single supply agreement exceeding 5% of revenue",
-    "Earning",
-    "High priority",
-    "Positive",
-    "positive",
-  ],
-  [
-    "09:15:22 KST",
-    "Samsung Electronics",
-    "005930 · KOSPI",
-    "Cash dividend decision ₩361 per share",
-    "Goverment",
-    "Medium priority",
-    "Positive",
-    "positive",
-  ],
-  [
-    "13:02:41 KST",
-    "Doosan Enerbility",
-    "034020 · KOSPI",
-    "Treasury share acquisition trust agreement",
-    "Goverment",
-    "Medium priority",
-    "Positive",
-    "negative",
-  ],
-];
+type ForeignMonitor = {
+  stock: Stock;
+  policy: { warningThreshold: number };
+  warning: boolean;
+  prediction: StockDetail["foreignLimitPrediction"];
+};
+type TaxEligibility = { countryCode: string; countryName: string; domesticDefaultRate: number; treatyDividendRate: number | null; treatyDataAvailable: boolean };
 
-const ownership = [
-  {
-    id: "kt-corp",
-    name: "KT Corp.",
-    code: "030200 · Telecom",
-    value: "0.00",
-    width: "100%",
-    used: 49,
-    cap: 49,
-  },
-  {
-    id: "sk-telecom-primary",
-    name: "SK Telecom",
-    code: "017670 · Telecom",
-    value: "2.90",
-    width: "89.65%",
-    used: 46.1,
-    cap: 49,
-  },
-  {
-    id: "korea-electric-power",
-    name: "Korea Electric Power",
-    code: "015760 · Utilities",
-    value: "19.37",
-    width: "41.42%",
-    used: 20.64,
-    cap: 40,
-  },
-  {
-    id: "sk-telecom-secondary",
-    name: "SK Telecom",
-    code: "017670 · Telecom",
-    value: "2.90",
-    width: "89.65%",
-    used: 46.1,
-    cap: 49,
-  },
-];
-
-function getOwnershipTone(used: number, cap: number) {
-  const usageRatio = used / cap;
-
-  if (usageRatio >= 1) return "danger";
-  if (usageRatio >= 0.9) return "warning";
-  return "safe";
-}
-
-const ownershipState = {
+const ownershipLabels = {
   danger: "Near reached",
   warning: "Near cap",
   safe: "Open",
@@ -109,14 +31,38 @@ const ownershipState = {
 export function HomePage() {
   const [taxAgentOpen, setTaxAgentOpen] = useState(false);
   const [ownershipStart, setOwnershipStart] = useState(0);
+  const newsState = useRemote(
+    (signal) => api<{ items: NewsArticle[] }>("/api/v1/news?sort=IMPORTANCE&limit=6", { signal }),
+    [],
+  );
+  const filingsState = useRemote(
+    (signal) => api<{ items: Filing[] }>("/api/v1/disclosures?limit=8", { signal }),
+    [],
+  );
+  const ownershipState = useRemote(
+    (signal) => api<ForeignMonitor[]>("/api/v1/market/foreign-limits", { signal }),
+    [],
+  );
+  const taxRatesState = useRemote(async (signal) => Promise.all(["US", "JP", "GB", "SG", "CN"].map((residencyCountry) => api<TaxEligibility>("/api/v1/tax/eligibility", { method: "POST", signal, body: JSON.stringify({ residencyCountry, investorType: "INDIVIDUAL" }) }))), []);
   const eligibilityButtonRef = useRef<HTMLButtonElement>(null);
   const closeTaxAgent = () => {
     setTaxAgentOpen(false);
     window.requestAnimationFrame(() => eligibilityButtonRef.current?.focus());
   };
-  const visibleOwnership = ownership.map(
-    (_, index) => ownership[(index + ownershipStart) % ownership.length],
-  );
+  const ownershipItems = ownershipState.data ?? [];
+  const visibleOwnership = ownershipItems.length
+    ? Array.from({ length: Math.min(4, ownershipItems.length) }, (_, index) =>
+        ownershipItems[(index + ownershipStart) % ownershipItems.length],
+      )
+    : [];
+  const filingGroups = useMemo(() => {
+    const groups = new Map<string, Filing[]>();
+    for (const filing of filingsState.data?.items ?? []) {
+      const day = filing.filedDate;
+      groups.set(day, [...(groups.get(day) ?? []), filing]);
+    }
+    return [...groups.entries()].slice(0, 2);
+  }, [filingsState.data]);
 
   return (
     <div className={`app-page home-page ${taxAgentOpen ? "agent-open" : ""}`}>
@@ -166,71 +112,11 @@ export function HomePage() {
               </button>
             </div>
           </div>
-          <div className="news-grid">
-            <Link className="news-card" to="/news/fy2025-dividend">
-              <div className="tags">
-                <span className="negative">
-                  <img src="/assets/trend-down.svg" alt="" />
-                  Negative
-                </span>
-                <span className="priority">High priority</span>
-                <span>Foreign selling</span>
-              </div>
-              <h3>Semiconductor Exports Surge in April</h3>
-              <p className="meta">
-                Yesterday · 4:26 PM · 5,900 read · Tech Journal
-              </p>
-              <img
-                src="/assets/news-samsung.png"
-                alt="Semiconductor manufacturing"
-              />
-              <div className="insight">
-                <p>
-                  <b>What</b>KOSPI closed 0.9% lower as foreign investors sold a
-                  net ₩820B.
-                </p>
-                <p>
-                  <b>Why</b>Chip earnings expectations were reduced amid demand
-                  uncertainty.
-                </p>
-                <p>
-                  <b>Impact</b>Broadly bearish across tech; watch volatility
-                  after the open.
-                </p>
-              </div>
-            </Link>
-            <Link className="news-card" to="/news/short-selling-review">
-              <div className="tags">
-                <span className="positive">
-                  <img src="/assets/trend-up.svg" alt="" />
-                  Positive
-                </span>
-                <span className="medium">Medium priority</span>
-                <span>Listing</span>
-              </div>
-              <h3>Regulatory Body Probes Short Selling Practices</h3>
-              <p className="meta">
-                Yesterday · 3:05 PM · 4,820 read · Korea Economic Daily
-              </p>
-              <img
-                src="/assets/news-regulation.png"
-                alt="Korean financial district"
-              />
-              <div className="insight">
-                <p>
-                  <b>What</b>Regulators announced a focused short-selling
-                  review.
-                </p>
-                <p>
-                  <b>Why</b>New market safeguards take effect this quarter.
-                </p>
-                <p>
-                  <b>Impact</b>Near-term volatility may rise for high
-                  short-interest names.
-                </p>
-              </div>
-            </Link>
-          </div>
+          <RemoteState {...newsState} empty={(value) => !value.items.length}>
+            {(value) => <div className="news-grid">
+              {value.items.slice(0, 2).map((article) => <HomeNewsCard article={article} key={article.id} />)}
+            </div>}
+          </RemoteState>
         </section>
 
         <section className="section-block filing-section">
@@ -245,18 +131,12 @@ export function HomePage() {
             </div>
           </div>
           <div className="filing-table">
-            <div className="table-day">
-              <span>Thursday, Aug 14</span>
-              <span>3 filings</span>
-            </div>
-            {filings.slice(0, 3).map((row, index) => (
-              <FilingRow row={row} key={row[1]} active={index === 1} />
-            ))}
-            <div className="table-day">
-              <span>Wednesday, Aug 13</span>
-              <span>1 filings</span>
-            </div>
-            <FilingRow row={filings[3]} />
+            <RemoteState {...filingsState} empty={(value) => !value.items.length}>
+              {() => <>{filingGroups.map(([day, items]) => <div key={day}>
+                <div className="table-day"><span>{formatDate(day, false)}</span><span>{items.length} filings</span></div>
+                {items.slice(0, 4).map((filing) => <FilingRow filing={filing} key={filing.receiptNumber} />)}
+              </div>)}</>}
+            </RemoteState>
             <Link
               className="view-all"
               to="/disclosures"
@@ -273,23 +153,23 @@ export function HomePage() {
             <div>
               <h2>Foreign ownership limit gauge</h2>
               <p>
-                Thirty-three Korean stocks carry a statutory cap on foreign
-                ownership.
+                The monitored Korean stocks below carry a statutory cap on
+                foreign ownership.
                 <br />
                 Filter by status, then read how much headroom is left before
                 orders start getting rejected.
               </p>
               <div className="status-copy">
                 <span>
-                  <b className="danger-text">3</b> <u>At the cap</u>&nbsp; Buy
+                  <b className="danger-text">{ownershipItems.filter((item) => item.warning && (item.stock.foreignOwnership?.limitExhaustionRate ?? 0) >= 100).length}</b> <u>At the cap</u>&nbsp; Buy
                   orders rejected right now.
                 </span>
                 <span>
-                  <b className="warning-text">5</b> <u>Near the cap</u>&nbsp;
+                  <b className="warning-text">{ownershipItems.filter((item) => item.warning && (item.stock.foreignOwnership?.limitExhaustionRate ?? 0) < 100).length}</b> <u>Near the cap</u>&nbsp;
                   90% or more of the quota used.
                 </span>
                 <span>
-                  <b className="safe-text">25</b> <u>Open</u>&nbsp; Room to buy
+                  <b className="safe-text">{ownershipItems.filter((item) => !item.warning).length}</b> <u>Open</u>&nbsp; Room to buy
                   without restriction.
                 </span>
               </div>
@@ -298,10 +178,10 @@ export function HomePage() {
               <button
                 type="button"
                 aria-label="Previous ownership card"
-                disabled={ownershipStart === 0}
+                disabled={ownershipStart === 0 || ownershipItems.length === 0}
                 onClick={() =>
                   setOwnershipStart((current) =>
-                    current === 0 ? ownership.length - 1 : current - 1,
+                    current === 0 ? ownershipItems.length - 1 : current - 1,
                   )
                 }
               >
@@ -320,7 +200,7 @@ export function HomePage() {
                 aria-label="Next ownership card"
                 onClick={() =>
                   setOwnershipStart(
-                    (current) => (current + 1) % ownership.length,
+                    (current) => ownershipItems.length ? (current + 1) % ownershipItems.length : 0,
                   )
                 }
               >
@@ -328,14 +208,21 @@ export function HomePage() {
               </button>
             </div>
           </div>
-          <div className="ownership-grid">
+          <RemoteState {...ownershipState} empty={(value) => !value.length}>
+            {() => <div className="ownership-grid">
             {visibleOwnership.map((item) => {
-              const tone = getOwnershipTone(item.used, item.cap);
+              const used = item.stock.foreignOwnership?.ownershipRate ?? 0;
+              const cap = item.stock.foreignOwnership?.foreignLimitQuantity && item.stock.foreignOwnership?.totalListedQuantity
+                ? item.stock.foreignOwnership.foreignLimitQuantity / item.stock.foreignOwnership.totalListedQuantity * 100
+                : 0;
+              const tone = item.warning ? (used >= cap ? "danger" : "warning") : "safe";
+              const remaining = cap ? Math.max(cap - used, 0) : null;
+              const width = `${Math.min(item.stock.foreignOwnership?.limitExhaustionRate ?? 0, 100)}%`;
 
               return (
                 <article
                   className="ownership-card"
-                  key={item.id}
+                  key={item.stock.stockCode}
                   tabIndex={0}
                 >
                   <div className="card-title">
@@ -343,29 +230,30 @@ export function HomePage() {
                       {tone === "danger" ? (
                         <img src="/assets/status-warning.svg" alt="" />
                       ) : null}
-                      {ownershipState[tone]}
+                      {ownershipLabels[tone]}
                     </span>
                     <div>
-                      <h3>{item.name}</h3>
-                      <p>{item.code}</p>
+                      <h3>{item.stock.nameEn || item.stock.nameKo}</h3>
+                      <p>{item.stock.stockCode} · {item.stock.sector || item.stock.market}</p>
                     </div>
                   </div>
                   <strong className={tone}>
-                    {item.value}
+                    {remaining === null ? "N/A" : remaining.toFixed(2)}
                     <small>% remaining</small>
                   </strong>
                   <div className={`gauge gauge-${tone}`}>
-                    <span className={tone} style={{ width: item.width }} />
-                    <i style={{ left: item.width }} />
+                    <span className={tone} style={{ width }} />
+                    <i style={{ left: width }} />
                   </div>
                   <div className="gauge-labels">
-                    <span>Used {item.used.toFixed(2)}%</span>
-                    <span>Cap {item.cap.toFixed(2)}%</span>
+                    <span>Used {used.toFixed(2)}%</span>
+                    <span>Cap {cap ? cap.toFixed(2) : "Unavailable"}%</span>
                   </div>
                 </article>
               );
             })}
-          </div>
+          </div>}
+          </RemoteState>
         </section>
 
         <section className="section-block tax-section">
@@ -373,10 +261,8 @@ export function HomePage() {
             <div>
               <h2>Dividend withholding tax</h2>
               <p>
-                Korea withholds 22% on dividends paid to non-residents by
-                default.
-                <br />A tax treaty can reduce that rate but only for investors
-                who file for it in advance.
+                Compare Korea’s domestic default with the published treaty rate for your residence.
+                <br />A reduced rate is conditional and must be confirmed before payment.
               </p>
             </div>
           </div>
@@ -386,7 +272,7 @@ export function HomePage() {
                 <div>
                   <span>Default rate</span>
                   <strong>
-                    22.0<small>%</small>
+                    {taxRatesState.data?.[0]?.domesticDefaultRate ?? "—"}<small>%</small>
                   </strong>
                   <small>20% national + 2% local surtax</small>
                 </div>
@@ -394,7 +280,7 @@ export function HomePage() {
                 <div>
                   <span>Treaty rate starts</span>
                   <strong className="safe-text">
-                    15.0<small>%</small>
+                    {taxRatesState.data?.[0]?.treatyDividendRate ?? "—"}<small>%</small>
                   </strong>
                   <small>Portfolio dividends, most treaties</small>
                 </div>
@@ -425,21 +311,18 @@ export function HomePage() {
                 <span>Treaty</span>
                 <span>Difference</span>
               </div>
-              {[
-                ["United States", "22.0%", "15.0%", "-7.0pp"],
-                ["Japan", "22.0%", "15.0%", "-7.0pp"],
-                ["United Kingdom", "22.0%", "15.0%", "-7.0pp"],
-                ["Singapore", "22.0%", "15.0%", "-7.0pp"],
-                ["China", "22.0%", "10.0%", "-12.0pp"],
-              ].map((row) => (
-                <div key={row[0]}>
+              {taxRatesState.data?.map((rate) => {
+                const difference = rate.treatyDividendRate === null ? null : rate.treatyDividendRate - rate.domesticDefaultRate;
+                const row = [rate.countryName, `${rate.domesticDefaultRate}%`, rate.treatyDividendRate === null ? "Unavailable" : `${rate.treatyDividendRate}%`, difference === null ? "—" : `${difference.toFixed(1)}pp`];
+                return <div key={rate.countryCode}>
                   {row.map((cell, i) => (
                     <span className={i === 3 ? "safe-text" : ""} key={cell}>
                       {cell}
                     </span>
                   ))}
-                </div>
-              ))}
+                </div>;
+              })}
+              {taxRatesState.error ? <div className="api-state api-error">Treaty rate data unavailable.</div> : null}
             </article>
           </div>
           <p className="tax-note">
@@ -454,50 +337,48 @@ export function HomePage() {
   );
 }
 
-function FilingRow({
-  row,
-  active = false,
-}: {
-  row: string[];
-  active?: boolean;
-}) {
-  const isNeutral = row[6] === "Neutral";
-
+function FilingRow({ filing }: { filing: Filing }) {
   return (
     <Link
-      className={`filing-row ${active ? "active" : ""}`}
-      to="/disclosures/20260814001"
+      className="filing-row"
+      to={`/disclosures/${filing.receiptNumber}`}
     >
       <img
         className="filing-timeline-dot"
-        src={`/assets/timeline-${row[7]}.svg`}
+        src="/assets/timeline-neutral.svg"
         alt=""
       />
-      <span>{row[0]}</span>
+      <span>{formatDate(filing.detectedAt)}</span>
       <span>
-        <b>{row[1]}</b>
-        <small>{row[2]}</small>
+        <b>{filing.issuerNameEn || filing.issuerNameKo}</b>
+        <small>{filing.stockCode} · {filing.market}</small>
       </span>
-      <strong>{row[3]}</strong>
-      <em>{row[4]}</em>
-      <span
-        className={
-          row[5].startsWith("High")
-            ? "priority"
-            : row[5].startsWith("Medium")
-              ? "medium"
-              : ""
-        }
-      >
-        {row[5]}
-      </span>
-      <span className={isNeutral ? "neutral" : "positive"}>
-        <img
-          src={isNeutral ? "/assets/trend-neutral.svg" : "/assets/trend-up.svg"}
-          alt=""
-        />
-        {row[6]}
-      </span>
+      <strong>{filing.titleEn || filing.titleKo}</strong>
+      <em>{filing.type}</em>
+      <span className={filing.indexStatus === "READY" ? "positive" : "medium"}>{filing.indexStatus}</span>
+      <span className="neutral">{filing.correction ? "Correction" : filing.documentStatus}</span>
     </Link>
   );
+}
+
+function HomeNewsCard({ article }: { article: NewsArticle }) {
+  const sentiment = (article.sentiment || "Neutral").toLowerCase();
+  return <Link className="news-card" to={`/news/${article.id}`}>
+    <div className="tags">
+      <span className={sentiment === "negative" ? "negative" : sentiment === "positive" ? "positive" : ""}>
+        <img src={sentiment === "negative" ? "/assets/trend-down.svg" : sentiment === "positive" ? "/assets/trend-up.svg" : "/assets/trend-neutral.svg"} alt="" />
+        {article.sentiment || "Analysis pending"}
+      </span>
+      <span className={article.importance === "HIGH" || article.importance === "CRITICAL" ? "priority" : "medium"}>{article.importance ? `${article.importance} priority` : "Pending"}</span>
+      {article.eventType ? <span>{article.eventType}</span> : null}
+    </div>
+    <h3>{article.englishTitle || article.originalTitle}</h3>
+    <p className="meta">{formatDate(article.publishedAt)} · {article.publisher}</p>
+    <img src={article.thumbnailUrl || "/assets/news-samsung.png"} alt="" />
+    <div className="insight">
+      <p><b>What</b>{article.what || "AI insight has not been generated yet."}</p>
+      <p><b>Why</b>{article.why || "Open the article to request a grounded summary."}</p>
+      <p><b>Impact</b>{article.impact || "Market impact is unavailable."}</p>
+    </div>
+  </Link>;
 }

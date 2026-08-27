@@ -1,10 +1,26 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
+import { openKAgent } from "../agentEvents";
 import {
   AgentHistoryView,
   AgentOverflowMenu,
 } from "../components/AgentHistory";
+import { api, queryString } from "../api";
+import { RemoteState, formatDate } from "../components/RemoteState";
+import { useRemote } from "../hooks/useRemote";
+import type { Filing, FilingDetail } from "../types";
+
+type FilingInsight = {
+  sufficientEvidence: boolean;
+  what: string | null;
+  why: string | null;
+  impact: string | null;
+  refusalReason: string | null;
+  sourceSectionIds: string[];
+  modelId: string | null;
+  generatedAt: string | null;
+};
 
 const filings = [
   [
@@ -81,72 +97,51 @@ const filingGroups = [
   ],
 ] as const;
 
-function FilingRows() {
+function FilingRows({ stockCode }: { stockCode?: string }) {
   const { pathname } = useLocation();
+  const [limit, setLimit] = useState(30);
+  const state = useRemote(
+    (signal) => api<{ items: Filing[]; nextCursor: string | null }>(`/api/v1/disclosures${queryString({ stockCode, limit })}`, { signal }),
+    [stockCode, limit],
+  );
   const returnTo = pathname.startsWith("/stocks/")
     ? `${pathname}?tab=disclosure`
     : pathname;
 
-  return (
-    <div className="disclosure-rows">
-      {filingGroups.map((group, groupIndex) => (
-        <section key={`${group[0]}-${groupIndex}`}>
+  const groups = new Map<string, Filing[]>();
+  for (const filing of state.data?.items ?? []) groups.set(filing.filedDate, [...(groups.get(filing.filedDate) ?? []), filing]);
+  return <RemoteState {...state} empty={(value) => !value.items.length}>
+    {() => <><div className="disclosure-rows">
+      {[...groups.entries()].map(([day, rows], groupIndex) => (
+        <section key={day}>
           <header>
-            <span>{group[0]}</span>
-            <span>{group[1]} filings</span>
+            <span>{formatDate(day, false)}</span>
+            <span>{rows.length} filings</span>
           </header>
-          {group[2].map(([rowIndex, sentiment], index) => {
-            const row = filings[rowIndex];
-            return (
+          {rows.map((filing, index) => (
               <Link
-                to="/disclosures/20260814001"
+                to={`/disclosures/${filing.receiptNumber}`}
                 state={{ returnTo }}
                 onClick={() => window.scrollTo(0, 0)}
                 className={index === 1 && groupIndex === 0 ? "active" : ""}
-                key={`${groupIndex}-${index}`}
+                key={filing.receiptNumber}
               >
-                <span>{row[0]} KST</span>
-                <i
-                  className={
-                    row[1].startsWith("Doosan")
-                      ? "red"
-                      : sentiment === "Neutral"
-                        ? "neutral"
-                        : ""
-                  }
-                />
+                <span>{formatDate(filing.detectedAt)}</span>
+                <i className={filing.correction ? "red" : "neutral"} />
                 <span>
-                  <b>{row[1]}</b>
-                  <small>{row[2]}</small>
+                  <b>{filing.issuerNameEn || filing.issuerNameKo}</b>
+                  <small>{filing.stockCode} · {filing.market}</small>
                 </span>
-                <strong>{row[3]}</strong>
-                <em>{row[4]}</em>
-                <span
-                  className={
-                    row[5].startsWith("High")
-                      ? "priority"
-                      : row[5].startsWith("Medium")
-                        ? "medium"
-                        : ""
-                  }
-                >
-                  {row[5]}
-                </span>
-                <span className={sentiment === "Positive" ? "positive" : ""}>
-                  {sentiment === "Positive" ? (
-                    <img src="/assets/trend-up.svg" alt="" />
-                  ) : (
-                    "—"
-                  )}
-                  {sentiment}
-                </span>
+                <strong>{filing.titleEn || filing.titleKo}</strong>
+                <em>{filing.type}</em>
+                <span className={filing.indexStatus === "READY" ? "positive" : "medium"}>{filing.indexStatus}</span>
+                <span>{filing.correction ? "Correction" : filing.documentStatus}</span>
               </Link>
-            );
-          })}
+          ))}
         </section>
       ))}
-    </div>
-  );
+    </div>{state.data?.nextCursor ? <button type="button" className="more-filings" onClick={() => setLimit((value) => Math.min(value + 30, 100))}>View more filings <img src="/assets/chevron-down-gold.svg" alt="" /></button> : null}</>}
+  </RemoteState>;
 }
 
 export function DisclosurePage() {
@@ -162,9 +157,6 @@ export function DisclosurePage() {
         </p>
         <FilingFilters />
         <FilingRows />
-        <button type="button" className="more-filings">
-          View more filings <img src="/assets/chevron-down-gold.svg" alt="" />
-        </button>
       </main>
     </div>
   );
@@ -245,26 +237,27 @@ function FilingFilters() {
 }
 
 export function StockDisclosureFeed() {
+  const { stockCode } = useParams();
   return (
     <>
       <FilingFilters />
-      <FilingRows />
-      <button type="button" className="more-filings">
-        View more filings <img src="/assets/chevron-down-gold.svg" alt="" />
-      </button>
+      <FilingRows stockCode={stockCode} />
     </>
   );
 }
 
 export function DisclosureDetailPage() {
   const location = useLocation();
-  const [agent, setAgent] = useState(false);
+  const { disclosureId = "" } = useParams();
+  const detailState = useRemote((signal) => api<FilingDetail>(`/api/v1/disclosures/${disclosureId}`, { signal }), [disclosureId]);
+  const insightState = useRemote((signal) => api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { signal }), [disclosureId]);
+  const filing = detailState.data;
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ??
     "/disclosures";
 
   return (
-    <div className={`filing-detail ${agent ? "agent-open" : ""}`}>
+    <div className="filing-detail">
       <div className="filing-detail-main">
         <Header />
         <div className="filing-hero">
@@ -275,34 +268,31 @@ export function DisclosureDetailPage() {
                 <div className="entity-chips">
                   <span>
                     <img src="/assets/company.svg" alt="" />
-                    Samsung Electronics
+                    {filing?.issuerNameEn || filing?.issuerNameKo || "Loading filing…"}
                   </span>
-                  <span>005930</span>
-                  <span>KOSPI</span>
+                  <span>{filing?.stockCode || "—"}</span>
+                  <span>{filing?.market || "—"}</span>
                 </div>
                 <h1>
-                  Resolution on Issuance of New
-                  <br />
-                  Shares
+                  {filing?.titleEn || filing?.titleKo || "Loading disclosure…"}
                 </h1>
               </div>
               <div>
-                <button>
+                <a href={filing?.officialUrl || "#"} target="_blank" rel="noreferrer">
                   <img src="/assets/download.svg" alt="" /> Download Original
-                  (PDF)
-                </button>
-                <small>Submitted: Aug 14, 14:20 KST</small>
+                </a>
+                <small>Submitted: {formatDate(filing?.detectedAt)}</small>
               </div>
             </div>
             <div className="filing-meta">
               <span>
-                Reporter<b>Samsung Electronics Co., Ltd.</b>
+                Reporter<b>{filing?.submitter || "Unavailable"}</b>
               </span>
               <span>
-                Receiver<b>Financial Services Commission</b>
+                Status<b>{filing?.documentStatus || "Unavailable"}</b>
               </span>
               <span>
-                Document No.<b>20231031000123</b>
+                Document No.<b>{filing?.receiptNumber || disclosureId}</b>
               </span>
             </div>
           </div>
@@ -314,25 +304,16 @@ export function DisclosureDetailPage() {
                   AI Insight summary{" "}
                   <img src="/assets/agent-badge.svg" alt="AI" />
                 </h2>
-                {[
-                  [
-                    "What",
-                    "KOSPI closed 0.4% lower as foreign investors sold a net ₩820B.",
-                  ],
-                  [
-                    "Why",
-                    "Chip earnings expectations were revised down ahead of guidance.",
-                  ],
-                  [
-                    "Impact",
-                    "Breadth matters more than the index level; watch whether net buying returns before quarter-end.",
-                  ],
+                {insightState.data?.sufficientEvidence ? [
+                  ["What", insightState.data.what],
+                  ["Why", insightState.data.why],
+                  ["Impact", insightState.data.impact],
                 ].map((row) => (
                   <p key={row[0]}>
                     <b>{row[0]}</b>
                     <span>{row[1]}</span>
                   </p>
-                ))}
+                )) : <div className="api-state"><span>{insightState.loading ? "Loading AI insight…" : insightState.error?.message || insightState.data?.refusalReason || "No grounded insight has been generated."}</span>{filing?.indexStatus === "READY" ? <button onClick={() => void api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { method: "POST" }).then(insightState.setData)}>Generate insight</button> : null}</div>}
             </section>
             <aside className="mentioned filing-division">
               <h2>Division</h2>
@@ -361,20 +342,16 @@ export function DisclosureDetailPage() {
                 </button>
               </span>
             </h2>
-            <button className="selection-hint" onClick={() => setAgent(true)}>
+            <button className="selection-hint" onClick={() => openKAgent({ contextType: "FILING", referenceId: disclosureId, prompt: "Explain the important terms and practical impact of this filing." })}>
               <img src="/assets/selection-info.svg" alt="" /> Drag over any
               highlighted term to look it up.
             </button>
-            <img
-              src="/assets/disclosure-table.png"
-              alt="Translated disclosure ownership tables"
-            />
+            <RemoteState {...detailState}>
+              {(value) => <div className="disclosure-structured-body">{value.documents.flatMap((document) => document.sections).map((section) => <section key={section.id} id={`section-${section.id}`}><h3>{section.heading || section.kind}</h3>{section.kind === "TABLE" ? <pre>{JSON.stringify(section.tableData, null, 2)}</pre> : <p>{section.text || "Section text unavailable."}</p>}<button type="button" onClick={() => openKAgent({ contextType: "FILING", referenceId: disclosureId, prompt: `Explain the ${section.heading || section.kind} section and its investor impact.` })}>Ask AI about this section</button></section>)}</div>}
+            </RemoteState>
           </section>
         </main>
       </div>
-      {agent ? (
-        <FilingAgent close={() => setAgent(false)} />
-      ) : null}
     </div>
   );
 }

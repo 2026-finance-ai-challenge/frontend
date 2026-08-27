@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { WatchlistHeart } from "../components/WatchlistHeart";
+import { api, queryString } from "../api";
+import { RemoteState, formatDate, formatNumber } from "../components/RemoteState";
+import { useRemote } from "../hooks/useRemote";
+import type { Filing, NewsArticle, Stock } from "../types";
 
 const stocks = [
   {
@@ -172,10 +176,23 @@ export function SearchPage() {
     RELATED_NEWS_PAGE_SIZE,
   );
   const query = params.get("q") || "samsung";
-  const relatedNews = Array.from(
-    { length: Math.min(visibleNewsCount, RELATED_NEWS_TOTAL) },
-    (_, index) => news[index % news.length],
+  const stocksState = useRemote(
+    (signal) => api<{ items: Stock[] }>(`/api/v1/market/stocks/search${queryString({ query, limit: 20 })}`, { signal }),
+    [query],
   );
+  const filingsState = useRemote(
+    (signal) => api<{ items: Filing[]; nextCursor: string | null }>(`/api/v1/disclosures${queryString({ query, limit: 20 })}`, { signal }),
+    [query],
+  );
+  const newsState = useRemote(
+    (signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({ query, sort: "IMPORTANCE", limit: visibleNewsCount })}`, { signal }),
+    [query, visibleNewsCount],
+  );
+  const liveFilingGroups = useMemo(() => {
+    const groups = new Map<string, Filing[]>();
+    for (const filing of filingsState.data?.items ?? []) groups.set(filing.filedDate, [...(groups.get(filing.filedDate) ?? []), filing]);
+    return [...groups.entries()];
+  }, [filingsState.data]);
 
   return (
     <div className="search-page">
@@ -187,8 +204,7 @@ export function SearchPage() {
             <div>
               <h1>Search results for ‘{query}’</h1>
               <p>
-                4 matching companies, with their recent filings and related
-                news.
+                {stocksState.data?.items.length ?? 0} matching companies, with their recent filings and related news.
               </p>
             </div>
             <div className="slider-controls">
@@ -200,28 +216,30 @@ export function SearchPage() {
               </button>
             </div>
           </div>
-          <div className="search-stock-grid">
-            {stocks.map((stock) => (
-              <article className="search-stock-card" key={stock.id}>
-                <Link to="/stocks/005930">
+          <RemoteState {...stocksState} empty={(value) => !value.items.length}>
+            {(value) => <div className="search-stock-grid">
+            {value.items.map((stock) => (
+              <article className="search-stock-card" key={stock.stockCode}>
+                <Link to={`/stocks/${stock.stockCode}`}>
                   <div>
-                    <h2>{stock.name}</h2>
-                    <span>{stock.description}</span>
+                    <h2>{stock.nameEn || stock.nameKo}</h2>
+                    <span>{stock.stockCode} · {stock.market}</span>
                   </div>
-                  <strong>₩230,420</strong>
+                  <strong>{formatNumber(stock.quote?.currentPriceKrw, { style: "currency", currency: "KRW", maximumFractionDigits: 0 })}</strong>
                   <p>
-                    <span>▲ 4320</span>
-                    <span>+2.52%</span>
+                    <span>{formatNumber(stock.quote?.changeAmountKrw)}</span>
+                    <span>{stock.quote?.changeRate === null || stock.quote?.changeRate === undefined ? stock.quote?.status || "Unavailable" : `${stock.quote.changeRate >= 0 ? "+" : ""}${stock.quote.changeRate.toFixed(2)}%`}</span>
                   </p>
                 </Link>
                 <WatchlistHeart
                   className="stock-result-heart"
-                  itemId={stock.id}
-                  itemName={stock.name}
+                  itemId={stock.stockCode}
+                  itemName={stock.nameEn || stock.nameKo}
                 />
               </article>
             ))}
-          </div>
+          </div>}
+          </RemoteState>
         </div>
       </div>
 
@@ -262,105 +280,88 @@ export function SearchPage() {
               </div>
             ))}
           </section>
-          <div className="search-filings">
-            {filingGroups.map((group, groupIndex) => (
-              <section key={group.day}>
+          <RemoteState {...filingsState} empty={(value) => !value.items.length}>
+            {() => <div className="search-filings">
+            {liveFilingGroups.map(([day, rows], groupIndex) => (
+              <section key={day}>
                 <header>
-                  <span>{group.day}</span>
-                  <span>{group.rows.length} filings</span>
+                  <span>{formatDate(day, false)}</span>
+                  <span>{rows.length} filings</span>
                 </header>
-                {group.rows.map((row, index) => (
+                {rows.map((filing, index) => (
                   <Link
-                    to="/disclosures/20260814001"
+                    to={`/disclosures/${filing.receiptNumber}`}
                     className={groupIndex === 0 && index === 1 ? "active" : ""}
-                    key={`${group.day}-${index}`}
+                    key={filing.receiptNumber}
                   >
-                    <span>{row[0]} KST</span>
-                    <i
-                      className={row[1] === "Doosan Enerbility" ? "red" : ""}
-                    />
+                    <span>{formatDate(filing.detectedAt)}</span>
+                    <i />
                     <span>
-                      <b>{row[1]}</b>
-                      <small>{row[2]}</small>
+                      <b>{filing.issuerNameEn || filing.issuerNameKo}</b>
+                      <small>{filing.stockCode} · {filing.market}</small>
                     </span>
-                    <strong>{row[3]}</strong>
-                    <em>{row[4]}</em>
-                    <span
-                      className={
-                        row[5].startsWith("High")
-                          ? "priority"
-                          : row[5].startsWith("Medium")
-                            ? "medium"
-                            : ""
-                      }
-                    >
-                      {row[5]}
-                    </span>
-                    <span className={row[6] === "Positive" ? "positive" : ""}>
-                      {row[6] === "Positive" && (
-                        <img src="/assets/trend-up.svg" alt="" />
-                      )}
-                      {row[6]}
-                    </span>
+                    <strong>{filing.titleEn || filing.titleKo}</strong>
+                    <em>{filing.type}</em>
+                    <span className={filing.indexStatus === "READY" ? "positive" : "medium"}>{filing.indexStatus}</span>
+                    <span>{filing.correction ? "Correction" : filing.documentStatus}</span>
                   </Link>
                 ))}
               </section>
             ))}
-          </div>
+          </div>}
+          </RemoteState>
         </section>
 
         <section className="related-news">
           <div className="search-section-title">
             <h2>Related news</h2>
-            <span>{RELATED_NEWS_TOTAL} news</span>
+            <span>{newsState.data?.items.length ?? 0} news</span>
           </div>
-          {relatedNews.map((item, index) => (
+          <RemoteState {...newsState} empty={(value) => !value.items.length}>
+          {(value) => <>{value.items.map((item) => (
             <Link
-              to="/news/fy2025-dividend"
-              key={`${item[1]}-${index}`}
+              to={`/news/${item.id}`}
+              key={item.id}
             >
-              <img src={item[0]} alt="" />
+              <img src={item.thumbnailUrl || "/assets/news-phone.png"} alt="" />
               <div>
                 <div className="tags">
                   <span
-                    className={item[2] === "Negative" ? "negative" : "positive"}
+                    className={item.sentiment === "NEGATIVE" ? "negative" : "positive"}
                   >
                     <img
                       src={
-                        item[2] === "Negative"
+                        item.sentiment === "NEGATIVE"
                           ? "/assets/trend-down.svg"
                           : "/assets/trend-up.svg"
                       }
                       alt=""
                     />
-                    {item[2]}
+                    {item.sentiment || "Pending"}
                   </span>
                   <span
                     className={
-                      item[3].startsWith("Medium")
+                      item.importance === "MEDIUM"
                         ? "medium"
-                        : item[3].startsWith("High")
+                        : item.importance === "HIGH" || item.importance === "CRITICAL"
                           ? "priority"
                           : ""
                     }
                   >
-                    {item[3]}
+                    {item.importance ? `${item.importance} priority` : "Pending"}
                   </span>
-                  <span>{item[4]}</span>
+                  {item.eventType ? <span>{item.eventType}</span> : null}
                 </div>
-                <h3>{item[1]}</h3>
-                <p>Yonhap Infomax · Aug 14, 14:20 KST · Auto-translated</p>
+                <h3>{item.englishTitle || item.originalTitle}</h3>
+                <p>{item.publisher} · {formatDate(item.publishedAt)} · {item.englishTitle ? "Auto-translated" : "Translation pending"}</p>
                 <p>
-                  Selling pressure came mostly from institutions, while ants
-                  absorbed much of the supply for a fourth straight day. Trading
-                  concentrated in the bellwether chip names, while several
-                  small-cap names with limited free float — what local traders
-                  call sold-out stocks — swung sharply.
+                  {item.originalExcerpt || "Source excerpt unavailable."}
                 </p>
               </div>
             </Link>
-          ))}
-          {visibleNewsCount < RELATED_NEWS_TOTAL ? (
+          ))}</>}
+          </RemoteState>
+          {newsState.data?.nextCursor ? (
             <button
               type="button"
               className="more-filings"

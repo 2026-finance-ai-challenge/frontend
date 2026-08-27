@@ -30,7 +30,7 @@ export function WatchlistHeart({
       aria-label={`${saved ? "Remove" : "Add"} ${itemName} ${saved ? "from" : "to"} watchlist`}
       aria-pressed={saved}
       onMouseDown={handleMouseDown}
-      onClick={() => toggle(itemId)}
+      onClick={() => void toggle(itemId)}
     >
       <img
         className={iconClassName}

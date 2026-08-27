@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Header } from "../components/Layout";
+import { api, login, signup } from "../api";
+import { ApiError } from "../api";
+import type { InvestorType } from "../types";
 
 const PASSWORD_PATTERN =
-  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{8,}$/;
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{12,}$/;
 
 function FormError({ children }: { children: string }) {
   return (
@@ -16,27 +19,64 @@ function FormError({ children }: { children: string }) {
 
 export function SignupPage() {
   const [step, setStep] = useState(1);
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [nationality, setNationality] = useState("");
-  const [checked, setChecked] = useState(false);
+  const [availability, setAvailability] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
   const [submitted, setSubmitted] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [confirmTouched, setConfirmTouched] = useState(false);
   const passwordIsValid = PASSWORD_PATTERN.test(password);
-  const emailError = submitted && !email.includes("@");
+  const loginIdIsValid = /^[A-Za-z0-9][A-Za-z0-9._-]{3,29}$/.test(loginId);
+  const loginIdError = submitted && (!loginIdIsValid || availability !== "available");
   const passwordError =
     (submitted || passwordTouched) && !passwordIsValid;
   const confirmError =
     (submitted || confirmTouched) && (!confirm || password !== confirm);
   const nationalityError = submitted && !nationality;
-  const next = (event: FormEvent) => {
+  const [requestError, setRequestError] = useState("");
+  const checkLoginId = async () => {
+    if (!loginIdIsValid) {
+      setAvailability("idle");
+      return;
+    }
+    setAvailability("checking");
+    try {
+      const result = await api<{ available: boolean }>(
+        `/api/v1/auth/login-id-availability?loginId=${encodeURIComponent(loginId)}`,
+        {},
+        false,
+      );
+      setAvailability(result.available ? "available" : "unavailable");
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : "Could not check this ID.");
+      setAvailability("idle");
+    }
+  };
+  const next = async (event: FormEvent) => {
     event.preventDefault();
     setSubmitted(true);
+    setRequestError("");
+    let currentAvailability = availability;
+    if (loginIdIsValid && availability === "idle") {
+      setAvailability("checking");
+      try {
+        const result = await api<{ available: boolean }>(
+          `/api/v1/auth/login-id-availability?loginId=${encodeURIComponent(loginId)}`,
+          {},
+          false,
+        );
+        currentAvailability = result.available ? "available" : "unavailable";
+        setAvailability(currentAvailability);
+      } catch (error) {
+        setRequestError(error instanceof Error ? error.message : "Could not check this ID.");
+        return;
+      }
+    }
     if (
-      !emailError &&
-      email.includes("@") &&
+      loginIdIsValid &&
+      currentAvailability === "available" &&
       passwordIsValid &&
       password === confirm &&
       nationality
@@ -45,33 +85,36 @@ export function SignupPage() {
   };
   return (
     <div className="auth-page">
-      <Header authenticated white />
+      <Header white />
       <main>
         {step === 1 ? (
           <form className="auth-card signup-card" onSubmit={next}>
             <h1>Welcome to Kart</h1>
             <label>
-              E-Mail
+              ID
               <div className="email-check">
                 <input
-                  className={checked ? "valid" : emailError ? "invalid" : ""}
-                  type="email"
-                  value={email}
+                  className={availability === "available" ? "valid" : loginIdError ? "invalid" : ""}
+                  value={loginId}
                   onChange={(event) => {
-                    setEmail(event.target.value);
-                    setChecked(false);
+                    setLoginId(event.target.value);
+                    setAvailability("idle");
                   }}
-                  placeholder="Enter your email"
+                  onBlur={() => void checkLoginId()}
+                  autoComplete="username"
+                  placeholder="Enter your ID"
                 />
                 <button
                   type="button"
-                  onClick={() => setChecked(email.includes("@"))}
+                  disabled={availability === "checking"}
+                  onClick={() => void checkLoginId()}
                 >
-                  Check
+                  {availability === "checking" ? "Checking" : "Check"}
                 </button>
               </div>
-              {checked && <small className="safe">Available account</small>}
-              {emailError && <FormError>Enter a valid email address</FormError>}
+              {availability === "available" && <small className="safe">Available account</small>}
+              {availability === "unavailable" && <FormError>This ID is already in use</FormError>}
+              {loginIdError && availability !== "unavailable" && <FormError>Use 4–30 letters, numbers, dots, underscores, or hyphens</FormError>}
             </label>
             <label>
               Password
@@ -86,7 +129,7 @@ export function SignupPage() {
               />
               {passwordError && (
                 <FormError>
-                  Min 8 characters, combination of letters, numbers, and symbols
+                  Min 12 characters with upper/lowercase, number, and symbol
                 </FormError>
               )}
             </label>
@@ -111,7 +154,7 @@ export function SignupPage() {
                 onChange={(event) => setNationality(event.target.value)}
               >
                 <option value="">Select your nationality</option>
-                <option>United States</option>
+                <option value="US">United States</option>
                 <option disabled>Japan</option>
                 <option disabled>Singapore</option>
               </select>
@@ -119,35 +162,72 @@ export function SignupPage() {
                 <FormError>Select your nationality</FormError>
               )}
             </label>
+            {requestError ? <FormError>{requestError}</FormError> : null}
             <button className="auth-primary">Continue to next step</button>
             <Link to="/login">Log in</Link>
           </form>
         ) : (
-          <ConsentStep />
+          <ConsentStep
+            loginId={loginId}
+            password={password}
+            confirm={confirm}
+            nationality={nationality}
+          />
         )}
       </main>
     </div>
   );
 }
 
-function ConsentStep() {
-  const [profile, setProfile] = useState("Individual");
+function ConsentStep({ loginId, password, confirm, nationality }: {
+  loginId: string;
+  password: string;
+  confirm: string;
+  nationality: string;
+}) {
+  const [profile, setProfile] = useState<InvestorType>("INDIVIDUAL");
   const [consents, setConsents] = useState([true, false, false]);
   const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const createAccount = async () => {
+    if (!consents.every(Boolean)) {
+      setError("All required consents must be accepted.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await signup({
+        loginId,
+        password,
+        passwordConfirm: confirm,
+        nationality,
+        investorType: profile,
+        termsAccepted: consents[0],
+        privacyAccepted: consents[1],
+      });
+      navigate("/login", { state: { created: true } });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Account creation failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <section className="auth-card consent-card">
       <h2>Investor Profile</h2>
       <div className="profile-options">
         <button
-          className={profile === "Individual" ? "active" : ""}
-          onClick={() => setProfile("Individual")}
+          className={profile === "INDIVIDUAL" ? "active" : ""}
+          onClick={() => setProfile("INDIVIDUAL")}
         >
           <b>Individual</b>
           <span>Standard retail market insight.</span>
         </button>
         <button
-          className={profile === "Institutional" ? "active" : ""}
-          onClick={() => setProfile("Institutional")}
+          className={profile === "CORPORATE" ? "active" : ""}
+          onClick={() => setProfile("CORPORATE")}
         >
           <b>Institutional</b>
           <span>Focus on corporate filings &amp; bulk data.</span>
@@ -213,8 +293,9 @@ function ConsentStep() {
           )}
         </label>
       ))}
-      <button className="auth-primary" onClick={() => navigate("/my")}>
-        Create Account
+      {error ? <FormError>{error}</FormError> : null}
+      <button className="auth-primary" disabled={busy} onClick={() => void createAccount()}>
+        {busy ? "Creating…" : "Create Account"}
         <img src="/assets/chevron-right-white.svg" alt="" />
       </button>
     </section>
@@ -222,29 +303,40 @@ function ConsentStep() {
 }
 
 export function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
-  const submit = (event: FormEvent) => {
+  const [params] = useSearchParams();
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (email && password.length >= 8) navigate("/my");
-    else setError(true);
+    setBusy(true);
+    setError("");
+    try {
+      await login(loginId, password);
+      const returnTo = params.get("returnTo");
+      navigate(returnTo?.startsWith("/") ? returnTo : "/my", { replace: true });
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason.message : "Please check your ID and password again.");
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <div className="auth-page">
-      <Header authenticated white />
+      <Header white />
       <main>
         <form className="auth-card login-card" onSubmit={submit}>
           <h1>Welcome Back</h1>
           <label>
-            E-Mail
+            ID
             <input
               className={error ? "invalid" : ""}
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="Enter your email"
+              value={loginId}
+              onChange={(event) => setLoginId(event.target.value)}
+              autoComplete="username"
+              placeholder="Enter your ID"
             />
           </label>
           <label>
@@ -257,13 +349,13 @@ export function LoginPage() {
               placeholder="Password"
             />
           </label>
-          {error && (
+          {error ? (
             <p className="auth-error">
               <img src="/assets/form-error.svg" alt="" />
-              Please check your ID and password again.
+              {error}
             </p>
-          )}
-          <button className="auth-primary">Log in</button>
+          ) : null}
+          <button className="auth-primary" disabled={busy}>{busy ? "Signing in…" : "Log in"}</button>
           <p className="signup-prompt">
             New to KART? <Link to="/signup">Sign up</Link>
           </p>

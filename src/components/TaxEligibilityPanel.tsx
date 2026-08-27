@@ -1,13 +1,26 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { api } from "../api";
+
+type TaxEligibility = {
+  countryName: string;
+  investorType: string;
+  treatyDataAvailable: boolean;
+  domesticDefaultRate: number;
+  treatyDividendRate: number | null;
+  caveats: string[];
+  asOf: string;
+};
 
 type TaxEligibilityPanelProps = {
   close: () => void;
 };
 
 export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
-  const [country, setCountry] = useState("United States");
-  const [investor, setInvestor] = useState("Individual");
-  const [checked, setChecked] = useState(false);
+  const [country, setCountry] = useState("US");
+  const [investor, setInvestor] = useState("INDIVIDUAL");
+  const [result, setResult] = useState<TaxEligibility | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -20,9 +33,20 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [close]);
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    setChecked(true);
+    setBusy(true);
+    setError("");
+    try {
+      setResult(await api<TaxEligibility>("/api/v1/tax/eligibility", {
+        method: "POST",
+        body: JSON.stringify({ residencyCountry: country, investorType: investor }),
+      }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Tax eligibility could not be checked.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -63,11 +87,11 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
               value={country}
               onChange={(event) => setCountry(event.target.value)}
             >
-              <option>United States</option>
-              <option>Japan</option>
-              <option>United Kingdom</option>
-              <option>Singapore</option>
-              <option>China</option>
+              <option value="US">United States</option>
+              <option value="JP">Japan</option>
+              <option value="GB">United Kingdom</option>
+              <option value="SG">Singapore</option>
+              <option value="CN">China</option>
             </select>
           </label>
           <label>
@@ -76,21 +100,21 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
               value={investor}
               onChange={(event) => setInvestor(event.target.value)}
             >
-              <option>Individual</option>
-              <option>Corporate</option>
+              <option value="INDIVIDUAL">Individual</option>
+              <option value="CORPORATE">Corporate</option>
             </select>
           </label>
-          <button type="submit">Check my rate</button>
+          <button type="submit" disabled={busy}>{busy ? "Checking…" : "Check my rate"}</button>
         </form>
-        {checked && (
+        {error ? <p className="auth-error" role="alert">{error}</p> : null}
+        {result ? (
           <div className="ai-message tax-agent-result" aria-live="polite">
             <p>
-              Based on the selected profile ({country}, {investor}), the
-              indicative treaty rate starts at <b>15%</b>. Confirm eligibility
-              and required documents with your broker.
+              {result.treatyDataAvailable ? <>For {result.countryName} ({result.investorType}), the published general treaty dividend rate is <b>{result.treatyDividendRate}%</b>, compared with Korea’s <b>{result.domesticDefaultRate}%</b> domestic default.</> : <>No verified treaty rate is available for this selection.</>}
+              {" "}Confirm eligibility and required documents with your broker. Data as of {result.asOf}.
             </p>
           </div>
-        )}
+        ) : null}
       </div>
       <div className="chat-input">
         Ask anything about this market
