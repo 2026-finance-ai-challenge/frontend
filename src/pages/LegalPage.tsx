@@ -135,7 +135,7 @@ export function LegalPage({ document }: LegalPageProps) {
 
   return (
     <div className="legal-page">
-      <Header authenticated white />
+      <Header white />
       <main className="page-shell legal-shell">
         <Link className="legal-back" to="/signup">
           ← Back to sign up

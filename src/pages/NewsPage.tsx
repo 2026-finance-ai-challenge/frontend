@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import {
   AgentHistoryView,
@@ -7,11 +7,29 @@ import {
 } from "../components/AgentHistory";
 import { StockNewsFeed, TrendTag } from "../components/StockNewsFeed";
 import { WatchlistHeart } from "../components/WatchlistHeart";
+import { openKAgent } from "../agentEvents";
+import { api } from "../api";
+import { RemoteState, formatDate, formatNumber } from "../components/RemoteState";
+import { useProfile, useRemote } from "../hooks/useRemote";
+import type { NewsArticle, StockDetail, TranslationResult } from "../types";
 
 const AGENT_OPENING_ANSWER =
   "KT has reached its 49% cap, so buy orders from foreign investors will be rejected. SK Telecom sits at 46.10% of a 49% cap — about 94% used — and could reach the cap intraday. KEPCO and KOGAS both have substantial room.";
 
+type TermExplanation = {
+  selectedText: string;
+  normalizedTerm: string;
+  definition: string;
+  contextualMeaning: string;
+  confidence: number;
+  reviewRequired: boolean;
+  sufficientEvidence: boolean;
+  refusalReason: string | null;
+};
+
 function StockNewsHeader() {
+  const stockState = useRemote((signal) => api<StockDetail>("/api/v1/market/stocks/005930", { signal }), []);
+  const stock = stockState.data;
   return (
     <div className="news-stock-hero">
       <Header />
@@ -19,44 +37,44 @@ function StockNewsHeader() {
         <BackLink to="/stocks/005930" />
         <div>
           <h1>
-            Samsung Electronics{" "}
+            {stock?.nameEn || stock?.nameKo || "Samsung Electronics"}{" "}
             <WatchlistHeart
               itemId="samsung-electronics"
-              itemName="Samsung Electronics"
+              itemName={stock?.nameEn || stock?.nameKo || "Samsung Electronics"}
             />
           </h1>
           <span className="mini-price">
-            <strong>₩288,020</strong>
+            <strong>{formatNumber(stock?.quote.currentPriceKrw, { style: "currency", currency: "KRW", maximumFractionDigits: 0 })}</strong>
             <small>
-              -1,000 <img src="/assets/price-down.svg" alt="" /> -1.2%
+              {formatNumber(stock?.quote.changeAmountKrw)} <img src="/assets/price-down.svg" alt="" /> {stock?.quote.changeRate == null ? "Unavailable" : `${stock.quote.changeRate.toFixed(2)}%`}
             </small>
           </span>
         </div>
-        <p>005930&nbsp;&nbsp; · &nbsp;&nbsp;KOSPI</p>
-        <p>Market closed · Aug 14, 15:30 KST · Converted at 1,318.40 KRW/USD</p>
+        <p>005930&nbsp;&nbsp; · &nbsp;&nbsp;{stock?.market || "—"}</p>
+        <p>{stock?.quote.status || "Loading"} · {formatDate(stock?.quote.asOf)} · Converted at {formatNumber(stock?.exchangeRate.krwPerUnit)} KRW/USD</p>
         <div className="mini-metrics">
           <span>
-            High<b>123,000</b>
+            High<b>{formatNumber(stock?.quote.highPriceKrw)}</b>
           </span>
           <span>
-            Low<b>123,000</b>
+            Low<b>{formatNumber(stock?.quote.lowPriceKrw)}</b>
           </span>
           <span>
-            Volume<b>20.1M</b>
+            Volume<b>{formatNumber(stock?.quote.volume, { notation: "compact" })}</b>
           </span>
           <span>
-            Prev close<b>192.06</b>
+            Open<b>{formatNumber(stock?.quote.openPriceKrw)}</b>
           </span>
         </div>
         <div className="stock-badges">
-          <span className="stock-danger">
+          {stock?.subjectToForeignAcquisitionLimit ? <span className="stock-danger">
             <img src="/assets/status-warning.svg" alt="" />
-            Near reached
-          </span>
-          <span className="warning-chip">
+            {stock.foreignOwnership.limitExhaustionRate == null ? "Foreign limit unavailable" : `${stock.foreignOwnership.limitExhaustionRate.toFixed(1)}% foreign limit used`}
+          </span> : null}
+          {stock?.quote.viActive || stock?.quote.singlePriceTrading ? <span className="warning-chip">
             <img src="/assets/timer.svg" alt="" />
-            VI Triggered (01:43)
-          </span>
+            VI active
+          </span> : null}
         </div>
         <Link className="mini-insight" to="/stocks/005930?insights=1">
           <img src="/assets/info.svg" alt="" />
@@ -93,13 +111,23 @@ export function NewsPage() {
 
 export function NewsDetailPage() {
   const location = useLocation();
-  const [agent, setAgent] = useState(false);
-  const [selected, setSelected] = useState(true);
+  const { newsId = "" } = useParams();
+  const profile = useProfile();
+  const articleState = useRemote((signal) => api<NewsArticle>(`/api/v1/news/${newsId}`, { signal }), [newsId]);
+  const translationState = useRemote((signal) => api<TranslationResult>(`/api/v1/news/${newsId}/translation`, { signal }), [newsId]);
+  const [selectedText, setSelectedText] = useState("");
+  const [termExplanation, setTermExplanation] = useState<TermExplanation | null>(null);
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ?? "/news";
+  const article = articleState.data;
+  const translation = translationState.data?.status === "READY" ? translationState.data.result : null;
+  useEffect(() => {
+    if (!profile || !newsId) return;
+    void api("/api/v1/me/recently-viewed", { method: "POST", body: JSON.stringify({ itemType: "NEWS", referenceId: newsId, stockCode: article?.relatedStocks[0]?.stockCode || null }) }).catch(() => undefined);
+  }, [article?.relatedStocks, newsId, profile]);
 
   return (
-    <div className={`article-page ${agent ? "agent-open" : ""}`}>
+    <div className="article-page">
       <div className="article-main">
         <Header />
         <main className="page-shell article-shell">
@@ -107,20 +135,16 @@ export function NewsDetailPage() {
           <section className="article-hero">
             <div>
               <div className="tags">
-                <TrendTag type="Negative" />
-                <span className="warning-chip">Medium priority</span>
-                <span className="info-tag">Foreign selling</span>
+                <TrendTag type={article?.sentiment || "NEUTRAL"} />
+                <span className="warning-chip">{article?.importance ? `${article.importance} priority` : "Analysis pending"}</span>
+                {article?.eventType ? <span className="info-tag">{article.eventType}</span> : null}
               </div>
               <h1>
-                Samsung Electronics confirms
-                <br />
-                FY2025 dividend payout, unchanged
-                <br />
-                from prior year
+                {article?.englishTitle || article?.originalTitle || "Loading article…"}
               </h1>
-              <p>Yonhap Infomax · Aug 14, 14:20 KST · Auto-translated</p>
+              <p>{article?.publisher || "—"} · {formatDate(article?.publishedAt)} · {article?.englishTitle ? "Auto-translated" : "Translation pending"}</p>
             </div>
-            <img src="/assets/news-expo.png" alt="Samsung exhibition booth" />
+            <img src={article?.thumbnailUrl || "/assets/news-expo.png"} alt="" />
           </section>
           <div className="article-grid">
             <div>
@@ -129,30 +153,21 @@ export function NewsDetailPage() {
                   AI Insight summary{" "}
                   <img src="/assets/agent-badge.svg" alt="AI" />
                 </h2>
-                {[
-                  [
-                    "What",
-                    "KOSPI closed 0.4% lower as foreign investors sold a net ₩820B.",
-                  ],
-                  [
-                    "Why",
-                    "Chip earnings expectations were revised down ahead of guidance.",
-                  ],
-                  [
-                    "Impact",
-                    "Breadth matters more than the index level; watch whether net buying returns before quarter-end.",
-                  ],
-                ].map((row) => (
+                {(translation ? [["What", translation.what], ["Why", translation.why], ["Impact", translation.impact]] : [["What", article?.what], ["Why", article?.why], ["Impact", article?.impact]]).map((row) => (
                   <p key={row[0]}>
                     <b>{row[0]}</b>
-                    <span>{row[1]}</span>
+                    <span>{row[1] || "Grounded insight is not ready."}</span>
                   </p>
                 ))}
+                {translationState.data?.status !== "READY" ? <button type="button" onClick={() => void api<TranslationResult>(`/api/v1/news/${newsId}/translation`, { method: "POST" }).then(translationState.setData)}>Generate English translation &amp; insight</button> : null}
               </section>
-              <article className="article-body">
+              <article className="article-body" onMouseUp={() => {
+                const text = window.getSelection()?.toString().trim() || "";
+                if (text.length >= 2 && text.length <= 500) setSelectedText(text);
+              }}>
                 <button
                   className="selection-hint"
-                  onClick={() => setSelected(!selected)}
+                  onClick={() => setSelectedText("")}
                 >
                   <img src="/assets/selection-info.svg" alt="" /> Drag over any
                   highlighted term to look it up.
@@ -160,100 +175,27 @@ export function NewsDetailPage() {
                 <button className="article-share" aria-label="Share article">
                   <img src="/assets/share.svg" alt="" />
                 </button>
-                <p>
-                  SEOUL, South Korea — Samsung Electronics is accelerating its
-                  efforts to create a more connected and intelligent digital
-                  ecosystem, with a focus on integrating artificial intelligence
-                  across its diverse range of products and services.
-                </p>
-                <blockquote>
-                  <b>Market Sentiment Shift</b>
-                  <p>
-                    SEOUL, South Korea — Samsung Electronics is accelerating its
-                    efforts to create a more connected and intelligent digital
-                    ecosystem, with a focus on integrating artificial
-                    intelligence across.
-                  </p>
-                </blockquote>
-                <p>
-                  The company said its latest strategy centers on making
-                  everyday technology more personalized and responsive. From
-                  smartphones and home appliances to semiconductor technologies,
-                  Samsung aims to create seamless connections between devices
-                  while reducing the complexity of managing multiple digital
-                  products.
-                </p>
-                <p>
-                  “Technology should work naturally in the background and make
-                  people’s everyday lives easier,” a Samsung Electronics
-                  representative said. “Our goal is to create experiences that
-                  are not only smarter, but also more meaningful for users.”
-                </p>
-                <p>
-                  Samsung has continued to expand its presence across consumer
-                  electronics and semiconductor markets. The company operates
-                  through its DX (Device eXperience) and DS (Device Solutions)
-                  divisions, covering products ranging from smartphones and
-                  televisions to advanced semiconductor solutions.
-                </p>
-                <p>
-                  The company is also expected to increase investment in
-                  artificial intelligence and next-generation semiconductor
-                  technologies as demand for AI-related products continues to
-                  grow. Industry analysts believe these technologies could play
-                  an important role in Samsung’s future competitiveness.
-                </p>
-                <p>
-                  Looking ahead, Samsung Electronics plans to strengthen its
-                  ecosystem of{" "}
-                  <span className="highlight-term-wrapper">
-                    <button
-                      type="button"
-                      className="highlighted-term"
-                      aria-expanded={selected}
-                      aria-controls={selected ? "article-term-tooltip" : undefined}
-                      onClick={() => setSelected((current) => !current)}
-                    >
-                      connected
-                    </button>
-                    {selected ? (
-                      <button
-                        type="button"
-                        id="article-term-tooltip"
-                        className="selection-popup"
-                        onClick={() => setAgent(true)}
-                      >
-                        <img src="/assets/tooltip-arrow.svg" alt="" />
-                        <span>Want to know what this mean?</span>
-                        <b>Click</b>
-                      </button>
-                    ) : null}
-                  </span>{" "}
-                  devices and explore new ways to combine hardware, software and
-                  artificial intelligence. The company says its long-term
-                  ambition is to transform technology from a collection of
-                  individual products into a more unified experience.
-                </p>
-                <p>
-                  This article is a fictional dummy article created for design
-                  and layout purposes.
-                </p>
+                <RemoteState {...articleState}>
+                  {(value) => <>{(translation?.translatedParagraphs || value.englishBody?.split("\n\n") || value.originalBody?.split("\n\n") || [value.originalExcerpt || "Article body is unavailable from the source."]).map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>}
+                </RemoteState>
+                {selectedText ? <div className="selection-popup article-selection-action">
+                  <span>Explain “{selectedText.slice(0, 60)}”</span>
+                  <button type="button" onClick={() => void api<TermExplanation>(`/api/v1/news/${newsId}/term-explanations`, { method: "POST", body: JSON.stringify({ selectedText }) }).then(setTermExplanation)}>Explain this term</button>
+                  <button type="button" onClick={() => openKAgent({ contextType: "NEWS", referenceId: newsId, prompt: `Explain “${selectedText.slice(0, 500)}” in this article.` })}>Ask AI</button>
+                </div> : null}
+                {termExplanation ? <blockquote><b>{termExplanation.normalizedTerm}</b><p>{termExplanation.sufficientEvidence ? termExplanation.definition : termExplanation.refusalReason}</p><p>{termExplanation.contextualMeaning}</p><small>{Math.round(termExplanation.confidence * 100)}% confidence{termExplanation.reviewRequired ? " · Review recommended" : ""}</small></blockquote> : null}
                 <div className="article-tags">
-                  <span>KODAQ</span>
-                  <span>Tech</span>
-                  <span>Retail</span>
+                  {article?.relatedStocks.map((stock) => <span key={stock.stockCode}>{stock.stockCode}</span>)}
                 </div>
               </article>
             </div>
             <aside className="mentioned">
               <h2>Mentioned</h2>
-              <Link to="/stocks/005930">Samsung Electronics</Link>
-              <span>TSMC</span>
+              {article?.relatedStocks.map((stock) => <Link to={`/stocks/${stock.stockCode}`} key={stock.stockCode}>{stock.nameEn || stock.nameKo}</Link>)}
             </aside>
           </div>
         </main>
       </div>
-      {agent ? <AgentPanel close={() => setAgent(false)} /> : null}
     </div>
   );
 }

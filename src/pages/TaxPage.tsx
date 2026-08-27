@@ -1,13 +1,27 @@
 import { useState } from "react";
 import { Header } from "../components/Layout";
+import { api } from "../api";
+
+type Eligibility = {
+  countryName: string;
+  investorType: string;
+  treatyDataAvailable: boolean;
+  domesticDefaultRate: number;
+  treatyDividendRate: number | null;
+  requiredDocuments: string[];
+  caveats: string[];
+  asOf: string;
+};
 
 export function TaxPage() {
-  const [country, setCountry] = useState("United States");
-  const [investor, setInvestor] = useState("Individual");
-  const [checked, setChecked] = useState(false);
+  const [country, setCountry] = useState("US");
+  const [investor, setInvestor] = useState("INDIVIDUAL");
+  const [result, setResult] = useState<Eligibility | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   return (
     <div className="tax-page">
-      <Header authenticated white />
+      <Header white />
       <main className="tax-chat page-shell">
         <button className="back-link">
           <img src="/assets/close.svg" alt="" /> Close
@@ -33,7 +47,14 @@ export function TaxPage() {
             <form
               onSubmit={(event) => {
                 event.preventDefault();
-                setChecked(true);
+                setBusy(true);
+                setError("");
+                void api<Eligibility>("/api/v1/tax/eligibility", {
+                  method: "POST",
+                  body: JSON.stringify({ residencyCountry: country, investorType: investor }),
+                }).then(setResult).catch((reason: unknown) => {
+                  setError(reason instanceof Error ? reason.message : "Tax data could not be checked.");
+                }).finally(() => setBusy(false));
               }}
             >
               <label>
@@ -42,11 +63,11 @@ export function TaxPage() {
                   value={country}
                   onChange={(event) => setCountry(event.target.value)}
                 >
-                  <option>United States</option>
-                  <option>Japan</option>
-                  <option>United Kingdom</option>
-                  <option>Singapore</option>
-                  <option>China</option>
+                  <option value="US">United States</option>
+                  <option value="JP">Japan</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="SG">Singapore</option>
+                  <option value="CN">China</option>
                 </select>
               </label>
               <label>
@@ -55,17 +76,18 @@ export function TaxPage() {
                   value={investor}
                   onChange={(event) => setInvestor(event.target.value)}
                 >
-                  <option>Individual</option>
-                  <option>Corporate</option>
+                  <option value="INDIVIDUAL">Individual</option>
+                  <option value="CORPORATE">Corporate</option>
                 </select>
               </label>
-              <button>Check my rate</button>
+              <button disabled={busy}>{busy ? "Checking…" : "Check my rate"}</button>
             </form>
+            {error ? <p className="auth-error" role="alert">{error}</p> : null}
           </section>
-          {checked && (
+          {result && (
             <>
               <div className="user-bubble">
-                {country}, {investor}
+                {result.countryName}, {result.investorType}
               </div>
               <section className="tax-message result">
                 <h2>
@@ -73,9 +95,8 @@ export function TaxPage() {
                   complete
                 </h2>
                 <p>
-                  Under the Korea–US Tax treaty, you are eligible for a reduced
-                  tax rate of <b>15%</b> on dividend income. Would you like a
-                  guide on how to apply for this rate?
+                  {result.treatyDataAvailable ? <>The published general treaty dividend rate is <b>{result.treatyDividendRate}%</b>, compared with the domestic default of <b>{result.domesticDefaultRate}%</b>.</> : <>A verified treaty rate is unavailable for this profile.</>}
+                  {" "}This is general information as of {result.asOf}, not a binding eligibility decision. Would you like a guide on required documents?
                 </p>
                 <div>
                   <button>Yes, show me the guide</button>

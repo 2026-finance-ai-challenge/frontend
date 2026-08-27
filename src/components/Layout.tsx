@@ -8,47 +8,11 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { WatchlistHeart } from "./WatchlistHeart";
 import { getKoreaMarketSnapshot } from "../utils/koreaMarketClock";
-
-const results = [
-  {
-    id: "samsung-electronics-primary",
-    watchlistId: "samsung-electronics",
-    name: "Samsung Electronics",
-    code: "005930",
-    market: "KOSPI",
-  },
-  {
-    id: "samsung-sdi",
-    watchlistId: "samsung-sdi",
-    name: "Samsung SDI",
-    code: "005930",
-    market: "KOSPI",
-  },
-  {
-    id: "samsung-biologics",
-    watchlistId: "samsung-biologics",
-    name: "Samsung Biologics",
-    code: "005930",
-    market: "KOSPI",
-  },
-  {
-    id: "samsung-ct",
-    watchlistId: "samsung-ct",
-    name: "Samsung C&T",
-    code: "005930",
-    market: "KOSPI",
-  },
-  {
-    id: "samsung-electronics-secondary",
-    watchlistId: "samsung-electronics",
-    name: "Samsung Electronics",
-    code: "005930",
-    market: "KOSPI",
-  },
-];
+import { api, queryString } from "../api";
+import { useProfile } from "../hooks/useRemote";
+import type { Stock } from "../types";
 
 type HeaderProps = {
-  authenticated?: boolean;
   initialQuery?: string;
   white?: boolean;
 };
@@ -84,21 +48,25 @@ function readHeaderSurface(header: HTMLElement): HeaderSurface {
 }
 
 export function Header({
-  authenticated = false,
   initialQuery = "",
   white = false,
 }: HeaderProps) {
   const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [results, setResults] = useState<Stock[]>([]);
+  const [searching, setSearching] = useState(false);
   const [surface, setSurface] = useState<HeaderSurface>(
     white ? "white" : "cream",
   );
   const headerRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const searchTimerRef = useRef<number | undefined>(undefined);
   const navigate = useNavigate();
   const location = useLocation();
+  const profile = useProfile();
+  useEffect(() => () => window.clearTimeout(searchTimerRef.current), []);
   useEffect(() => {
     let frame = 0;
     const updateSurface = () => {
@@ -158,6 +126,26 @@ export function Header({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+  };
+  const updateQuery = (value: string) => {
+    setQuery(value);
+    window.clearTimeout(searchTimerRef.current);
+    if (!value.trim()) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    searchTimerRef.current = window.setTimeout(() => {
+      const controller = new AbortController();
+      api<{ items: Stock[] }>(
+        `/api/v1/market/stocks/search${queryString({ query: value.trim(), limit: 5 })}`,
+        { signal: controller.signal },
+      )
+        .then(({ items }) => setResults(items))
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false));
+    }, 180);
   };
   const scrollHomeToTop = (event: MouseEvent<HTMLAnchorElement>) => {
     if (
@@ -223,7 +211,7 @@ export function Header({
           <img className="search-icon" src="/assets/search.svg" alt="" />
           <input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => updateQuery(event.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => window.setTimeout(() => setFocused(false), 120)}
             placeholder="Company, ticker, or filings"
@@ -234,36 +222,33 @@ export function Header({
           </button>
           {focused && query && (
             <div className="search-popover">
-              {results
-                .filter(
-                  (item) =>
-                    item.name.toLowerCase().includes(query.toLowerCase()) ||
-                    item.code.includes(query),
-                )
-                .map((item) => (
+              {results.map((item) => (
                   <div
                     className="search-result-row"
-                    key={item.id}
+                    key={item.stockCode}
                   >
                     <button
                       className="search-result-link"
                       type="button"
-                      onClick={() => navigate(`/stocks/${item.code}`)}
+                      onClick={() => navigate(`/stocks/${item.stockCode}`)}
                     >
-                      <strong>{item.name}</strong>
+                      <strong>{item.nameEn || item.nameKo}</strong>
                       <small>
-                        {item.code} · {item.market}
+                        {item.stockCode} · {item.market}
                       </small>
                     </button>
                     <WatchlistHeart
                       className="search-heart-button"
                       iconClassName="search-heart"
-                      itemId={item.watchlistId}
-                      itemName={item.name}
+                      itemId={item.stockCode}
+                      itemName={item.nameEn || item.nameKo}
                       keepFocus
                     />
                   </div>
                 ))}
+              {!searching && results.length === 0 ? (
+                <p className="search-empty">No supported stock found.</p>
+              ) : null}
               <button
                 className="all-results"
                 type="button"
@@ -283,7 +268,7 @@ export function Header({
           <button className="language">
             <img src="/assets/flag-us.svg" alt="United States" /> EN
           </button>
-          {authenticated ? (
+          {profile ? (
             <Link className="profile-link" to="/my" aria-label="Open my page">
               <img src="/assets/profile.png" alt="" />
             </Link>
@@ -365,8 +350,8 @@ export function Footer() {
       </div>
       <div className="footer-meta">
         <span>Copyright 2026 KART all rights reserved</span>
-        <a href="#privacy">Privacy policy</a>
-        <a href="#legal">Legal Disclaimer</a>
+        <Link to="/legal/privacy">Privacy policy</Link>
+        <Link to="/legal/fsc-disclaimer">FSC Information Disclaimer</Link>
       </div>
     </footer>
   );
@@ -383,6 +368,13 @@ export function BackLink({ to }: { to: string }) {
 
 export function MarketBar() {
   const [market, setMarket] = useState(() => getKoreaMarketSnapshot());
+  const [indices, setIndices] = useState<Array<{
+    indexCode: string;
+    indexName: string;
+    currentValue: number | null;
+    changeRate: number | null;
+    status: string;
+  }>>([]);
 
   useEffect(() => {
     const timer = window.setInterval(
@@ -391,23 +383,33 @@ export function MarketBar() {
     );
     return () => window.clearInterval(timer);
   }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    api<typeof indices>("/api/v1/market/indices", { signal: controller.signal })
+      .then(setIndices)
+      .catch(() => setIndices([]));
+    return () => controller.abort();
+  }, []);
+
+  const kospi = indices.find((item) => item.indexCode === "KOSPI" || item.indexName === "KOSPI");
+  const kosdaq = indices.find((item) => item.indexCode === "KOSDAQ" || item.indexName === "KOSDAQ");
+  const renderIndex = (item: typeof kospi, label: string) => <span>
+    <em>{label}</em> {item?.currentValue === null || item?.currentValue === undefined ? "Unavailable" : item.currentValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+    {item?.changeRate !== null && item?.changeRate !== undefined ? <b className={item.changeRate >= 0 ? "up" : "down"}>{item.changeRate >= 0 ? "+" : ""}{item.changeRate.toFixed(2)}%</b> : null}
+  </span>;
 
   return (
     <div className="market-bar page-shell">
+      {renderIndex(kospi, "KOSPI")}
+      <i />
+      {renderIndex(kosdaq, "KOSDAQ")}
+      <i />
       <span>
-        <em>KOSPI</em> 3,143.55 <b className="up">+0.82%</b>
+        <em>USD/KRW</em> Available on stock detail
       </span>
       <i />
       <span>
-        <em>KOSDAQ</em> 1,048.20 <b className="up">+1.14%</b>
-      </span>
-      <i />
-      <span>
-        <em>USD/KRW</em> 1,048.20 <b className="down">-0.31%</b>
-      </span>
-      <i />
-      <span>
-        <em>Foreign net flow</em> -820B <b className="down">5th</b>
+        <em>Market data</em> {indices[0]?.status || "Unavailable"}
       </span>
       <i />
       <span

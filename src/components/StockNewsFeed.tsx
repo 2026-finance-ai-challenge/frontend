@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { api, queryString } from "../api";
+import { RemoteState, formatDate } from "./RemoteState";
+import { useRemote } from "../hooks/useRemote";
+import type { NewsArticle } from "../types";
 
 const newsItems = [
   [
@@ -40,7 +44,7 @@ const newsItems = [
 ];
 
 export function TrendTag({ type }: { type: string }) {
-  const negative = type === "Negative";
+  const negative = type.toUpperCase() === "NEGATIVE";
 
   return (
     <span className={negative ? "negative" : "positive"}>
@@ -56,6 +60,17 @@ export function TrendTag({ type }: { type: string }) {
 export function StockNewsFeed() {
   const [filter, setFilter] = useState("All");
   const { pathname } = useLocation();
+  const { stockCode } = useParams();
+  const newsState = useRemote(
+    (signal) => api<{ items: NewsArticle[] }>(`/api/v1/news${queryString({
+      stockCode,
+      importance: filter === "High priority" ? "HIGH" : null,
+      sentiment: filter === "Positive" || filter === "Negative" ? filter.toUpperCase() : null,
+      watchlist: filter === "My watchlist" || null,
+      limit: 20,
+    })}`, { signal }),
+    [stockCode, filter],
+  );
   const returnTo = pathname.startsWith("/stocks/")
     ? `${pathname}?tab=news`
     : pathname;
@@ -86,36 +101,32 @@ export function StockNewsFeed() {
           </button>
         </div>
       </div>
-      <div className="news-list">
-        {newsItems.map((item, index) => (
+      <RemoteState {...newsState} empty={(value) => !value.items.length}>
+      {(value) => <div className="news-list">
+        {value.items.map((item) => (
           <Link
-            to="/news/fy2025-dividend"
+            to={`/news/${item.id}`}
             state={{ returnTo }}
             className="news-row"
-            key={`${item[1]}-${index}`}
+            key={item.id}
           >
-            <img src={item[0]} alt="" />
+            <img src={item.thumbnailUrl || "/assets/news-phone.png"} alt="" />
             <div>
               <div className="tags">
-                <TrendTag type={item[2]} />
-                <span className={item[3].startsWith("High") ? "priority" : ""}>
-                  {item[3]}
+                <TrendTag type={item.sentiment || "NEUTRAL"} />
+                <span className={item.importance === "HIGH" || item.importance === "CRITICAL" ? "priority" : ""}>
+                  {item.importance ? `${item.importance} priority` : "Analysis pending"}
                 </span>
-                <span>{item[4]}</span>
+                {item.eventType ? <span>{item.eventType}</span> : null}
               </div>
-              <h2>{item[1]}</h2>
-              <p>Yonhap Infomax · Aug 14, 14:20 KST · Auto-translated</p>
-              <p>
-                Selling pressure came mostly from institutions, while ants
-                absorbed much of the supply for a fourth straight day. Trading
-                concentrated in the bellwether chip names, while several
-                small-cap names with limited free float — what local traders
-                call sold-out stocks — swung sharply.
-              </p>
+              <h2>{item.englishTitle || item.originalTitle}</h2>
+              <p>{item.publisher} · {formatDate(item.publishedAt)} · {item.englishTitle ? "Auto-translated" : "Translation pending"}</p>
+              <p>{item.originalExcerpt || "Source excerpt unavailable."}</p>
             </div>
           </Link>
         ))}
-      </div>
+      </div>}
+      </RemoteState>
     </>
   );
 }

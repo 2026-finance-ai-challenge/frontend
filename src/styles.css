@@ -4194,6 +4194,40 @@ mark {
     min-height: 100vh;
   }
 }
+
+.api-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 96px;
+  padding: 24px;
+  border: 1px solid #e7e4de;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #6f6d68;
+  text-align: center;
+}
+.api-state b,
+.api-state span { display: block; }
+.api-state button,
+.api-state a { color: #947a00; text-decoration: underline; }
+.api-error { border-color: #efd7d4; color: #a32b20; }
+.api-loading { animation: api-pulse 1.25s ease-in-out infinite alternate; }
+@keyframes api-pulse { to { opacity: 0.52; } }
+
+.live-stock-chart {
+  display: block;
+  width: 100%;
+  min-height: 360px;
+  color: #9a8300;
+  overflow: visible;
+}
+.live-stock-chart text { fill: #777; font: 14px "Hanken Grotesk", sans-serif; }
+.disclosure-structured-body { display: grid; gap: 28px; padding: 18px 0; }
+.disclosure-structured-body section { padding: 24px; border: 1px solid #e7e4de; border-radius: 10px; }
+.disclosure-structured-body pre { max-width: 100%; overflow: auto; white-space: pre-wrap; }
+.article-selection-action { position: sticky; bottom: 24px; z-index: 4; width: min(540px, 100%); margin: 20px auto; }
 .search-page {
   overflow-x: hidden;
 }
