@@ -2,8 +2,10 @@ import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Footer, Header, MarketBar } from "../components/Layout";
 import { TaxEligibilityPanel } from "../components/TaxEligibilityPanel";
-import { api } from "../api";
+import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
+import { ViewMoreButton } from "../components/ViewMoreButton";
+import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
 import type { Filing, NewsArticle, Stock, StockDetail } from "../types";
 
@@ -31,13 +33,15 @@ const ownershipLabels = {
 export function HomePage() {
   const [taxAgentOpen, setTaxAgentOpen] = useState(false);
   const [ownershipStart, setOwnershipStart] = useState(0);
-  const newsState = useRemote(
-    (signal) => api<{ items: NewsArticle[] }>("/api/v1/news?sort=IMPORTANCE&limit=6", { signal }),
+  const newsState = useCursorPage(
+    (cursor, signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({ sort: "IMPORTANCE", cursor, limit: cursor ? 20 : 2 })}`, { signal }),
     [],
+    (item) => item.id,
   );
-  const filingsState = useRemote(
-    (signal) => api<{ items: Filing[] }>("/api/v1/disclosures?limit=8", { signal }),
+  const filingsState = useCursorPage(
+    (cursor, signal) => api<{ items: Filing[]; nextCursor: string | null }>(`/api/v1/disclosures${queryString({ cursor, limit: cursor ? 20 : 4 })}`, { signal }),
     [],
+    (item) => item.receiptNumber,
   );
   const ownershipState = useRemote(
     (signal) => api<ForeignMonitor[]>("/api/v1/market/foreign-limits", { signal }),
@@ -61,7 +65,7 @@ export function HomePage() {
       const day = filing.filedDate;
       groups.set(day, [...(groups.get(day) ?? []), filing]);
     }
-    return [...groups.entries()].slice(0, 2);
+    return [...groups.entries()];
   }, [filingsState.data]);
 
   return (
@@ -114,9 +118,10 @@ export function HomePage() {
           </div>
           <RemoteState {...newsState} empty={(value) => !value.items.length}>
             {(value) => <div className="news-grid">
-              {value.items.slice(0, 2).map((article) => <HomeNewsCard article={article} key={article.id} />)}
+              {value.items.map((article) => <HomeNewsCard article={article} key={article.id} />)}
             </div>}
           </RemoteState>
+          <ViewMoreButton resource="news" hasMore={Boolean(newsState.data?.nextCursor)} loading={newsState.loadingMore} error={newsState.loadMoreError} onClick={() => void newsState.loadMore()} />
         </section>
 
         <section className="section-block filing-section">
@@ -134,17 +139,10 @@ export function HomePage() {
             <RemoteState {...filingsState} empty={(value) => !value.items.length}>
               {() => <>{filingGroups.map(([day, items]) => <div key={day}>
                 <div className="table-day"><span>{formatDate(day, false)}</span><span>{items.length} filings</span></div>
-                {items.slice(0, 4).map((filing) => <FilingRow filing={filing} key={filing.receiptNumber} />)}
+                {items.map((filing) => <FilingRow filing={filing} key={filing.receiptNumber} />)}
               </div>)}</>}
             </RemoteState>
-            <Link
-              className="view-all"
-              to="/disclosures"
-              onClick={() => window.scrollTo(0, 0)}
-            >
-              View all filings
-              <img src="/assets/chevron-right-gold.svg" alt="" />
-            </Link>
+            <ViewMoreButton resource="filings" hasMore={Boolean(filingsState.data?.nextCursor)} loading={filingsState.loadingMore} error={filingsState.loadMoreError} className="view-all" onClick={() => void filingsState.loadMore()} />
           </div>
         </section>
 
