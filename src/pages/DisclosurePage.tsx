@@ -9,7 +9,7 @@ import {
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
 import { useRemote } from "../hooks/useRemote";
-import type { Filing, FilingDetail } from "../types";
+import type { Filing, FilingDetail, TranslationResult } from "../types";
 
 type FilingInsight = {
   sufficientEvidence: boolean;
@@ -252,6 +252,7 @@ export function DisclosureDetailPage() {
   const detailState = useRemote((signal) => api<FilingDetail>(`/api/v1/disclosures/${disclosureId}`, { signal }), [disclosureId]);
   const insightState = useRemote((signal) => api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { signal }), [disclosureId]);
   const filing = detailState.data;
+  const [indexRequested, setIndexRequested] = useState(false);
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ??
     "/disclosures";
@@ -313,7 +314,7 @@ export function DisclosureDetailPage() {
                     <b>{row[0]}</b>
                     <span>{row[1]}</span>
                   </p>
-                )) : <div className="api-state"><span>{insightState.loading ? "Loading AI insight…" : insightState.error?.message || insightState.data?.refusalReason || "No grounded insight has been generated."}</span>{filing?.indexStatus === "READY" ? <button onClick={() => void api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { method: "POST" }).then(insightState.setData)}>Generate insight</button> : null}</div>}
+                )) : <div className="api-state"><span>{insightState.loading ? "Loading AI insight…" : insightState.error?.message || insightState.data?.refusalReason || "No grounded insight has been generated."}</span>{filing?.indexStatus === "READY" ? <button onClick={() => void api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { method: "POST" }).then(insightState.setData)}>Generate insight</button> : filing && !indexRequested ? <button onClick={() => void api(`/api/v1/disclosures/${disclosureId}/index`, { method: "POST" }).then(() => setIndexRequested(true))}>Prepare document for AI</button> : null}{indexRequested ? <small>Indexing requested. The grounded insight will be available after processing.</small> : null}</div>}
             </section>
             <aside className="mentioned filing-division">
               <h2>Division</h2>
@@ -347,13 +348,40 @@ export function DisclosureDetailPage() {
               highlighted term to look it up.
             </button>
             <RemoteState {...detailState}>
-              {(value) => <div className="disclosure-structured-body">{value.documents.flatMap((document) => document.sections).map((section) => <section key={section.id} id={`section-${section.id}`}><h3>{section.heading || section.kind}</h3>{section.kind === "TABLE" ? <pre>{JSON.stringify(section.tableData, null, 2)}</pre> : <p>{section.text || "Section text unavailable."}</p>}<button type="button" onClick={() => openKAgent({ contextType: "FILING", referenceId: disclosureId, prompt: `Explain the ${section.heading || section.kind} section and its investor impact.` })}>Ask AI about this section</button></section>)}</div>}
+              {(value) => <div className="disclosure-structured-body">{value.documents.flatMap((document) => document.sections).map((section) => <DisclosureSection receiptNumber={disclosureId} section={section} key={section.id} />)}</div>}
             </RemoteState>
           </section>
+          <DisclosureQuestionBox receiptNumber={disclosureId} ready={filing?.indexStatus === "READY"} />
         </main>
       </div>
     </div>
   );
+}
+
+type FilingSection = FilingDetail["documents"][number]["sections"][number];
+
+function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; section: FilingSection }) {
+  const translation = useRemote((signal) => api<TranslationResult>(`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`, { signal }), [receiptNumber, section.id]);
+  const translated = translation.data?.status === "READY" ? translation.data.result : null;
+  const requestTranslation = () => void api<TranslationResult>(`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`, { method: "POST" }).then(translation.setData);
+  return <section id={`section-${section.id}`}><h3>{translated?.translatedHeading || section.heading || section.kind}</h3>{translated?.translatedText ? <p>{translated.translatedText}</p> : translated?.translatedTableData ? <pre>{JSON.stringify(translated.translatedTableData, null, 2)}</pre> : section.kind === "TABLE" ? <pre>{JSON.stringify(section.tableData, null, 2)}</pre> : <p>{section.text || "Section text unavailable."}</p>}<div className="disclosure-section-actions">{translation.data?.status !== "READY" ? <button type="button" onClick={requestTranslation} disabled={translation.data?.status === "PENDING" || translation.data?.status === "PROCESSING"}>{translation.data?.status === "PENDING" || translation.data?.status === "PROCESSING" ? "Translation processing…" : "Translate section"}</button> : null}<button type="button" onClick={() => openKAgent({ contextType: "FILING", referenceId: receiptNumber, prompt: `Explain the ${section.heading || section.kind} section and its investor impact.` })}>Ask K-Agent</button></div></section>;
+}
+
+type DisclosureAnswer = { answer: string; refused: boolean; refusalReason: string | null; citations: Array<{ id: string; heading: string | null; excerpt: string | null }> };
+
+function DisclosureQuestionBox({ receiptNumber, ready }: { receiptNumber: string; ready: boolean }) {
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<DisclosureAnswer | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const ask = async () => {
+    if (!question.trim()) return;
+    setBusy(true); setError("");
+    try { setAnswer(await api<DisclosureAnswer>(`/api/v1/disclosures/${receiptNumber}/questions`, { method: "POST", body: JSON.stringify({ question: question.trim() }) })); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "The filing question could not be answered."); }
+    finally { setBusy(false); }
+  };
+  return <section className="disclosure-question"><h2>Ask about this filing</h2><p>Answers are restricted to indexed sections of the current disclosure version.</p><form onSubmit={(event) => { event.preventDefault(); void ask(); }}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="What changed and how could it affect investors?" disabled={!ready || busy} /><button disabled={!ready || !question.trim() || busy}>{busy ? "Checking sources…" : "Ask"}</button></form>{!ready ? <small>The document must finish indexing before grounded questions are available.</small> : null}{error ? <p className="auth-error">{error}</p> : null}{answer ? <blockquote><p>{answer.refused ? answer.refusalReason : answer.answer}</p>{answer.citations.map((citation) => <small key={citation.id}><b>{citation.heading || "Source section"}</b> {citation.excerpt}</small>)}</blockquote> : null}</section>;
 }
 
 function FilingAgent({ close }: { close: () => void }) {

@@ -10,7 +10,7 @@ import { WatchlistHeart } from "./WatchlistHeart";
 import { getKoreaMarketSnapshot } from "../utils/koreaMarketClock";
 import { api, queryString } from "../api";
 import { useProfile } from "../hooks/useRemote";
-import type { Stock } from "../types";
+import type { NotificationInbox, NotificationItem, Stock } from "../types";
 
 type HeaderProps = {
   initialQuery?: string;
@@ -56,6 +56,9 @@ export function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const [results, setResults] = useState<Stock[]>([]);
   const [searching, setSearching] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationInbox | null>(null);
+  const [notificationsError, setNotificationsError] = useState("");
   const [surface, setSurface] = useState<HeaderSurface>(
     white ? "white" : "cream",
   );
@@ -66,6 +69,44 @@ export function Header({
   const navigate = useNavigate();
   const location = useLocation();
   const profile = useProfile();
+  const notificationTarget = (item: NotificationItem) => {
+    if (item.referenceType === "NEWS" && item.referenceId) return `/news/${item.referenceId}`;
+    if (item.referenceType === "FILING" && item.referenceId) return `/disclosures/${item.referenceId}`;
+    if (item.referenceType === "STOCK" && item.referenceId) return `/stocks/${item.referenceId}`;
+    if (item.referenceType === "TAX") return "/tax";
+    return "/my";
+  };
+  const openNotifications = async () => {
+    if (!profile) {
+      navigate(`/login?returnTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`);
+      return;
+    }
+    const nextOpen = !notificationsOpen;
+    setNotificationsOpen(nextOpen);
+    if (!nextOpen) return;
+    setNotificationsError("");
+    try {
+      setNotifications(await api<NotificationInbox>("/api/v1/me/notifications?limit=20"));
+    } catch (reason) {
+      setNotificationsError(reason instanceof Error ? reason.message : "Notifications could not be loaded.");
+    }
+  };
+  const readNotification = async (item: NotificationItem) => {
+    if (!item.read) {
+      await api(`/api/v1/me/notifications/${item.id}/read`, { method: "PUT" });
+      setNotifications((current) => current ? {
+        ...current,
+        unreadCount: Math.max(0, current.unreadCount - 1),
+        items: current.items.map((candidate) => candidate.id === item.id ? { ...candidate, read: true, readAt: new Date().toISOString() } : candidate),
+      } : current);
+    }
+    setNotificationsOpen(false);
+    navigate(notificationTarget(item));
+  };
+  const readAllNotifications = async () => {
+    await api("/api/v1/me/notifications/read-all", { method: "PUT" });
+    setNotifications((current) => current ? { ...current, unreadCount: 0, items: current.items.map((item) => ({ ...item, read: true, readAt: item.readAt || new Date().toISOString() })) } : current);
+  };
   useEffect(() => () => window.clearTimeout(searchTimerRef.current), []);
   useEffect(() => {
     let frame = 0;
@@ -262,9 +303,16 @@ export function Header({
           )}
         </form>
         <nav className="nav-actions" aria-label="Utility navigation">
-          <button className="icon-button" aria-label="Notifications">
+          <button className="icon-button notification-button" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={() => void openNotifications()}>
             <img src="/assets/notification.svg" alt="" />
+            {notifications?.unreadCount ? <span>{notifications.unreadCount > 99 ? "99+" : notifications.unreadCount}</span> : null}
           </button>
+          {notificationsOpen ? <div className="notification-popover">
+            <header><b>Notifications</b><button type="button" onClick={() => void readAllNotifications()} disabled={!notifications?.unreadCount}>Mark all read</button></header>
+            {notificationsError ? <p className="auth-error">{notificationsError}</p> : null}
+            {!notificationsError && notifications?.items.length === 0 ? <p className="search-empty">No notifications yet.</p> : null}
+            {notifications?.items.map((item) => <button type="button" className={item.read ? "is-read" : ""} onClick={() => void readNotification(item)} key={item.id}><span><b>{item.title}</b><small>{item.body}</small></span><time>{new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</time></button>)}
+          </div> : null}
           <button className="language">
             <img src="/assets/flag-us.svg" alt="United States" /> EN
           </button>

@@ -11,6 +11,48 @@ export type Profile = {
   createdAt: string
 }
 
+export type SupportedCountry = {
+  countryCode: string
+  countryName: string
+}
+
+export type NotificationItem = {
+  id: string
+  notificationType: string
+  title: string
+  body: string
+  referenceType: string | null
+  referenceId: string | null
+  createdAt: string
+  readAt: string | null
+  read: boolean
+}
+
+export type NotificationInbox = {
+  items: NotificationItem[]
+  nextCursor: string | null
+  unreadCount: number
+}
+
+export type TaxDocument = {
+  id: string
+  documentType: 'RESIDENCY_CERTIFICATE' | 'APOSTILLE' | 'REDUCED_TAX_APPLICATION' | 'UNKNOWN'
+  expectedResidencyCountry: string
+  investorType: InvestorType
+  originalFileName: string
+  mediaType: string
+  sizeBytes: number
+  status: 'PROCESSING' | 'VERIFIED' | 'REVIEW_REQUIRED' | 'REJECTED' | 'FAILED'
+  progress: number
+  stage: string | null
+  missingRequiredFields: string[]
+  issues: Array<{ code?: string; message?: string; severity?: string }>
+  manualReviewRequired: boolean
+  errorCode: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export type TokenPair = {
   accessToken: string
   refreshToken: string
