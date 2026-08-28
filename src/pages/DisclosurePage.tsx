@@ -8,6 +8,8 @@ import {
 } from "../components/AgentHistory";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
+import { ViewMoreButton } from "../components/ViewMoreButton";
+import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
 import type { Filing, FilingDetail, TranslationResult } from "../types";
 
@@ -99,10 +101,10 @@ const filingGroups = [
 
 function FilingRows({ stockCode }: { stockCode?: string }) {
   const { pathname } = useLocation();
-  const [limit, setLimit] = useState(30);
-  const state = useRemote(
-    (signal) => api<{ items: Filing[]; nextCursor: string | null }>(`/api/v1/disclosures${queryString({ stockCode, limit })}`, { signal }),
-    [stockCode, limit],
+  const state = useCursorPage(
+    (cursor, signal) => api<{ items: Filing[]; nextCursor: string | null }>(`/api/v1/disclosures${queryString({ stockCode, cursor, limit: 20 })}`, { signal }),
+    [stockCode],
+    (item) => item.receiptNumber,
   );
   const returnTo = pathname.startsWith("/stocks/")
     ? `${pathname}?tab=disclosure`
@@ -140,7 +142,7 @@ function FilingRows({ stockCode }: { stockCode?: string }) {
           ))}
         </section>
       ))}
-    </div>{state.data?.nextCursor ? <button type="button" className="more-filings" onClick={() => setLimit((value) => Math.min(value + 30, 100))}>View more filings <img src="/assets/chevron-down-gold.svg" alt="" /></button> : null}</>}
+    </div><ViewMoreButton resource="filings" hasMore={Boolean(state.data?.nextCursor)} loading={state.loadingMore} error={state.loadMoreError} onClick={() => void state.loadMore()} /></>}
   </RemoteState>;
 }
 

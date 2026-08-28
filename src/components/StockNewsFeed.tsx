@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "./RemoteState";
-import { useRemote } from "../hooks/useRemote";
+import { ViewMoreButton } from "./ViewMoreButton";
+import { useCursorPage } from "../hooks/useCursorPage";
 import type { NewsArticle } from "../types";
 
 const newsItems = [
@@ -61,15 +62,17 @@ export function StockNewsFeed() {
   const [filter, setFilter] = useState("All");
   const { pathname } = useLocation();
   const { stockCode } = useParams();
-  const newsState = useRemote(
-    (signal) => api<{ items: NewsArticle[] }>(`/api/v1/news${queryString({
+  const newsState = useCursorPage(
+    (cursor, signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({
       stockCode,
       importance: filter === "High priority" ? "HIGH" : null,
       sentiment: filter === "Positive" || filter === "Negative" ? filter.toUpperCase() : null,
       watchlist: filter === "My watchlist" || null,
+      cursor,
       limit: 20,
     })}`, { signal }),
     [stockCode, filter],
+    (item) => item.id,
   );
   const returnTo = pathname.startsWith("/stocks/")
     ? `${pathname}?tab=news`
@@ -127,6 +130,7 @@ export function StockNewsFeed() {
         ))}
       </div>}
       </RemoteState>
+      <ViewMoreButton resource="news" hasMore={Boolean(newsState.data?.nextCursor)} loading={newsState.loadingMore} error={newsState.loadMoreError} onClick={() => void newsState.loadMore()} />
     </>
   );
 }

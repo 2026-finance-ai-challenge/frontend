@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
+import { ViewMoreButton } from "../components/ViewMoreButton";
 import { WatchlistHeart } from "../components/WatchlistHeart";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate, formatNumber } from "../components/RemoteState";
+import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
 import type { Filing, NewsArticle, Stock } from "../types";
 
@@ -166,27 +168,23 @@ const news = [
   ],
 ];
 
-const RELATED_NEWS_TOTAL = 34;
-const RELATED_NEWS_PAGE_SIZE = 4;
-
 export function SearchPage() {
   const [params] = useSearchParams();
   const [range, setRange] = useState("1M");
-  const [visibleNewsCount, setVisibleNewsCount] = useState(
-    RELATED_NEWS_PAGE_SIZE,
-  );
   const query = params.get("q") || "samsung";
   const stocksState = useRemote(
     (signal) => api<{ items: Stock[] }>(`/api/v1/market/stocks/search${queryString({ query, limit: 20 })}`, { signal }),
     [query],
   );
-  const filingsState = useRemote(
-    (signal) => api<{ items: Filing[]; nextCursor: string | null }>(`/api/v1/disclosures${queryString({ query, limit: 20 })}`, { signal }),
+  const filingsState = useCursorPage(
+    (cursor, signal) => api<{ items: Filing[]; nextCursor: string | null }>(`/api/v1/disclosures${queryString({ query, cursor, limit: 20 })}`, { signal }),
     [query],
+    (item) => item.receiptNumber,
   );
-  const newsState = useRemote(
-    (signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({ query, sort: "IMPORTANCE", limit: visibleNewsCount })}`, { signal }),
-    [query, visibleNewsCount],
+  const newsState = useCursorPage(
+    (cursor, signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({ query, sort: "IMPORTANCE", cursor, limit: 20 })}`, { signal }),
+    [query],
+    (item) => item.id,
   );
   const liveFilingGroups = useMemo(() => {
     const groups = new Map<string, Filing[]>();
@@ -310,6 +308,7 @@ export function SearchPage() {
             ))}
           </div>}
           </RemoteState>
+          <ViewMoreButton resource="filings" hasMore={Boolean(filingsState.data?.nextCursor)} loading={filingsState.loadingMore} error={filingsState.loadMoreError} onClick={() => void filingsState.loadMore()} />
         </section>
 
         <section className="related-news">
@@ -361,23 +360,7 @@ export function SearchPage() {
             </Link>
           ))}</>}
           </RemoteState>
-          {newsState.data?.nextCursor ? (
-            <button
-              type="button"
-              className="more-filings"
-              onClick={() =>
-                setVisibleNewsCount((current) =>
-                  Math.min(
-                    current + RELATED_NEWS_PAGE_SIZE,
-                    RELATED_NEWS_TOTAL,
-                  ),
-                )
-              }
-            >
-              View more news
-              <img src="/assets/chevron-down-gold.svg" alt="" />
-            </button>
-          ) : null}
+          <ViewMoreButton resource="news" hasMore={Boolean(newsState.data?.nextCursor)} loading={newsState.loadingMore} error={newsState.loadMoreError} onClick={() => void newsState.loadMore()} />
         </section>
       </main>
     </div>
