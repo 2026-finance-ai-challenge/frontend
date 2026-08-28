@@ -159,6 +159,23 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
       setError(reason instanceof Error ? reason.message : "This chat could not be deleted.");
     }
   };
+  const stopGeneration = async () => {
+    if (!room || !generation) return;
+    try { setGeneration(await api<Generation>(`/api/v1/me/chats/${room.id}/generations/${generation.id}/stop`, { method: "POST" })); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Generation could not be stopped."); }
+  };
+  const retryGeneration = async () => {
+    if (!room || !generation) return;
+    try { setError(""); setGeneration(await api<Generation>(`/api/v1/me/chats/${room.id}/generations/${generation.id}/retry`, { method: "POST" })); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Generation could not be retried."); }
+  };
+  const regenerateMessage = async (messageId: string) => {
+    if (!room) return;
+    try {
+      setError(""); setStreamingAnswer(""); setStreamedMessageId(null);
+      setGeneration(await api<Generation>(`/api/v1/me/chats/${room.id}/messages/${messageId}/regenerate`, { method: "POST", body: JSON.stringify({ requestKey: crypto.randomUUID() }) }));
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "The answer could not be regenerated."); }
+  };
 
   if (history) return <AgentHistoryView close={close} onConversation={(roomId) => {
     setHistory(false);
@@ -172,10 +189,10 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
     {!profile ? <div className="api-state"><b>Sign in to start a protected chat</b><span>Chat rooms and history are stored per account.</span><Link to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}>Log in</Link></div> : null}
     <div className="chat global-agent-chat" aria-live="polite">
       {profile && messages.length === 0 ? <div className="ai-message"><p>Ask about Korean equities, news, DART filings, foreign ownership limits, or treaty tax information.</p></div> : null}
-      {messages.map((message) => message.id === streamedMessageId ? null : message.role === "USER" ? <p className="user-message user-message-enter" key={message.id}>{message.content}</p> : <div className="ai-message ai-message-enter" key={message.id}><p>{message.content}</p>{message.insufficientEvidence ? <small>{message.refusalReason || "Insufficient evidence"}</small> : null}{message.citations.map((citation) => citation.url ? <a key={citation.id} href={citation.url} target="_blank" rel="noreferrer">{citation.title}</a> : <small key={citation.id}>{citation.title}</small>)}{message.disclaimer ? <small>{message.disclaimer}</small> : null}</div>)}
-      {generating ? <div className="agent-thinking" role="status"><span className="agent-thinking-label">K-Agent is checking server sources</span><i /><i /><i /></div> : null}
+      {messages.map((message) => message.id === streamedMessageId ? null : message.role === "USER" ? <p className="user-message user-message-enter" key={message.id}>{message.content}</p> : <div className="ai-message ai-message-enter" key={message.id}><p>{message.content}</p>{message.insufficientEvidence ? <small>{message.refusalReason || "Insufficient evidence"}</small> : null}{message.citations.map((citation) => citation.url ? <a key={citation.id} href={citation.url} target="_blank" rel="noreferrer">{citation.title}</a> : <small key={citation.id}>{citation.title}</small>)}{message.disclaimer ? <small>{message.disclaimer}</small> : null}<button type="button" className="agent-message-action" onClick={() => void regenerateMessage(message.id)} disabled={Boolean(generating)}>Regenerate</button></div>)}
+      {generating ? <div className="agent-thinking" role="status"><span className="agent-thinking-label">K-Agent is checking server sources</span><i /><i /><i /><button type="button" onClick={() => void stopGeneration()}>Stop</button></div> : null}
       {streamedMessageId ? <div className="ai-message ai-message-enter"><p className="typewriter-answer">{streamingAnswer}<span className="typing-cursor" aria-hidden="true" /></p></div> : null}
-      {generation?.status === "FAILED" ? <div className="api-state api-error"><span>{generation.errorCode || "AI generation failed."}</span></div> : null}
+      {generation?.status === "FAILED" ? <div className="api-state api-error"><span>{generation.errorCode || "AI generation failed."}</span><button type="button" onClick={() => void retryGeneration()}>Retry</button></div> : null}
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
     </div>
     <form className="chat-input global-agent-input" onSubmit={(event) => void sendMessage(event)}><input type="text" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Ask anything about this market" aria-label="Message K-Agent" disabled={!profile} /><button type="submit" aria-label="Send message" disabled={!draft.trim() || !profile || Boolean(generating)}><img src="/assets/agent-send.svg" alt="" /></button></form>
