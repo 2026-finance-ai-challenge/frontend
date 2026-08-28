@@ -19,13 +19,15 @@ npm ci
 npm run dev
 ```
 
-기본 개발 API 주소는 `http://127.0.0.1:8080`이며 Vite가 `/api` 요청을 프록시합니다. Backend가 다른 주소에서 실행되면 아래처럼 지정합니다.
+기본 개발 API 주소는 `https://168.107.61.81`이며 Vite가 `/api` 요청을 프록시합니다. 로컬 Backend를 사용하려면 아래처럼 지정합니다.
 
 ```bash
 VITE_DEV_API_TARGET=http://127.0.0.1:8080 npm run dev
 ```
 
-프론트와 API를 서로 다른 도메인으로 배포할 때는 Vercel 등 배포 환경에 다음 변수를 설정합니다.
+Vercel에서는 `vercel.json`이 같은 출처의 `/api/*` 요청을 Backend로 프록시합니다. Backend가 CORS를 허용하지 않으므로 Vercel의 `VITE_API_BASE_URL`은 등록하지 않습니다. 값이 이미 있다면 삭제해야 합니다.
+
+별도 도메인에서 CORS가 설정된 Backend를 직접 호출할 때만 다음 변수를 사용합니다.
 
 ```bash
 VITE_API_BASE_URL=https://your-backend.example.com
