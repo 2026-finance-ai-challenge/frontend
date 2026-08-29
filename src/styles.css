@@ -4422,6 +4422,82 @@ mark {
   background: #fbedd6;
   color: #784b00;
 }
+/* Figma 264:3322 — 1340px disclosure table at the 1920px desktop canvas. */
+:is(.search-filings, .disclosure-rows) section header {
+  min-height: 65px;
+  height: 65px;
+  padding: 0 30px;
+  color: #555;
+  font-size: 18px;
+  line-height: 25px;
+}
+:is(.search-filings, .disclosure-rows) section > a {
+  grid-template-columns: 10.78% 3.9% 18.67% 37.97% 8.59% 12.19% 7.89%;
+  gap: 0;
+  min-height: 89px;
+  height: 89px;
+  padding: 0 30px;
+  color: #555;
+  font-size: 18px;
+  line-height: 25px;
+}
+:is(.search-filings, .disclosure-rows) section > a > * {
+  min-width: 0;
+}
+:is(.search-filings, .disclosure-rows) section > a > span:first-child {
+  white-space: nowrap;
+}
+:is(.search-filings, .disclosure-rows) section > a > span:nth-child(3) {
+  align-self: center;
+}
+:is(.search-filings, .disclosure-rows) section > a b,
+:is(.search-filings, .disclosure-rows) section > a small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.search-filings, .disclosure-rows) section > a b {
+  color: #000;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
+}
+:is(.search-filings, .disclosure-rows) section > a small {
+  margin-top: 4px;
+  color: #555;
+  font-size: 18px;
+  line-height: 25px;
+}
+:is(.search-filings, .disclosure-rows) section > a strong {
+  overflow: hidden;
+  color: #000;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.search-filings, .disclosure-rows) section > a em {
+  overflow: hidden;
+  color: #888;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.search-filings, .disclosure-rows) section > a > span:nth-last-child(-n + 2) {
+  justify-self: start;
+  max-width: calc(100% - 16px);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 25px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .related-news > a {
   display: grid;
   grid-template-columns: 220px 1fr;
@@ -4532,4 +4608,36 @@ mark {
   .notification-popover { position: fixed; left: 16px; right: 16px; top: 78px; width: auto; }
   .tax-upload form, .account-security { grid-template-columns: 1fr; }
   .account-security .danger-zone { padding: 16px 0 0; border-left: 0; border-top: 1px solid #ead1cf; }
+}
+
+/* Keep the disclosure rows compact when the desktop table collapses. */
+@media (max-width: 1000px) {
+  :is(.search-filings, .disclosure-rows) section > a {
+    grid-template-columns: 100px 10px 160px minmax(0, 1fr);
+    padding: 0 20px;
+  }
+  :is(.search-filings, .disclosure-rows) section > a > *:nth-child(n + 5) {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  :is(.search-filings, .disclosure-rows) section header {
+    padding: 0 14px;
+    font-size: 15px;
+  }
+  :is(.search-filings, .disclosure-rows) section > a {
+    grid-template-columns: 75px 8px minmax(0, 1fr);
+    padding: 0 14px;
+    font-size: 15px;
+  }
+  :is(.search-filings, .disclosure-rows) section > a > *:nth-child(n + 4) {
+    display: none;
+  }
+  :is(.search-filings, .disclosure-rows) section > a b {
+    font-size: 18px;
+  }
+  :is(.search-filings, .disclosure-rows) section > a small {
+    font-size: 15px;
+  }
 }
