@@ -1,8 +1,10 @@
 import type { ApiProblem, InvestorType, Profile, TokenPair } from './types'
 
-const configuredBase = (import.meta as ImportMeta & { env?: Record<string, string | undefined> })
-  .env?.VITE_API_BASE_URL?.trim()
-export const API_BASE = (configuredBase || 'https://api.kartkr.cloud').replace(/\/$/, '')
+const runtimeEnv = (import.meta as ImportMeta & { env?: Record<string, string | boolean | undefined> }).env
+const configuredBase = typeof runtimeEnv?.VITE_API_BASE_URL === 'string'
+  ? runtimeEnv.VITE_API_BASE_URL.trim()
+  : undefined
+export const API_BASE = (configuredBase ?? (runtimeEnv?.DEV ? '' : 'https://api.kartkr.cloud')).replace(/\/$/, '')
 
 export class ApiError extends Error {
   readonly status: number

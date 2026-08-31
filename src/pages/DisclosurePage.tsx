@@ -10,6 +10,8 @@ import { useRemote } from "../hooks/useRemote";
 import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import type { Filing, FilingDetail } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
+import { useLocale } from "../state/LocaleContext";
+import { IntelligenceBadges } from "../components/IntelligenceBadges";
 
 type FilingInsight = {
   sufficientEvidence: boolean;
@@ -37,6 +39,7 @@ function dateBefore(days: number) {
 }
 
 function FilingRows({ stockCode, filters }: { stockCode?: string; filters: FilingFiltersValue }) {
+  const { locale, stockName } = useLocale();
   const { pathname } = useLocation();
   const state = useCursorPage(
     (cursor, signal) => api<{ items: Filing[]; nextCursor: string | null }>(`/api/v1/disclosures${queryString({ stockCode, from: filters.from || null, to: filters.to || null, types: filters.types.length ? filters.types.join(",") : null, cursor, limit: 20 })}`, { signal }),
@@ -55,7 +58,7 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
         <section key={day}>
           <header>
             <span>{formatDate(day, false)}</span>
-            <span>{rows.length} filings</span>
+            <span>{locale === "ko" ? `공시 ${rows.length}건` : `${rows.length} filings`}</span>
           </header>
           {rows.map((filing) => (
               <Link
@@ -67,13 +70,11 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
                 <span>{formatDate(filing.detectedAt)}</span>
                 <i className={filing.correction ? "red" : "neutral"} />
                 <span>
-                  <b>{filing.issuerNameEn || filing.issuerNameKo}</b>
+                  <b>{stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo })}</b>
                   <small>{filing.stockCode} · {filing.market}</small>
                 </span>
-                <strong>{filing.titleEn}</strong>
-                <em>{filing.eventType.replaceAll("_", " ")}</em>
-                <span className={filing.importance === "HIGH" || filing.importance === "CRITICAL" ? "positive" : "medium"}>{filing.importance}</span>
-                <span className={filing.sentiment.toLowerCase()}>{filing.sentiment}</span>
+                <strong>{locale === "ko" ? filing.titleKo : filing.titleEn || filing.titleKo}</strong>
+                <span className="filing-row-badges"><IntelligenceBadges sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
               </Link>
           ))}
         </section>
@@ -83,16 +84,16 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
 }
 
 export function DisclosurePage() {
+  const { locale, t } = useLocale();
   const [filters, setFilters] = useState<FilingFiltersValue>({ from: "", to: "", types: [] });
   return (
     <div className="disclosure-page disclosure-index-page">
       <Header white />
       <main className="page-shell disclosure-index-main">
         <BackLink to="/" />
-        <h1>DART filings pulse</h1>
+        <h1>{t("filings")}</h1>
         <p className="disclosure-index-description">
-          Disclosures summarised into What / Why / Impact, with an agent that
-          answers follow-up questions from the original text.
+          {locale === "ko" ? "공시 원문을 바탕으로 무엇·이유·영향을 요약하고 후속 질문에 답합니다." : "Disclosures summarised into What / Why / Impact, with an agent that answers follow-up questions from the original text."}
         </p>
         <FilingFilters value={filters} onChange={setFilters} />
         <FilingRows filters={filters} />
@@ -102,21 +103,22 @@ export function DisclosurePage() {
 }
 
 function FilingFilters({ value, onChange }: { value: FilingFiltersValue; onChange: (value: FilingFiltersValue) => void }) {
+  const { locale } = useLocale();
   const selectedRange = [["1D", 1], ["1W", 7], ["1M", 30], ["3M", 90], ["1Y", 365]].find(([, days]) => value.from === dateBefore(Number(days)) && value.to === new Date().toISOString().slice(0, 10))?.[0];
   const setRange = (days: number) => onChange({ ...value, from: dateBefore(days), to: new Date().toISOString().slice(0, 10) });
   const toggleType = (type: string) => onChange({ ...value, types: value.types.includes(type) ? value.types.filter((item) => item !== type) : [...value.types, type] });
   return (
     <section className="filing-filters">
       <div className="filing-filter-heading">
-        <span>Date range</span>
+        <span>{locale === "ko" ? "기간" : "Date range"}</span>
         <button type="button" className="reset" onClick={() => onChange({ from: "", to: "", types: [] })}>
-          Reset
+          {locale === "ko" ? "초기화" : "Reset"}
         </button>
       </div>
       <div className="date-filter">
-        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={value.from} onChange={(event) => onChange({ ...value, from: event.target.value })} aria-label="Start date" />
+        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={value.from} onChange={(event) => onChange({ ...value, from: event.target.value })} aria-label={locale === "ko" ? "시작일" : "Start date"} />
         <b>–</b>
-        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={value.to} onChange={(event) => onChange({ ...value, to: event.target.value })} aria-label="End date" />
+        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={value.to} onChange={(event) => onChange({ ...value, to: event.target.value })} aria-label={locale === "ko" ? "종료일" : "End date"} />
         {[["1D", 1], ["1W", 7], ["1M", 30], ["3M", 90], ["1Y", 365]].map(([item, days]) => (
           <button
             type="button"
@@ -130,7 +132,7 @@ function FilingFilters({ value, onChange }: { value: FilingFiltersValue; onChang
       </div>
       {DISCLOSURE_FILTERS.map((group) => (
         <div className="checkbox-row" key={group[0]}>
-          <span>{group[0]}</span>
+          <span>{locale === "ko" ? disclosureFilterKo(group[0]) : group[0]}</span>
           {group.slice(1).map(([label, type]) => (
             <label key={type}>
               <input
@@ -138,7 +140,7 @@ function FilingFilters({ value, onChange }: { value: FilingFiltersValue; onChang
                 checked={value.types.includes(type)}
                 onChange={() => toggleType(type)}
               />
-              {label}
+              {locale === "ko" ? disclosureFilterKo(label) : label}
             </label>
           ))}
         </div>
@@ -159,6 +161,7 @@ export function StockDisclosureFeed() {
 }
 
 export function DisclosureDetailPage() {
+  const { locale, t, stockName } = useLocale();
   const location = useLocation();
   const { disclosureId = "" } = useParams();
   const detailState = useRemote((signal) => api<FilingDetail>(`/api/v1/disclosures/${disclosureId}`, { signal }), [disclosureId]);
@@ -172,7 +175,7 @@ export function DisclosureDetailPage() {
     leadSection
       ? `/api/v1/disclosures/${disclosureId}/sections/${leadSection.id}/translation`
       : `/api/v1/disclosures/${disclosureId}/sections/pending/translation`,
-    Boolean(leadSection),
+    Boolean(leadSection) && locale === "en",
   );
   const translatedLead = leadTranslation.data?.status === "READY"
     ? leadTranslation.data.result
@@ -198,8 +201,8 @@ export function DisclosureDetailPage() {
     indexRequest.current = disclosureId;
     setIndexRequested(true);
     void api(`/api/v1/disclosures/${disclosureId}/index`, { method: "POST" })
-      .catch((reason: unknown) => setAutomaticError(reason instanceof Error ? reason.message : "Document indexing could not be requested."));
-  }, [disclosureId, filing]);
+      .catch((reason: unknown) => setAutomaticError(reason instanceof Error ? reason.message : locale === "ko" ? "문서 색인을 요청하지 못했습니다." : "Document indexing could not be requested."));
+  }, [disclosureId, filing, locale]);
 
   useEffect(() => {
     if (!indexRequested || !filing || filing.indexStatus === "READY") return;
@@ -214,8 +217,8 @@ export function DisclosureDetailPage() {
     insightRequest.current = disclosureId;
     void api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { method: "POST" })
       .then(insightState.setData)
-      .catch((reason: unknown) => setAutomaticError(reason instanceof Error ? reason.message : "AI insight could not be generated."));
-  }, [disclosureId, filing?.indexStatus, insightState.data, insightState.error?.code, insightState.loading, insightState.setData]);
+      .catch((reason: unknown) => setAutomaticError(reason instanceof Error ? reason.message : locale === "ko" ? "AI 요약을 생성하지 못했습니다." : "AI insight could not be generated."));
+  }, [disclosureId, filing?.indexStatus, insightState.data, insightState.error?.code, insightState.loading, insightState.setData, locale]);
 
   return (
     <div className="filing-detail">
@@ -229,34 +232,35 @@ export function DisclosureDetailPage() {
                 <div className="entity-chips">
                   <span>
                     <img src="/assets/company.svg" alt="" />
-                    {filing?.issuerNameEn || filing?.issuerNameKo || "Loading filing…"}
+                    {filing ? stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo }) : locale === "ko" ? "공시를 불러오는 중…" : "Loading filing…"}
                   </span>
                   <span>{filing?.stockCode || "—"}</span>
                   <span>{filing?.market || "—"}</span>
                 </div>
-                <h1>
-                  {translatedLead?.translatedHeading
+                <h1 className={((locale === "ko" ? filing?.titleKo : filing?.titleEn || filing?.titleKo) || "").length > 70 ? "is-long-title" : ""}>
+                  {locale === "ko" ? filing?.titleKo || "공시를 불러오는 중…" : translatedLead?.translatedHeading
                     || translatedLead?.translatedText
                     || filing?.titleEn
+                    || filing?.titleKo
                     || "Loading disclosure…"}
                 </h1>
               </div>
               <div>
                 {filing?.officialUrl ? <a href={filing.officialUrl} target="_blank" rel="noreferrer">
-                  <img src="/assets/download.svg" alt="" /> Open original
-                </a> : <span>Original document unavailable</span>}
-                <small>Submitted: {formatDate(filing?.detectedAt)}</small>
+                  <img src="/assets/download.svg" alt="" /> {t("openOriginal")}
+                </a> : <span>{locale === "ko" ? "원문을 사용할 수 없습니다" : "Original document unavailable"}</span>}
+                <small>{locale === "ko" ? "제출" : "Submitted"}: {formatDate(filing?.detectedAt)}</small>
               </div>
             </div>
             <div className="filing-meta">
               <span>
-                Reporter<b>{filing?.submitter || "Unavailable"}</b>
+                {t("reporter")}<b>{filing?.submitter || (locale === "ko" ? "정보 없음" : "Unavailable")}</b>
               </span>
               <span>
-                Status<b>{filing?.documentStatus || "Unavailable"}</b>
+                {t("receiver")}<b>{locale === "ko" ? filing?.receiverKo : filing?.receiverEn}</b>
               </span>
               <span>
-                Document No.<b>{filing?.receiptNumber || disclosureId}</b>
+                {t("documentNo")}<b>{filing?.receiptNumber || disclosureId}</b>
               </span>
             </div>
           </div>
@@ -265,51 +269,47 @@ export function DisclosureDetailPage() {
           <div className="filing-summary-grid">
             <section className="ai-summary">
                 <h2>
-                  AI Insight summary{" "}
-                  <img src="/assets/agent-badge.svg" alt="AI" />
+                  {t("aiSummary")}{" "}
+                  <img src="/assets/agent-badge-figma.svg" alt="AI" />
                 </h2>
                 {insightState.data?.sufficientEvidence ? [
-                  ["What", insightState.data.what],
-                  ["Why", insightState.data.why],
-                  ["Impact", insightState.data.impact],
+                  [t("what"), insightState.data.what],
+                  [t("why"), insightState.data.why],
+                  [t("impact"), insightState.data.impact],
                 ].map((row) => (
                   <p key={row[0]}>
                     <b>{row[0]}</b>
                     <span>{row[1]}</span>
                   </p>
-                )) : <div className="api-state api-loading" role="status"><span>{automaticError || insightState.error?.message || insightState.data?.refusalReason || (filing?.indexStatus === "READY" ? "Generating the grounded What / Why / Impact summary…" : "Preparing the filing for translation and grounded insight…")}</span>{indexRequested && filing?.indexStatus !== "READY" ? <small>Indexing is in progress. This screen updates automatically.</small> : null}</div>}
+                )) : <div className="api-state api-loading" role="status"><span>{automaticError || insightState.error?.message || insightState.data?.refusalReason || (filing?.indexStatus === "READY" ? (locale === "ko" ? "근거 기반 무엇·이유·영향 요약을 생성하는 중…" : "Generating the grounded What / Why / Impact summary…") : (locale === "ko" ? "공시 번역과 근거 기반 요약을 준비하는 중…" : "Preparing the filing for translation and grounded insight…"))}</span>{indexRequested && filing?.indexStatus !== "READY" ? <small>{locale === "ko" ? "색인 중이며 완료되면 자동으로 갱신됩니다." : "Indexing is in progress. This screen updates automatically."}</small> : null}</div>}
             </section>
             <aside className="mentioned filing-division">
-              <h2>Division</h2>
-              <div className="tags">
-                <span>{filing?.eventType?.replaceAll("_", " ") || "Event unavailable"}</span>
-                <span>{filing?.importance || "Importance unavailable"}</span>
-                <span>{filing?.sentiment || "Sentiment unavailable"}</span>
-                {filing?.correction ? <span>Correction</span> : null}
-              </div>
+              <h2>{t("division")}</h2>
+              <IntelligenceBadges sentiment={filing?.sentiment} importance={filing?.importance} eventType={filing?.eventType} />
             </aside>
           </div>
           <section className="translation">
             <h2>
               <span>
-                <img src="/assets/translation.svg" alt="" />
-                English translation
+                <img src="/assets/translation-figma.svg" alt="" />
+                {locale === "ko" ? t("koreanOriginal") : t("englishTranslation")}
               </span>
               <span className="translation-actions">
-                <button type="button" aria-label="Print" onClick={() => window.print()}>
+                <button type="button" aria-label={locale === "ko" ? "인쇄" : "Print"} onClick={() => window.print()}>
                   <img src="/assets/print.svg" alt="" />
                 </button>
-                <button type="button" aria-label="Share" onClick={() => void sharePage(filing?.titleEn || "KART disclosure")}>
+                <button type="button" aria-label={locale === "ko" ? "공유" : "Share"} onClick={() => void sharePage(filing?.titleEn || "KART disclosure")}>
                   <img src="/assets/share.svg" alt="" />
                 </button>
               </span>
             </h2>
             <button className="selection-hint" onClick={() => openKAgent({ contextType: "FILING", referenceId: disclosureId, prompt: "Explain the important terms and practical impact of this filing." })}>
-              <img src="/assets/selection-info.svg" alt="" /> Drag over any
-              highlighted term to look it up.
+              <img src="/assets/selection-info-figma.svg" alt="" /> {locale === "ko" ? "궁금한 내용을 선택해 AI에게 물어보세요." : "Drag over any highlighted term to look it up."}
             </button>
             <RemoteState {...detailState}>
-              {(value) => <div className="disclosure-structured-body">{value.documents.flatMap((document) => document.sections).filter((section) => section.kind !== "TEXT").map((section) => <DisclosureSection receiptNumber={disclosureId} section={section} key={section.id} />)}</div>}
+              {(value) => locale === "ko"
+                ? <div className="dart-original-documents">{value.documents.map((document) => document.originalHtml ? <DartOriginalDocument html={document.originalHtml} key={document.id} /> : <div className="disclosure-structured-body" key={document.id}>{document.sections.map((section) => <OriginalDisclosureSection section={section} key={section.id} />)}</div>)}</div>
+                : <div className="disclosure-structured-body">{value.documents.flatMap((document) => document.sections).map((section) => <DisclosureSection receiptNumber={disclosureId} section={section} key={section.id} />)}</div>}
             </RemoteState>
           </section>
           <DisclosureQuestionBox receiptNumber={disclosureId} ready={filing?.indexStatus === "READY"} />
@@ -317,6 +317,14 @@ export function DisclosureDetailPage() {
       </div>
     </div>
   );
+}
+
+function disclosureFilterKo(value: string) {
+  return ({
+    "Reporting & Governance": "보고·지배구조", "Periodic Reports": "정기보고서", "Audit Reports": "감사보고서", "Fair Trade": "공정거래",
+    "Capital & Shareholder Returns": "자본·주주환원", "Issuance Docs": "발행공시", "Ownership Disclosure": "지분공시", "Investment Funds": "펀드", "Asset Securitization": "자산유동화",
+    "Corporate Events & Control": "주요 경영·지배권", "Major Management Matters": "주요경영사항", "Listing/Delisting": "상장·상장폐지", "Other": "기타",
+  } as Record<string, string>)[value] || value;
 }
 
 type FilingSection = FilingDetail["documents"][number]["sections"][number];
@@ -341,7 +349,7 @@ function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; 
   );
   const table = translated?.translatedTableData ?? section.tableData;
   return <section id={`section-${section.id}`} aria-busy={pending}>
-    <h3>{translated?.translatedHeading || (pending ? "Translating section…" : section.heading || section.kind)}</h3>
+    {translated?.translatedHeading || section.heading ? <h3>{translated?.translatedHeading || section.heading}</h3> : null}
     {translated?.translatedText
       ? <p>{translated.translatedText}</p>
       : translated?.translatedTableData
@@ -352,6 +360,17 @@ function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; 
             ? <><StructuredTable data={table} /><small className="translation-source-notice">Original Korean table shown because an English translation is unavailable.</small></>
             : <><p>{section.text || "Section text unavailable."}</p><small className="translation-source-notice">Original Korean source shown because an English translation is unavailable.</small></>}
     {translation.requestError ? <small className="translation-status-error">{translation.requestError.message}</small> : null}
+  </section>;
+}
+
+function DartOriginalDocument({ html }: { html: string }) {
+  return <article className="dart-original-html" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function OriginalDisclosureSection({ section }: { section: FilingSection }) {
+  return <section>
+    {section.heading ? <h3>{section.heading}</h3> : null}
+    {section.kind === "TABLE" ? <StructuredTable data={section.tableData} /> : <p>{section.text}</p>}
   </section>;
 }
 
@@ -367,6 +386,7 @@ function StructuredTable({ data }: { data: unknown }) {
 type DisclosureAnswer = { answer: string; refused: boolean; refusalReason: string | null; citations: Array<{ id: string; heading: string | null; excerpt: string | null }> };
 
 function DisclosureQuestionBox({ receiptNumber, ready }: { receiptNumber: string; ready: boolean }) {
+  const { locale } = useLocale();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<DisclosureAnswer | null>(null);
   const [busy, setBusy] = useState(false);
@@ -378,5 +398,5 @@ function DisclosureQuestionBox({ receiptNumber, ready }: { receiptNumber: string
     catch (reason) { setError(reason instanceof Error ? reason.message : "The filing question could not be answered."); }
     finally { setBusy(false); }
   };
-  return <section className="disclosure-question"><h2>Ask about this filing</h2><p>Answers are restricted to indexed sections of the current disclosure version.</p><form onSubmit={(event) => { event.preventDefault(); void ask(); }}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="What changed and how could it affect investors?" disabled={!ready || busy} /><button disabled={!ready || !question.trim() || busy}>{busy ? "Checking sources…" : "Ask"}</button></form>{!ready ? <small>The document must finish indexing before grounded questions are available.</small> : null}{error ? <p className="auth-error">{error}</p> : null}{answer ? <blockquote><p>{answer.refused ? answer.refusalReason : answer.answer}</p>{answer.citations.map((citation) => <small key={citation.id}><b>{citation.heading || "Source section"}</b> {citation.excerpt}</small>)}</blockquote> : null}</section>;
+  return <section className="disclosure-question"><h2>{locale === "ko" ? "공시에 대해 질문하기" : "Ask about this filing"}</h2><p>{locale === "ko" ? "현재 공시 버전에서 색인된 원문만 근거로 답합니다." : "Answers are restricted to indexed sections of the current disclosure version."}</p><form onSubmit={(event) => { event.preventDefault(); void ask(); }}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={locale === "ko" ? "무엇이 바뀌었고 투자자에게 어떤 영향이 있나요?" : "What changed and how could it affect investors?"} disabled={!ready || busy} /><button disabled={!ready || !question.trim() || busy}>{busy ? locale === "ko" ? "근거 확인 중…" : "Checking sources…" : locale === "ko" ? "질문" : "Ask"}</button></form>{!ready ? <small>{locale === "ko" ? "근거 기반 질문은 문서 색인이 끝난 뒤 사용할 수 있습니다." : "The document must finish indexing before grounded questions are available."}</small> : null}{error ? <p className="auth-error">{error}</p> : null}{answer ? <blockquote><p>{answer.refused ? answer.refusalReason : answer.answer}</p>{answer.citations.map((citation) => <small key={citation.id}><b>{citation.heading || (locale === "ko" ? "원문 구간" : "Source section")}</b> {citation.excerpt}</small>)}</blockquote> : null}</section>;
 }

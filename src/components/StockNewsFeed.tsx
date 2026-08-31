@@ -6,10 +6,13 @@ import { ViewMoreButton } from "./ViewMoreButton";
 import { NewsThumbnail } from "./NewsThumbnail";
 import { useCursorPage } from "../hooks/useCursorPage";
 import type { NewsArticle } from "../types";
+import { useLocale } from "../state/LocaleContext";
+import { IntelligenceBadges } from "./IntelligenceBadges";
 
 const ITEMS_PER_PAGE = 5;
 
 export function TrendTag({ type }: { type: string }) {
+  const { locale } = useLocale();
   const normalized = type.toUpperCase();
   const negative = normalized === "NEGATIVE";
   const positive = normalized === "POSITIVE";
@@ -20,12 +23,13 @@ export function TrendTag({ type }: { type: string }) {
         src={negative ? "/assets/trend-down.svg" : positive ? "/assets/trend-up.svg" : "/assets/trend-neutral.svg"}
         alt=""
       />
-      {type}
+      {locale === "ko" ? ({ POSITIVE: "긍정", NEGATIVE: "부정", NEUTRAL: "중립" } as Record<string, string>)[normalized] || type : type}
     </span>
   );
 }
 
 export function StockNewsFeed({ stockCode: stockCodeOverride }: { stockCode?: string } = {}) {
+  const { locale } = useLocale();
   const [filter, setFilter] = useState("All");
   const [page, setPage] = useState(0);
   const { pathname } = useLocation();
@@ -88,15 +92,9 @@ export function StockNewsFeed({ stockCode: stockCodeOverride }: { stockCode?: st
           >
             <NewsThumbnail src={item.thumbnailUrl} />
             <div>
-              <div className="tags">
-                <TrendTag type={item.sentiment || "NEUTRAL"} />
-                <span className={item.importance === "HIGH" || item.importance === "CRITICAL" ? "priority" : ""}>
-                  {item.importance ? `${item.importance} priority` : "Analysis pending"}
-                </span>
-                {item.eventType ? <span>{item.eventType}</span> : null}
-              </div>
-              <h2>{item.englishTitle}</h2>
-              <p>{item.publisher} · {formatDate(item.publishedAt)} · Auto-translated title</p>
+              <IntelligenceBadges sentiment={item.sentiment} importance={item.importance} eventType={item.eventType} />
+              <h2>{locale === "ko" ? item.originalTitle : item.englishTitle || item.originalTitle}</h2>
+              <p>{item.publisher} · {formatDate(item.publishedAt)} · {locale === "ko" ? "한글 원문" : item.englishTitle ? "Auto-translated title" : "Translation preparing"}</p>
             </div>
           </Link>
         ))}

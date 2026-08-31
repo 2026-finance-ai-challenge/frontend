@@ -203,12 +203,15 @@ export type Filing = {
 
 export type FilingDetail = Filing & {
   submitter: string | null
+  receiverKo: string
+  receiverEn: string
   remark: string | null
   documents: Array<{
     id: string
     sourceFilename: string
     version: number
     contentHash: string
+    originalHtml: string | null
     sections: Array<{ id: string; ordinal: number; kind: string; heading: string | null; text: string | null; tableData: unknown }>
   }>
   versions: Array<{ receiptNumber: string; titleKo: string; filedDate: string; correction: boolean; current: boolean }>
@@ -255,6 +258,7 @@ export type Peer = {
   rank: number
   ticker: string
   companyName: string
+  logoUrl: string
   exchange: string
   country: string
   similarityScore: number
