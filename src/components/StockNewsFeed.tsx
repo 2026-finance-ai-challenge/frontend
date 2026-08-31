@@ -95,9 +95,8 @@ export function StockNewsFeed({ stockCode: stockCodeOverride }: { stockCode?: st
                 </span>
                 {item.eventType ? <span>{item.eventType}</span> : null}
               </div>
-              <h2>{item.englishTitle || item.originalTitle}</h2>
-              <p>{item.publisher} · {formatDate(item.publishedAt)} · {item.englishTitle ? "Auto-translated" : "Original language"}</p>
-              <p>{item.originalExcerpt || "Source excerpt unavailable."}</p>
+              <h2>{item.englishTitle}</h2>
+              <p>{item.publisher} · {formatDate(item.publishedAt)} · Auto-translated title</p>
             </div>
           </Link>
         ))}

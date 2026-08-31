@@ -9,6 +9,7 @@ import { WatchlistHeart } from "../components/WatchlistHeart";
 import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
 import type { Filing, NewsArticle, Stock, StockDetail } from "../types";
+import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 
 const filterGroups = [
   { title: "Reporting & Governance", items: [["Periodic Reports", "PERIODIC"], ["Audit Reports", "AUDIT"], ["Fair Trade", "FAIR_TRADE"]] },
@@ -63,8 +64,8 @@ export function SearchPage() {
     (item) => item.id,
   );
   const liveFilingGroups = useMemo(() => {
-    const groups = new Map<string, Filing[]>();
-    for (const filing of filingsState.data?.items ?? []) groups.set(filing.filedDate, [...(groups.get(filing.filedDate) ?? []), filing]);
+		const groups = new Map<string, PublishedFiling[]>();
+		for (const filing of (filingsState.data?.items ?? []).filter(isPublishedFiling)) groups.set(filing.filedDate, [...(groups.get(filing.filedDate) ?? []), filing]);
     return [...groups.entries()];
   }, [filingsState.data]);
   const stockItems = stocksState.data?.items ?? [];
@@ -111,8 +112,8 @@ export function SearchPage() {
       <div className="search-section-title"><h2>Related disclosures</h2></div>
       <section className="filing-filters search-filing-filters">
         <div className="date-filter"><span>Date range</span>
-          <input type="date" value={from} max={to || undefined} onChange={(event) => { setRange(""); setFrom(event.target.value); }} aria-label="Start date" /><b>–</b>
-          <input type="date" value={to} min={from || undefined} onChange={(event) => { setRange(""); setTo(event.target.value); }} aria-label="End date" />
+          <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={from} onChange={(event) => { setRange(""); setFrom(event.target.value); }} aria-label="Start date" /><b>–</b>
+          <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={to} onChange={(event) => { setRange(""); setTo(event.target.value); }} aria-label="End date" />
           {Object.keys(rangeDays).map((item) => <button type="button" className={range === item ? "active" : ""} onClick={() => selectRange(item)} key={item}>{item}</button>)}
           <button type="button" className="reset" onClick={resetFilters}>Reset</button>
         </div>
@@ -124,7 +125,7 @@ export function SearchPage() {
         {liveFilingGroups.map(([day, rows]) => <section key={day}><header><span>{formatDate(day, false)}</span><span>{rows.length} filings shown</span></header>
           {rows.map((filing) => <Link to={`/disclosures/${filing.receiptNumber}`} key={filing.receiptNumber}>
             <span>{formatDate(filing.detectedAt)}</span><i className={filing.correction ? "red" : "neutral"} /><span><b>{filing.issuerNameEn || filing.issuerNameKo}</b><small>{filing.stockCode} · {filing.market}</small></span>
-            <strong>{filing.titleEn || filing.titleKo}</strong><em>{filing.type}</em><span className={filing.indexStatus === "READY" ? "positive" : "medium"}>{filing.indexStatus}</span><span>{filing.correction ? "Correction" : filing.documentStatus}</span>
+            <strong>{filing.titleEn}</strong><em>{filing.eventType.replaceAll("_", " ")}</em><span className={filing.importance === "HIGH" || filing.importance === "CRITICAL" ? "positive" : "medium"}>{filing.importance}</span><span className={filing.sentiment.toLowerCase()}>{filing.sentiment}</span>
           </Link>)}
         </section>)}
       </div>}</RemoteState>
@@ -137,7 +138,7 @@ export function SearchPage() {
           <span className={item.sentiment === "NEGATIVE" ? "negative" : item.sentiment === "POSITIVE" ? "positive" : "neutral"}><img src={item.sentiment === "NEGATIVE" ? "/assets/trend-down.svg" : item.sentiment === "POSITIVE" ? "/assets/trend-up.svg" : "/assets/trend-neutral.svg"} alt="" />{item.sentiment || "Analysis pending"}</span>
           <span className={item.importance === "MEDIUM" ? "medium" : item.importance === "HIGH" || item.importance === "CRITICAL" ? "priority" : ""}>{item.importance ? `${item.importance} priority` : "Analysis pending"}</span>
           {item.eventType ? <span>{item.eventType}</span> : null}
-        </div><h3>{item.englishTitle || item.originalTitle}</h3><p>{item.publisher} · {formatDate(item.publishedAt)} · {item.englishTitle ? "Auto-translated" : "Original language"}</p><p>{item.englishBody?.split("\n\n")[0] || item.originalExcerpt || "Source excerpt unavailable."}</p></div>
+        </div><h3>{item.englishTitle}</h3><p>{item.publisher} · {formatDate(item.publishedAt)} · Auto-translated title</p></div>
       </Link>)}</>}</RemoteState>
       <ViewMoreButton resource="news" hasMore={Boolean(newsState.data?.nextCursor)} loading={newsState.loadingMore} error={newsState.loadMoreError} onClick={() => void newsState.loadMore()} />
     </section></main>

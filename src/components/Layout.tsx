@@ -313,8 +313,8 @@ export function Header({
             {!notificationsError && notifications?.items.length === 0 ? <p className="search-empty">No notifications yet.</p> : null}
             {notifications?.items.map((item) => <button type="button" className={item.read ? "is-read" : ""} onClick={() => void readNotification(item)} key={item.id}><span><b>{item.title}</b><small>{item.body}</small></span><time>{new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</time></button>)}
           </div> : null}
-          <span className="language" aria-label="Language: English">
-            <img src="/assets/flag-us.svg" alt="United States" /> EN
+          <span className="language" aria-label="Languages: English and Korean">
+            <img src="/assets/flag-us.svg" alt="United States" /> EN <i>/</i> KR
           </span>
           {profile ? (
             <Link className="profile-link" to="/my" aria-label="Open my page">
@@ -429,6 +429,14 @@ export function MarketBar() {
     asOf: string | null;
     source: string;
   } | null>(null);
+  const [foreignFlow, setForeignFlow] = useState<{
+    tradingDate: string | null;
+    netPurchaseAmountKrw: number | null;
+    consecutiveDays: number;
+    status: string;
+    asOf: string | null;
+    source: string;
+  } | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(
@@ -446,6 +454,9 @@ export function MarketBar() {
       api<NonNullable<typeof exchangeRate>>("/api/v1/market/exchange-rates/USD", { signal: controller.signal })
         .then(setExchangeRate)
         .catch(() => setExchangeRate(null)),
+      api<NonNullable<typeof foreignFlow>>("/api/v1/market/foreign-net-flow", { signal: controller.signal })
+        .then(setForeignFlow)
+        .catch(() => setForeignFlow(null)),
     ]);
     return () => controller.abort();
   }, []);
@@ -467,11 +478,15 @@ export function MarketBar() {
         <em>USD/KRW</em> {exchangeRate?.krwPerUnit == null
           ? "Unavailable"
           : exchangeRate.krwPerUnit.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-        {exchangeRate?.status && exchangeRate.status !== "UNAVAILABLE" ? <b>{exchangeRate.status}</b> : null}
       </span>
       <i />
       <span>
-        <em>Market data</em> {indices[0]?.status || "Unavailable"}
+        <em>Foreign net flow</em> {formatFlow(foreignFlow?.netPurchaseAmountKrw)}
+        {foreignFlow?.netPurchaseAmountKrw != null && foreignFlow.consecutiveDays > 0
+          ? <b className={foreignFlow.netPurchaseAmountKrw >= 0 ? "up" : "down"}>
+              {foreignFlow.consecutiveDays}{ordinalSuffix(foreignFlow.consecutiveDays)} net {foreignFlow.netPurchaseAmountKrw >= 0 ? "buying" : "selling"}
+            </b>
+          : null}
       </span>
       <i />
       <span
@@ -487,4 +502,18 @@ export function MarketBar() {
       </span>
     </div>
   );
+}
+
+function formatFlow(value: number | null | undefined) {
+  if (value === null || value === undefined) return "Unavailable";
+  const absolute = Math.abs(value);
+  const divisor = absolute >= 1_000_000_000_000 ? 1_000_000_000_000 : 1_000_000_000;
+  const suffix = divisor === 1_000_000_000_000 ? "T" : "B";
+  return `${value >= 0 ? "+" : "-"}${(absolute / divisor).toFixed(absolute / divisor >= 100 ? 0 : 1)}${suffix}`;
+}
+
+function ordinalSuffix(value: number) {
+  const remainder = value % 100;
+  if (remainder >= 11 && remainder <= 13) return "th";
+  return value % 10 === 1 ? "st" : value % 10 === 2 ? "nd" : value % 10 === 3 ? "rd" : "th";
 }

@@ -189,6 +189,10 @@ export type Filing = {
   type: string
   titleKo: string
   titleEn: string | null
+  eventType?: string
+  sentiment?: string
+  importance?: string
+  marketImpact?: string
   filedDate: string
   detectedAt: string
   correction: boolean
