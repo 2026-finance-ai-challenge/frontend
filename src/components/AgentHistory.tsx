@@ -1,17 +1,16 @@
 import { useState } from "react";
+import { api } from "../api";
+import { useRemote } from "../hooks/useRemote";
+import { RemoteState, formatDate } from "./RemoteState";
 
-const conversations = [
-  "Samsung Electronics Prospectus",
-  "Quarterly Earnings Report",
-  "SK Hynix Annual Report",
-  "Market Volatility Analysis",
-];
+type Room = { id: string; name: string; context: { type: string; title: string }; updatedAt: string; lastMessageAt: string | null };
 
 type AgentOverflowMenuProps = {
   onHistory: () => void;
+  onDelete?: () => void;
 };
 
-export function AgentOverflowMenu({ onHistory }: AgentOverflowMenuProps) {
+export function AgentOverflowMenu({ onHistory, onDelete }: AgentOverflowMenuProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -41,7 +40,11 @@ export function AgentOverflowMenu({ onHistory }: AgentOverflowMenuProps) {
           <button
             type="button"
             role="menuitem"
-            onClick={() => setOpen(false)}
+            disabled={!onDelete}
+            onClick={() => {
+              setOpen(false);
+              onDelete?.();
+            }}
           >
             <img src="/assets/delete.svg" alt="" /> Delete
           </button>
@@ -53,13 +56,14 @@ export function AgentOverflowMenu({ onHistory }: AgentOverflowMenuProps) {
 
 type AgentHistoryViewProps = {
   close: () => void;
-  onConversation: () => void;
+  onConversation: (roomId?: string) => void;
 };
 
 export function AgentHistoryView({
   close,
   onConversation,
 }: AgentHistoryViewProps) {
+  const rooms = useRemote((signal) => api<Room[]>("/api/v1/me/chats", { signal }), []);
   return (
     <aside
       className="agent-panel agent-history"
@@ -71,22 +75,24 @@ export function AgentHistoryView({
         <img src="/assets/close.svg" alt="" /> Close
       </button>
       <h2>Previous conversations</h2>
-      <div className="agent-history-list">
-        {conversations.map((conversation, index) => (
+      <RemoteState {...rooms} empty={(value) => !value.length}>
+      {(value) => <div className="agent-history-list">
+        {value.map((conversation, index) => (
           <button
             type="button"
             className={index === 1 ? "selected" : ""}
-            onClick={onConversation}
-            key={conversation}
+            onClick={() => onConversation(conversation.id)}
+            key={conversation.id}
           >
             <span>
-              <b>{conversation}</b>
-              <small>Aug 14, 14:20 KST</small>
+              <b>{conversation.name}</b>
+              <small>{conversation.context.type} · {formatDate(conversation.lastMessageAt || conversation.updatedAt)}</small>
             </span>
             <img src="/assets/overflow.svg" alt="" />
           </button>
         ))}
-      </div>
+      </div>}
+      </RemoteState>
     </aside>
   );
 }

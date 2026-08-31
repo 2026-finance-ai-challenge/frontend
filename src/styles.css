@@ -780,16 +780,19 @@ a {
   height: 2px;
 }
 .view-all {
+  width: 100%;
   height: 65px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
+  border: 0;
+  background: transparent;
   color: var(--gold);
 }
 .view-all img {
-  width: 5px;
-  height: 10px;
+  width: 10px;
+  height: 6px;
 }
 .ownership-section {
   padding-top: 150px;
@@ -3080,6 +3083,19 @@ mark {
   width: 10px;
   height: 6px;
 }
+.view-more-wrap {
+  width: 100%;
+  text-align: center;
+}
+.view-more-wrap > p {
+  margin: -12px 0 20px;
+  color: var(--red);
+  font-size: 14px;
+}
+.view-more-wrap button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
 .filing-detail-main {
   transition: width 0.25s;
 }
@@ -4194,6 +4210,40 @@ mark {
     min-height: 100vh;
   }
 }
+
+.api-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 96px;
+  padding: 24px;
+  border: 1px solid #e7e4de;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #6f6d68;
+  text-align: center;
+}
+.api-state b,
+.api-state span { display: block; }
+.api-state button,
+.api-state a { color: #947a00; text-decoration: underline; }
+.api-error { border-color: #efd7d4; color: #a32b20; }
+.api-loading { animation: api-pulse 1.25s ease-in-out infinite alternate; }
+@keyframes api-pulse { to { opacity: 0.52; } }
+
+.live-stock-chart {
+  display: block;
+  width: 100%;
+  min-height: 360px;
+  color: #9a8300;
+  overflow: visible;
+}
+.live-stock-chart text { fill: #777; font: 14px "Hanken Grotesk", sans-serif; }
+.disclosure-structured-body { display: grid; gap: 28px; padding: 18px 0; }
+.disclosure-structured-body section { padding: 24px; border: 1px solid #e7e4de; border-radius: 10px; }
+.disclosure-structured-body pre { max-width: 100%; overflow: auto; white-space: pre-wrap; }
+.article-selection-action { position: sticky; bottom: 24px; z-index: 4; width: min(540px, 100%); margin: 20px auto; }
 .search-page {
   overflow-x: hidden;
 }
@@ -4372,6 +4422,82 @@ mark {
   background: #fbedd6;
   color: #784b00;
 }
+/* Figma 264:3322 — 1340px disclosure table at the 1920px desktop canvas. */
+:is(.search-filings, .disclosure-rows) section header {
+  min-height: 65px;
+  height: 65px;
+  padding: 0 30px;
+  color: #555;
+  font-size: 18px;
+  line-height: 25px;
+}
+:is(.search-filings, .disclosure-rows) section > a {
+  grid-template-columns: 10.78% 3.9% 18.67% 37.97% 8.59% 12.19% 7.89%;
+  gap: 0;
+  min-height: 89px;
+  height: 89px;
+  padding: 0 30px;
+  color: #555;
+  font-size: 18px;
+  line-height: 25px;
+}
+:is(.search-filings, .disclosure-rows) section > a > * {
+  min-width: 0;
+}
+:is(.search-filings, .disclosure-rows) section > a > span:first-child {
+  white-space: nowrap;
+}
+:is(.search-filings, .disclosure-rows) section > a > span:nth-child(3) {
+  align-self: center;
+}
+:is(.search-filings, .disclosure-rows) section > a b,
+:is(.search-filings, .disclosure-rows) section > a small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.search-filings, .disclosure-rows) section > a b {
+  color: #000;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
+}
+:is(.search-filings, .disclosure-rows) section > a small {
+  margin-top: 4px;
+  color: #555;
+  font-size: 18px;
+  line-height: 25px;
+}
+:is(.search-filings, .disclosure-rows) section > a strong {
+  overflow: hidden;
+  color: #000;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.search-filings, .disclosure-rows) section > a em {
+  overflow: hidden;
+  color: #888;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.search-filings, .disclosure-rows) section > a > span:nth-last-child(-n + 2) {
+  justify-self: start;
+  max-width: calc(100% - 16px);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 25px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .related-news > a {
   display: grid;
   grid-template-columns: 220px 1fr;
@@ -4406,6 +4532,16 @@ mark {
     display: none;
   }
 }
+
+.disclosure-section-actions { display: flex; gap: 8px; margin-top: 12px; }
+.disclosure-section-actions button, .disclosure-question button { padding: 9px 12px; border: 1px solid #d8d3c3; border-radius: 6px; }
+.disclosure-question { margin: 40px 0 80px; padding: 28px; border-radius: 12px; background: #f7f5ef; }
+.disclosure-question h2 { margin-top: 0; }
+.disclosure-question form { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin: 16px 0; }
+.disclosure-question input { min-height: 46px; padding: 0 14px; border: 1px solid #d8d3c3; border-radius: 7px; background: #fff; }
+.disclosure-question blockquote { display: grid; gap: 8px; margin: 18px 0 0; padding: 18px; border-left: 3px solid #a58b00; background: #fff; }
+.agent-message-action { display: block; margin-top: 10px; color: #806d00; font-size: 12px; text-decoration: underline; }
+.agent-thinking button { margin-left: auto; color: #806d00; font-size: 12px; }
 @media (max-width: 600px) {
   .search-stock-grid {
     grid-template-columns: 1fr;
@@ -4430,5 +4566,78 @@ mark {
   }
   .related-news > a > img {
     width: 100%;
+  }
+}
+
+.nav-actions { position: relative; }
+.notification-button { position: relative; }
+.notification-button > span { position: absolute; min-width: 17px; height: 17px; padding: 0 4px; right: -4px; top: -5px; border-radius: 999px; background: #d60912; color: #fff; font-size: 10px; line-height: 17px; }
+.notification-popover { position: absolute; z-index: 120; width: 360px; max-height: 480px; overflow: auto; right: 125px; top: 48px; padding: 10px; border: 1px solid #dedcd7; border-radius: 12px; background: #fff; box-shadow: 0 20px 48px rgb(0 0 0 / 15%); }
+.notification-popover header { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 12px; }
+.notification-popover header button { color: #8e7900; font-size: 12px; }
+.notification-popover > button { display: flex; width: 100%; gap: 10px; justify-content: space-between; padding: 12px 10px; border-radius: 8px; text-align: left; }
+.notification-popover > button:hover { background: #f6f4ed; }
+.notification-popover > button:not(.is-read) { background: #fbf7df; }
+.notification-popover > button span { display: grid; gap: 3px; }
+.notification-popover > button small { color: #6e6e6e; font-weight: 400; }
+.notification-popover time { flex: 0 0 auto; color: #8b8b8b; font-size: 11px; }
+
+.tax-upload form { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 10px; margin: 18px 0; }
+.tax-upload select, .tax-upload input, .account-security input { min-height: 44px; padding: 0 12px; border: 1px solid #d8d6d0; border-radius: 7px; background: #fff; }
+.tax-upload form button, .account-security button { min-height: 44px; padding: 0 18px; border-radius: 7px; background: #050505; color: #fff; }
+.tax-document-list { display: grid; gap: 8px; }
+.tax-document-list article { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 12px; border: 1px solid #e4e2dd; border-radius: 8px; }
+.tax-document-list article > div:first-child { display: grid; min-width: 0; }
+.tax-document-list article b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tax-document-list article small { color: #777; }
+.tax-document-list article > div:last-child { display: flex; gap: 6px; }
+.tax-document-list button { padding: 7px 10px; border: 1px solid #d8d6d0; border-radius: 6px; }
+.tax-document-status { padding: 5px 8px; border-radius: 6px; background: #f0efec; font-size: 11px; }
+.tax-document-status.is-verified { background: #e7f3e1; color: #417e31; }
+.tax-document-status.is-rejected, .tax-document-status.is-failed { background: #fde6e4; color: #d60912; }
+
+.account-security { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 24px; border-radius: 12px; background: #fff; }
+.account-security form, .account-security > div { display: flex; flex-direction: column; gap: 10px; }
+.account-security h3 { margin: 0; }
+.account-security p { margin: 0; color: #727272; }
+.account-security .danger-zone { padding-left: 16px; border-left: 1px solid #ead1cf; }
+.account-security .danger-zone button { background: #c20b13; }
+.account-security > .auth-success, .account-security > .auth-error { grid-column: 1 / -1; }
+
+@media (max-width: 900px) {
+  .notification-popover { position: fixed; left: 16px; right: 16px; top: 78px; width: auto; }
+  .tax-upload form, .account-security { grid-template-columns: 1fr; }
+  .account-security .danger-zone { padding: 16px 0 0; border-left: 0; border-top: 1px solid #ead1cf; }
+}
+
+/* Keep the disclosure rows compact when the desktop table collapses. */
+@media (max-width: 1000px) {
+  :is(.search-filings, .disclosure-rows) section > a {
+    grid-template-columns: 100px 10px 160px minmax(0, 1fr);
+    padding: 0 20px;
+  }
+  :is(.search-filings, .disclosure-rows) section > a > *:nth-child(n + 5) {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  :is(.search-filings, .disclosure-rows) section header {
+    padding: 0 14px;
+    font-size: 15px;
+  }
+  :is(.search-filings, .disclosure-rows) section > a {
+    grid-template-columns: 75px 8px minmax(0, 1fr);
+    padding: 0 14px;
+    font-size: 15px;
+  }
+  :is(.search-filings, .disclosure-rows) section > a > *:nth-child(n + 4) {
+    display: none;
+  }
+  :is(.search-filings, .disclosure-rows) section > a b {
+    font-size: 18px;
+  }
+  :is(.search-filings, .disclosure-rows) section > a small {
+    font-size: 15px;
   }
 }

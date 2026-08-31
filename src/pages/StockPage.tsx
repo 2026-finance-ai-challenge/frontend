@@ -1,46 +1,18 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { StockNewsFeed } from "../components/StockNewsFeed";
 import { WatchlistHeart } from "../components/WatchlistHeart";
 import { StockDisclosureFeed } from "./DisclosurePage";
-
-const metrics = [
-  ["High", "123,000"],
-  ["Low", "123,000"],
-  ["Volume", "20.1M"],
-  ["Prev close", "192.06"],
-];
-const alertMetrics = [
-  ["High", "196.68"],
-  ["Low", "186.12"],
-  ["Volume", "20.1M"],
-  ["Prev close", "192.06"],
-];
-const peers = [
-  [
-    "Overall business",
-    "Intel",
-    "Closest overall business reference diversified semi conductor manufacturing with in-house fabrication.",
-  ],
-  [
-    "Semi-conductor",
-    "TSMC",
-    "Closest reference for the foundry and logic side of the business.",
-  ],
-  [
-    "Consumer electronics",
-    "Advanced Micro Devices",
-    "Closest reference for the consumer device and computing segment.",
-  ],
-];
+import { api } from "../api";
+import { RemoteState, formatDate, formatNumber } from "../components/RemoteState";
+import { useProfile, useRemote } from "../hooks/useRemote";
+import type { GlobalPeer, StockDetail } from "../types";
 
 type StockAlert = "vi" | "price-limit";
 
-function selectInitialAlert(alertParam: string | null): StockAlert {
-  if (alertParam === "price-limit") return "price-limit";
-  if (alertParam === "1" || alertParam === "vi") return "vi";
-  return Math.random() < 0.5 ? "vi" : "price-limit";
+function periodToLimit(period: string) {
+  return ({ "1D": 2, "1W": 7, "1M": 31, "3M": 93, "1Y": 366 } as Record<string, number>)[period] ?? 31;
 }
 
 function formatCountdown(seconds: number) {
@@ -51,12 +23,15 @@ function formatCountdown(seconds: number) {
 
 export function StockPage() {
   const [params] = useSearchParams();
+  const { stockCode = "005930" } = useParams();
+  const profile = useProfile();
+  const [period, setPeriod] = useState(params.get("period") || "1M");
+  const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile]);
+  const historyState = useRemote((signal) => api<{ status: string; items: Array<{ tradingDate: string; closePriceKrw: number }> }>(`/api/v1/market/stocks/${stockCode}/history?limit=${periodToLimit(period)}`, { signal }), [stockCode, period]);
+  const peersState = useRemote((signal) => api<GlobalPeer>(`/api/v1/market/stocks/${stockCode}/global-peers`, { signal }), [stockCode]);
   const [insights, setInsights] = useState(true);
-  const [alert, setAlert] = useState<StockAlert | null>(() =>
-    selectInitialAlert(params.get("alert")),
-  );
+  const [alert, setAlert] = useState<StockAlert | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(120);
-  const [period, setPeriod] = useState("1M");
   const initialTab = params.get("tab");
   const [activeTab, setActiveTab] = useState<
     "chart" | "news" | "disclosure"
@@ -66,6 +41,19 @@ export function StockPage() {
       : "chart",
   );
   const isAlertSnapshot = alert !== null;
+  useEffect(() => {
+    const quote = detailState.data?.quote;
+    if (!quote) return;
+    if (quote.viActive || quote.singlePriceTrading) setAlert("vi");
+    else if (quote.priceLimitState && quote.priceLimitState !== "NONE") setAlert("price-limit");
+  }, [detailState.data]);
+  useEffect(() => {
+    if (!profile) return;
+    void api("/api/v1/me/recently-viewed", {
+      method: "POST",
+      body: JSON.stringify({ itemType: "STOCK", referenceId: stockCode, stockCode }),
+    }).catch(() => undefined);
+  }, [profile, stockCode]);
   useEffect(() => {
     if (alert !== "vi") return;
 
@@ -93,31 +81,36 @@ export function StockPage() {
           <Header />
           <div className="page-shell stock-summary">
             <BackLink to="/" />
+            {detailState.error ? <RemoteState {...detailState}>{() => null}</RemoteState> : null}
             <div className="stock-title-row">
               <div>
                 <h1>
-                  Samsung Electronics{" "}
+                  {detailState.data?.nameEn || detailState.data?.nameKo || "Loading stock…"}{" "}
                   <WatchlistHeart
                     className="heart-button"
-                    itemId="samsung-electronics"
-                    itemName="Samsung Electronics"
+                    itemId={stockCode}
+                    itemName={detailState.data?.nameEn || detailState.data?.nameKo || stockCode}
                   />
                 </h1>
-                <p>005930&nbsp;&nbsp; · &nbsp;&nbsp;KOSPI</p>
+                <p>{stockCode}&nbsp;&nbsp; · &nbsp;&nbsp;{detailState.data?.market || "—"}</p>
                 <p>
-                  Market closed · Aug 14, 15:30 KST · Converted at 1,318.40
-                  KRW/USD
+                  {detailState.data?.quote.status || "Loading"} · {formatDate(detailState.data?.quote.asOf)} · Converted at {formatNumber(detailState.data?.exchangeRate.krwPerUnit)} KRW/USD
                 </p>
               </div>
               <div className="stock-price">
-                <strong>{isAlertSnapshot ? "$188.10" : "₩288,020"}</strong>
+                <strong>{formatNumber(detailState.data?.quote.currentPriceKrw, { style: "currency", currency: "KRW", maximumFractionDigits: 0 })}</strong>
                 <span>
-                  -1,000 <img src="/assets/price-down.svg" alt="" /> -1.2%
+                  {formatNumber(detailState.data?.quote.changeAmountKrw)} <img src="/assets/price-down.svg" alt="" /> {detailState.data?.quote.changeRate === null || detailState.data?.quote.changeRate === undefined ? "Unavailable" : `${detailState.data.quote.changeRate.toFixed(2)}%`}
                 </span>
               </div>
             </div>
             <div className="stock-metrics">
-              {(isAlertSnapshot ? alertMetrics : metrics).map(
+              {[
+                ["High", formatNumber(detailState.data?.quote.highPriceKrw)],
+                ["Low", formatNumber(detailState.data?.quote.lowPriceKrw)],
+                ["Volume", formatNumber(detailState.data?.quote.volume, { notation: "compact" })],
+                ["Open", formatNumber(detailState.data?.quote.openPriceKrw)],
+              ].map(
                 ([label, value]) => (
                   <div key={label}>
                     <span>{label}</span>
@@ -127,19 +120,21 @@ export function StockPage() {
               )}
             </div>
             <div className="stock-badges">
+              {detailState.data?.subjectToForeignAcquisitionLimit ? (
               <button
                 className="stock-danger"
                 onClick={() => openAlert("price-limit")}
               >
                 <img src="/assets/status-warning.svg" alt="" />
-                Near reached
-              </button>
+                {detailState.data.foreignOwnership.limitExhaustionRate === null ? "Foreign limit unavailable" : `${detailState.data.foreignOwnership.limitExhaustionRate.toFixed(1)}% foreign limit used`}
+              </button>) : null}
+              {detailState.data?.quote.viActive || detailState.data?.quote.singlePriceTrading ? (
               <button onClick={() => openAlert("vi")}>
                 {!isAlertSnapshot && <img src="/assets/timer.svg" alt="" />}
                 {isAlertSnapshot
                   ? "VI Triggered single price auction"
                   : "VI Triggered (01:43)"}
-              </button>
+              </button>) : null}
               {isAlertSnapshot && (
                 <span className="stock-resume">Resumes 15:34 KST</span>
               )}
@@ -218,10 +213,9 @@ export function StockPage() {
                     <img src="/assets/chart-expand.svg" alt="Expand chart" />
                   </div>
                 </div>
-                <img
-                  src="/assets/stock-chart.png"
-                  alt={`Samsung Electronics ${period} price and foreign ownership chart`}
-                />
+                <RemoteState {...historyState} empty={(value) => !value.items.length}>
+                  {(value) => <PriceChart items={value.items} label={`${detailState.data?.nameEn || stockCode} ${period} price chart`} />}
+                </RemoteState>
               </section>
               <aside className="ownership-panel">
                 <h2>Foreign ownership</h2>
@@ -232,11 +226,11 @@ export function StockPage() {
                 <div className="ownership-values">
                   <div>
                     <span>Previous ownership</span>
-                    <strong>20.61%</strong>
+                    <strong>{detailState.data?.foreignOwnership.ownershipRate === null || detailState.data?.foreignOwnership.ownershipRate === undefined ? "Unavailable" : `${detailState.data.foreignOwnership.ownershipRate.toFixed(2)}%`}</strong>
                   </div>
                   <div>
                     <span>Legal limit</span>
-                    <strong>40.01%</strong>
+                    <strong>{detailState.data?.foreignOwnership.foreignLimitQuantity && detailState.data?.foreignOwnership.totalListedQuantity ? `${(detailState.data.foreignOwnership.foreignLimitQuantity / detailState.data.foreignOwnership.totalListedQuantity * 100).toFixed(2)}%` : "Not applicable"}</strong>
                   </div>
                 </div>
                 <div className="prediction">
@@ -246,13 +240,13 @@ export function StockPage() {
                   </div>
                   <div>
                     <span>
-                      Min<small>20.64%</small>
+                      Min<small>{percentage(detailState.data?.foreignLimitPrediction.minRate)}</small>
                     </span>
                     <span>
-                      Base<small>20.64%</small>
+                      Base<small>{percentage(detailState.data?.foreignLimitPrediction.baseRate)}</small>
                     </span>
                     <span>
-                      Max<small>20.64%</small>
+                      Max<small>{percentage(detailState.data?.foreignLimitPrediction.maxRate)}</small>
                     </span>
                   </div>
                 </div>
@@ -275,39 +269,36 @@ export function StockPage() {
           <h2>Company insights</h2>
           <div className="context-chip">
             <img src="/assets/agent-context.svg" alt="" />
-            Context attached · Samsung Electronics
+            Context attached · {detailState.data?.nameEn || detailState.data?.nameKo || stockCode}
           </div>
-          <div className="peer-intro">
+          <RemoteState {...peersState}>
+          {(peerData) => <><div className="peer-intro">
             <h3>
-              Samsung Electronics maps closest
+              {peerData.stockNameEn} maps closest
               <br />
-              to Intel
+              to {peerData.primaryPeer.companyName}
             </h3>
-            <p>
-              Matched with Intel as the closest US-listed reference peer for
-              this Korean semiconductor business. Scale and financial data are
-              used as secondary context; Intel is treated as a mega-cap market
-              reference, not a one-for-one size match.
-            </p>
+            <p>{peerData.summary}</p>
             <div>
               <span>AI</span>
-              <span>Consumer Electronics</span>
-              <span>Semi-conductors</span>
+              <span>{peerData.confidenceLevel}</span>
+              <span>{Math.round(peerData.confidenceScore * 100)}% confidence</span>
             </div>
           </div>
           <div className="peer-cards">
-            {peers.map(([category, name, copy]) => (
-              <article key={name}>
-                <span>{category}</span>
-                <h3>{name}</h3>
-                <p>{copy}</p>
+            {peerData.comparisons.map((comparison) => (
+              <article key={comparison.dimension}>
+                <span>{comparison.dimension}</span>
+                <h3>{comparison.peer.companyName}</h3>
+                <p>{comparison.description}</p>
               </article>
             ))}
           </div>
           <p className="peer-note">
-            Peers are matched on sector, business mix and financial profile. A
-            reference point for orientation, not a valuation claim.
+            {peerData.source} · Financial data as of {peerData.financialDataAsOf}. A reference point for orientation, not a valuation claim.
           </p>
+          </>}
+          </RemoteState>
         </aside>
       )}
 
@@ -361,4 +352,29 @@ export function StockPage() {
       )}
     </div>
   );
+}
+
+function percentage(value: number | null | undefined) {
+  return value === null || value === undefined ? "Unavailable" : `${value.toFixed(2)}%`;
+}
+
+function PriceChart({ items, label }: {
+  items: Array<{ tradingDate: string; closePriceKrw: number }>;
+  label: string;
+}) {
+  const prices = items.map((item) => item.closePriceKrw);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = Math.max(max - min, 1);
+  const points = items.map((item, index) => {
+    const x = items.length === 1 ? 0 : index / (items.length - 1) * 1000;
+    const y = 250 - ((item.closePriceKrw - min) / range) * 220;
+    return `${x},${y}`;
+  }).join(" ");
+  return <svg className="live-stock-chart" role="img" aria-label={label} viewBox="0 0 1000 280" preserveAspectRatio="none">
+    <title>{label}</title>
+    <polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+    <text x="0" y="275">{items[0]?.tradingDate}</text>
+    <text x="1000" y="275" textAnchor="end">{items.at(-1)?.tradingDate}</text>
+  </svg>;
 }
