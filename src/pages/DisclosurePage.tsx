@@ -330,26 +330,9 @@ async function sharePage(title: string) {
 }
 
 function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; section: FilingSection }) {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [visible, setVisible] = useState(false);
-  const translation = useAutomaticTranslation(`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`, visible);
+  const translation = useAutomaticTranslation(`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`);
   const translated = translation.data?.status === "READY" ? translation.data.result : null;
-  useEffect(() => {
-    const target = sectionRef.current;
-    if (!target) return;
-    if (!("IntersectionObserver" in window)) {
-      setVisible(true);
-      return;
-    }
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return;
-      setVisible(true);
-      observer.disconnect();
-    }, { rootMargin: "600px 0px" });
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, []);
-  const pending = visible && (
+  const pending = (
     translation.loading
     || translation.requesting
     || translation.data?.status === "NOT_REQUESTED"
@@ -357,7 +340,7 @@ function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; 
     || translation.data?.status === "PROCESSING"
   );
   const table = translated?.translatedTableData ?? section.tableData;
-  return <section id={`section-${section.id}`} ref={sectionRef} aria-busy={pending}>
+  return <section id={`section-${section.id}`} aria-busy={pending}>
     <h3>{translated?.translatedHeading || (pending ? "Translating section…" : section.heading || section.kind)}</h3>
     {translated?.translatedText
       ? <p>{translated.translatedText}</p>
