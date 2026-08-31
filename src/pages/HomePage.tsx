@@ -46,7 +46,7 @@ function ownershipTone(item: ForeignMonitor): keyof typeof ownershipLabels {
 }
 
 export function HomePage() {
-  const { locale } = useLocale();
+  const { locale, stockName } = useLocale();
   const [taxAgentOpen, setTaxAgentOpen] = useState(false);
   const [ownershipStart, setOwnershipStart] = useState(0);
   const [newsStart, setNewsStart] = useState(0);
@@ -135,10 +135,10 @@ export function HomePage() {
               </p>
             </div>
             <div className="slider-controls">
-              <button type="button" aria-label="Previous story" disabled={newsStart === 0} onClick={() => setNewsStart((current) => Math.max(0, current - 1))}>
+              <button type="button" aria-label={locale === "ko" ? "이전 뉴스" : "Previous story"} disabled={newsStart === 0} onClick={() => setNewsStart((current) => Math.max(0, current - 1))}>
                 <img src="/assets/carousel-prev.svg" alt="" />
               </button>
-              <button type="button" aria-label="Next story" disabled={newsStart + 2 >= newsItems.length} onClick={() => setNewsStart((current) => current + 1)}>
+              <button type="button" aria-label={locale === "ko" ? "다음 뉴스" : "Next story"} disabled={newsStart + 2 >= newsItems.length} onClick={() => setNewsStart((current) => current + 1)}>
                 <img src="/assets/carousel-next.svg" alt="" />
               </button>
             </div>
@@ -189,7 +189,7 @@ export function HomePage() {
             <div className="slider-controls ownership-controls">
               <button
                 type="button"
-                aria-label="Previous ownership card"
+                aria-label={locale === "ko" ? "이전 외국인 보유 카드" : "Previous ownership card"}
                 disabled={ownershipStart === 0 || ownershipItems.length === 0}
                 onClick={() =>
                   setOwnershipStart((current) =>
@@ -209,7 +209,7 @@ export function HomePage() {
               </button>
               <button
                 type="button"
-                aria-label="Next ownership card"
+                aria-label={locale === "ko" ? "다음 외국인 보유 카드" : "Next ownership card"}
                 onClick={() =>
                   setOwnershipStart(
                     (current) => ownershipItems.length ? (current + 1) % ownershipItems.length : 0,
@@ -246,7 +246,7 @@ export function HomePage() {
                       {locale === "ko" ? ({ danger: "한도 도달", warning: "한도 근접", safe: "여유", unavailable: "데이터 없음" } as const)[tone] : ownershipLabels[tone]}
                     </span>
                     <div>
-                      <h3>{item.stock.nameEn || item.stock.nameKo}</h3>
+                      <h3>{stockName(item.stock)}</h3>
                       <p>{item.stock.stockCode} · {item.stock.sector || item.stock.market}</p>
                     </div>
                   </div>
@@ -317,7 +317,7 @@ export function HomePage() {
               </div>
               {taxRatesState.data?.map((rate) => {
                 const difference = rate.treatyDividendRate === null ? null : rate.treatyDividendRate - rate.domesticDefaultRate;
-                const row = [rate.countryName, `${rate.domesticDefaultRate}%`, rate.treatyDividendRate === null ? "Unavailable" : `${rate.treatyDividendRate}%`, difference === null ? "—" : `${difference.toFixed(1)}pp`];
+                const row = [rate.countryName, `${rate.domesticDefaultRate}%`, rate.treatyDividendRate === null ? locale === "ko" ? "정보 없음" : "Unavailable" : `${rate.treatyDividendRate}%`, difference === null ? "—" : `${difference.toFixed(1)}pp`];
                 return <div key={rate.countryCode}>
                   {row.map((cell, i) => (
                     <span className={i === 3 ? "safe-text" : ""} key={cell}>
@@ -326,12 +326,12 @@ export function HomePage() {
                   ))}
                 </div>;
               })}
-              {["Additional treaty data", "Additional treaty data", "Additional treaty data", "Additional treaty data"].map((label, index) => (
-                <div className="treaty-row-locked" aria-label="Additional country treaty data unavailable" key={`${label}-${index}`}>
+              {Array.from({ length: 4 }, () => locale === "ko" ? "추가 조세조약 데이터" : "Additional treaty data").map((label, index) => (
+                <div className="treaty-row-locked" aria-label={locale === "ko" ? "추가 국가 조세조약 데이터 없음" : "Additional country treaty data unavailable"} key={`${label}-${index}`}>
                   <span>{label}</span><span>—</span><span>—</span><span>—</span>
                 </div>
               ))}
-              {taxRatesState.error ? <div className="api-state api-error">Treaty rate data unavailable.</div> : null}
+              {taxRatesState.error ? <div className="api-state api-error">{locale === "ko" ? "조세조약 세율 데이터를 불러올 수 없습니다." : "Treaty rate data unavailable."}</div> : null}
             </article>
           </div>
           <p className="tax-note">{locale === "ko" ? "개인 포트폴리오 배당의 일반 조약세율입니다. 실제 적용 세율은 증권사에 확인하세요. 세무 자문이 아닙니다." : "Standard treaty rates for individual portfolio dividends. Your rate may differ—confirm with your broker. Not tax advice."}</p>

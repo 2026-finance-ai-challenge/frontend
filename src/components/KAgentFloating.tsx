@@ -26,6 +26,7 @@ type Message = {
 type Generation = { id: string; status: string; errorCode: string | null };
 
 export function KAgentFloating() {
+  const { locale } = useLocale();
   const [open, setOpen] = useState(false);
   const [context, setContext] = useState<KAgentContext>({ contextType: "GENERAL" });
   const launcherRef = useRef<HTMLButtonElement>(null);
@@ -42,7 +43,7 @@ export function KAgentFloating() {
     return () => window.removeEventListener(OPEN_AGENT_EVENT, handleOpen);
   }, []);
   return <>
-    <button type="button" className="agent-launcher" aria-label="Open K-Agent" aria-haspopup="dialog" aria-expanded={open} onClick={() => { setContext({ contextType: "GENERAL" }); setOpen(true); }} ref={launcherRef} hidden={open}>
+    <button type="button" className="agent-launcher" aria-label={locale === "ko" ? "K-Agent 열기" : "Open K-Agent"} aria-haspopup="dialog" aria-expanded={open} onClick={() => { setContext({ contextType: "GENERAL" }); setOpen(true); }} ref={launcherRef} hidden={open}>
       <span className="agent-launcher-surface" aria-hidden="true" />
       <span className="agent-launcher-inner" aria-hidden="true" />
       <img src="/assets/k-agent-floating-figma.svg" alt="" />

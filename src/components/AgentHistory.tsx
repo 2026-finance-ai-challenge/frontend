@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import { useRemote } from "../hooks/useRemote";
 import { RemoteState, formatDate } from "./RemoteState";
+import { useLocale } from "../state/LocaleContext";
 
 type Room = { id: string; name: string; context: { type: string; title: string }; updatedAt: string; lastMessageAt: string | null };
 
@@ -11,6 +12,7 @@ type AgentOverflowMenuProps = {
 };
 
 export function AgentOverflowMenu({ onHistory, onDelete }: AgentOverflowMenuProps) {
+  const { locale } = useLocale();
   const [open, setOpen] = useState(false);
 
   return (
@@ -18,7 +20,7 @@ export function AgentOverflowMenu({ onHistory, onDelete }: AgentOverflowMenuProp
       <button
         type="button"
         className="agent-overflow-button"
-        aria-label="Open conversation menu"
+        aria-label={locale === "ko" ? "대화 메뉴 열기" : "Open conversation menu"}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((current) => !current)}
@@ -35,7 +37,7 @@ export function AgentOverflowMenu({ onHistory, onDelete }: AgentOverflowMenuProp
               onHistory();
             }}
           >
-            <img src="/assets/history.svg" alt="" /> History
+            <img src="/assets/history.svg" alt="" /> {locale === "ko" ? "대화 기록" : "History"}
           </button>
           <button
             type="button"
@@ -46,7 +48,7 @@ export function AgentOverflowMenu({ onHistory, onDelete }: AgentOverflowMenuProp
               onDelete?.();
             }}
           >
-            <img src="/assets/delete.svg" alt="" /> Delete
+            <img src="/assets/delete.svg" alt="" /> {locale === "ko" ? "삭제" : "Delete"}
           </button>
         </div>
       ) : null}
@@ -63,18 +65,19 @@ export function AgentHistoryView({
   close,
   onConversation,
 }: AgentHistoryViewProps) {
+  const { locale } = useLocale();
   const rooms = useRemote((signal) => api<Room[]>("/api/v1/me/chats", { signal }), []);
   return (
     <aside
       className="agent-panel agent-history"
       role="dialog"
       aria-modal="true"
-      aria-label="Chat history"
+      aria-label={locale === "ko" ? "대화 기록" : "Chat history"}
     >
       <button className="agent-close" type="button" onClick={close}>
-        <img src="/assets/close.svg" alt="" /> Close
+        <img src="/assets/close.svg" alt="" /> {locale === "ko" ? "닫기" : "Close"}
       </button>
-      <h2>Previous conversations</h2>
+      <h2>{locale === "ko" ? "이전 대화" : "Previous conversations"}</h2>
       <RemoteState {...rooms} empty={(value) => !value.length}>
       {(value) => <div className="agent-history-list">
         {value.map((conversation, index) => (
