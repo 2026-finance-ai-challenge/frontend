@@ -8,7 +8,7 @@ import { ViewMoreButton } from "../components/ViewMoreButton";
 import { NewsThumbnail } from "../components/NewsThumbnail";
 import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
-import type { Filing, NewsArticle, Stock, StockDetail } from "../types";
+import type { Filing, NewsArticle, Stock, StockDetail, SupportedCountry } from "../types";
 
 const quickActions = [
   ["/assets/news.svg", "Today’s news", "/news"],
@@ -29,7 +29,17 @@ const ownershipLabels = {
   danger: "Near reached",
   warning: "Near cap",
   safe: "Open",
+  unavailable: "Data unavailable",
 };
+
+function ownershipTone(item: ForeignMonitor): keyof typeof ownershipLabels {
+  const ownership = item.stock.foreignOwnership;
+  if (ownership?.status !== "AVAILABLE" || ownership.limitExhaustionRate == null || ownership.ownershipRate == null) {
+    return "unavailable";
+  }
+  if (!item.warning) return "safe";
+  return ownership.limitExhaustionRate >= 100 ? "danger" : "warning";
+}
 
 export function HomePage() {
   const [taxAgentOpen, setTaxAgentOpen] = useState(false);
@@ -49,7 +59,19 @@ export function HomePage() {
     (signal) => api<ForeignMonitor[]>("/api/v1/market/foreign-limits", { signal }),
     [],
   );
-  const taxRatesState = useRemote(async (signal) => Promise.all(["US", "JP", "GB", "SG", "CN"].map((residencyCountry) => api<TaxEligibility>("/api/v1/tax/eligibility", { method: "POST", signal, body: JSON.stringify({ residencyCountry, investorType: "INDIVIDUAL" }) }))), []);
+  const taxRatesState = useRemote(async (signal) => {
+    const supported = await api<SupportedCountry[]>("/api/v1/tax/countries", { signal });
+    const preferredOrder = ["US", "GB", "SG", "CN", "CA"];
+    const selected = preferredOrder
+      .map((code) => supported.find((country) => country.countryCode === code))
+      .filter((country): country is SupportedCountry => Boolean(country))
+      .slice(0, 5);
+    return Promise.all(selected.map((country) => api<TaxEligibility>("/api/v1/tax/eligibility", {
+      method: "POST",
+      signal,
+      body: JSON.stringify({ residencyCountry: country.countryCode, investorType: "INDIVIDUAL" }),
+    })));
+  }, []);
   const eligibilityButtonRef = useRef<HTMLButtonElement>(null);
   const closeTaxAgent = () => {
     setTaxAgentOpen(false);
@@ -163,15 +185,15 @@ export function HomePage() {
               </p>
               <div className="status-copy">
                 <span>
-                  <b className="danger-text">{ownershipItems.filter((item) => item.warning && (item.stock.foreignOwnership?.limitExhaustionRate ?? 0) >= 100).length}</b> <u>At the cap</u>&nbsp; Buy
+                  <b className="danger-text">{ownershipItems.filter((item) => ownershipTone(item) === "danger").length}</b> <u>At the cap</u>&nbsp; Buy
                   orders rejected right now.
                 </span>
                 <span>
-                  <b className="warning-text">{ownershipItems.filter((item) => item.warning && (item.stock.foreignOwnership?.limitExhaustionRate ?? 0) < 100).length}</b> <u>Near the cap</u>&nbsp;
+                  <b className="warning-text">{ownershipItems.filter((item) => ownershipTone(item) === "warning").length}</b> <u>Near the cap</u>&nbsp;
                   90% or more of the quota used.
                 </span>
                 <span>
-                  <b className="safe-text">{ownershipItems.filter((item) => !item.warning).length}</b> <u>Open</u>&nbsp; Room to buy
+                  <b className="safe-text">{ownershipItems.filter((item) => ownershipTone(item) === "safe").length}</b> <u>Open</u>&nbsp; Room to buy
                   without restriction.
                 </span>
               </div>
@@ -213,13 +235,14 @@ export function HomePage() {
           <RemoteState {...ownershipState} empty={(value) => !value.length}>
             {() => <div className="ownership-grid">
             {visibleOwnership.map((item) => {
-              const used = item.stock.foreignOwnership?.ownershipRate ?? 0;
+              const used = item.stock.foreignOwnership?.ownershipRate ?? null;
               const cap = item.stock.foreignOwnership?.foreignLimitQuantity && item.stock.foreignOwnership?.totalListedQuantity
                 ? item.stock.foreignOwnership.foreignLimitQuantity / item.stock.foreignOwnership.totalListedQuantity * 100
-                : 0;
-              const tone = item.warning ? (used >= cap ? "danger" : "warning") : "safe";
-              const remaining = cap ? Math.max(cap - used, 0) : null;
-              const width = `${Math.min(item.stock.foreignOwnership?.limitExhaustionRate ?? 0, 100)}%`;
+                : null;
+              const tone = ownershipTone(item);
+              const remaining = cap !== null && used !== null ? Math.max(cap - used, 0) : null;
+              const exhaustion = item.stock.foreignOwnership?.limitExhaustionRate;
+              const width = `${exhaustion == null ? 0 : Math.min(exhaustion, 100)}%`;
 
               return (
                 <article
@@ -240,16 +263,16 @@ export function HomePage() {
                     </div>
                   </div>
                   <strong className={tone}>
-                    {remaining === null ? "N/A" : remaining.toFixed(2)}
-                    <small>% remaining</small>
+                    {remaining === null ? "Unavailable" : remaining.toFixed(2)}
+                    <small>{remaining === null ? "No verified ownership snapshot" : "% remaining"}</small>
                   </strong>
                   <div className={`gauge gauge-${tone}`}>
                     <span className={tone} style={{ width }} />
                     <i style={{ left: width }} />
                   </div>
                   <div className="gauge-labels">
-                    <span>Used {used.toFixed(2)}%</span>
-                    <span>Cap {cap ? cap.toFixed(2) : "Unavailable"}%</span>
+                    <span>Used {used === null ? "Unavailable" : `${used.toFixed(2)}%`}</span>
+                    <span>Cap {cap === null ? "Unavailable" : `${cap.toFixed(2)}%`}</span>
                   </div>
                 </article>
               );
