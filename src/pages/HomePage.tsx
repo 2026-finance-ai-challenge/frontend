@@ -5,6 +5,7 @@ import { TaxEligibilityPanel } from "../components/TaxEligibilityPanel";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
 import { ViewMoreButton } from "../components/ViewMoreButton";
+import { NewsThumbnail } from "../components/NewsThumbnail";
 import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
 import type { Filing, NewsArticle, Stock, StockDetail } from "../types";
@@ -33,8 +34,9 @@ const ownershipLabels = {
 export function HomePage() {
   const [taxAgentOpen, setTaxAgentOpen] = useState(false);
   const [ownershipStart, setOwnershipStart] = useState(0);
+  const [newsStart, setNewsStart] = useState(0);
   const newsState = useCursorPage(
-    (cursor, signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({ sort: "IMPORTANCE", cursor, limit: cursor ? 20 : 2 })}`, { signal }),
+    (cursor, signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({ sort: "IMPORTANCE", cursor, limit: 20 })}`, { signal }),
     [],
     (item) => item.id,
   );
@@ -54,6 +56,8 @@ export function HomePage() {
     window.requestAnimationFrame(() => eligibilityButtonRef.current?.focus());
   };
   const ownershipItems = ownershipState.data ?? [];
+  const newsItems = newsState.data?.items ?? [];
+  const visibleNews = newsItems.slice(newsStart, newsStart + 2);
   const visibleOwnership = ownershipItems.length
     ? Array.from({ length: Math.min(4, ownershipItems.length) }, (_, index) =>
         ownershipItems[(index + ownershipStart) % ownershipItems.length],
@@ -108,17 +112,17 @@ export function HomePage() {
               </p>
             </div>
             <div className="slider-controls">
-              <button aria-label="Previous story">
+              <button type="button" aria-label="Previous story" disabled={newsStart === 0} onClick={() => setNewsStart((current) => Math.max(0, current - 1))}>
                 <img src="/assets/carousel-prev.svg" alt="" />
               </button>
-              <button aria-label="Next story">
+              <button type="button" aria-label="Next story" disabled={newsStart + 2 >= newsItems.length} onClick={() => setNewsStart((current) => current + 1)}>
                 <img src="/assets/carousel-next.svg" alt="" />
               </button>
             </div>
           </div>
           <RemoteState {...newsState} empty={(value) => !value.items.length}>
             {(value) => <div className="news-grid">
-              {value.items.map((article) => <HomeNewsCard article={article} key={article.id} />)}
+              {visibleNews.map((article) => <HomeNewsCard article={article} key={article.id} />)}
             </div>}
           </RemoteState>
           <ViewMoreButton resource="news" hasMore={Boolean(newsState.data?.nextCursor)} loading={newsState.loadingMore} error={newsState.loadMoreError} onClick={() => void newsState.loadMore()} />
@@ -372,11 +376,11 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
     </div>
     <h3>{article.englishTitle || article.originalTitle}</h3>
     <p className="meta">{formatDate(article.publishedAt)} · {article.publisher}</p>
-    <img src={article.thumbnailUrl || "/assets/news-samsung.png"} alt="" />
+    <NewsThumbnail src={article.thumbnailUrl} />
     <div className="insight">
-      <p><b>What</b>{article.what || "AI insight has not been generated yet."}</p>
-      <p><b>Why</b>{article.why || "Open the article to request a grounded summary."}</p>
-      <p><b>Impact</b>{article.impact || "Market impact is unavailable."}</p>
+      <p><b>What</b>{article.what || "Grounded insight is unavailable."}</p>
+      <p><b>Why</b>{article.why || "Grounded insight is unavailable."}</p>
+      <p><b>Impact</b>{article.impact || "Grounded insight is unavailable."}</p>
     </div>
   </Link>;
 }

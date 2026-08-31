@@ -15,23 +15,16 @@ function periodToLimit(period: string) {
   return ({ "1D": 2, "1W": 7, "1M": 31, "3M": 93, "1Y": 366 } as Record<string, number>)[period] ?? 31;
 }
 
-function formatCountdown(seconds: number) {
-  const minutes = Math.floor(seconds / 60);
-  const remainder = seconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
-}
-
 export function StockPage() {
   const [params] = useSearchParams();
-  const { stockCode = "005930" } = useParams();
+  const { stockCode = "" } = useParams();
   const profile = useProfile();
   const [period, setPeriod] = useState(params.get("period") || "1M");
   const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile]);
   const historyState = useRemote((signal) => api<{ status: string; items: Array<{ tradingDate: string; closePriceKrw: number }> }>(`/api/v1/market/stocks/${stockCode}/history?limit=${periodToLimit(period)}`, { signal }), [stockCode, period]);
   const peersState = useRemote((signal) => api<GlobalPeer>(`/api/v1/market/stocks/${stockCode}/global-peers`, { signal }), [stockCode]);
-  const [insights, setInsights] = useState(true);
+  const [insights, setInsights] = useState(params.get("insights") === "1");
   const [alert, setAlert] = useState<StockAlert | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState(120);
   const initialTab = params.get("tab");
   const [activeTab, setActiveTab] = useState<
     "chart" | "news" | "disclosure"
@@ -40,7 +33,6 @@ export function StockPage() {
       ? initialTab
       : "chart",
   );
-  const isAlertSnapshot = alert !== null;
   useEffect(() => {
     const quote = detailState.data?.quote;
     if (!quote) return;
@@ -54,26 +46,6 @@ export function StockPage() {
       body: JSON.stringify({ itemType: "STOCK", referenceId: stockCode, stockCode }),
     }).catch(() => undefined);
   }, [profile, stockCode]);
-  useEffect(() => {
-    if (alert !== "vi") return;
-
-    const timer = window.setInterval(() => {
-      setRemainingSeconds((current) => {
-        if (current <= 1) {
-          window.clearInterval(timer);
-          return 0;
-        }
-        return current - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [alert]);
-
-  const openAlert = (nextAlert: StockAlert) => {
-    if (nextAlert === "vi") setRemainingSeconds(120);
-    setAlert(nextAlert);
-  };
-
   return (
     <div className={`stock-page ${insights ? "panel-open" : ""}`}>
       <div className="stock-main">
@@ -99,8 +71,8 @@ export function StockPage() {
               </div>
               <div className="stock-price">
                 <strong>{formatNumber(detailState.data?.quote.currentPriceKrw, { style: "currency", currency: "KRW", maximumFractionDigits: 0 })}</strong>
-                <span>
-                  {formatNumber(detailState.data?.quote.changeAmountKrw)} <img src="/assets/price-down.svg" alt="" /> {detailState.data?.quote.changeRate === null || detailState.data?.quote.changeRate === undefined ? "Unavailable" : `${detailState.data.quote.changeRate.toFixed(2)}%`}
+                <span className={(detailState.data?.quote.changeRate ?? 0) >= 0 ? "is-positive" : ""}>
+                  {signedNumber(detailState.data?.quote.changeAmountKrw)} <img src={(detailState.data?.quote.changeRate ?? 0) >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" /> {detailState.data?.quote.changeRate === null || detailState.data?.quote.changeRate === undefined ? "Unavailable" : `${detailState.data.quote.changeRate >= 0 ? "+" : ""}${detailState.data.quote.changeRate.toFixed(2)}%`}
                 </span>
               </div>
             </div>
@@ -109,7 +81,7 @@ export function StockPage() {
                 ["High", formatNumber(detailState.data?.quote.highPriceKrw)],
                 ["Low", formatNumber(detailState.data?.quote.lowPriceKrw)],
                 ["Volume", formatNumber(detailState.data?.quote.volume, { notation: "compact" })],
-                ["Open", formatNumber(detailState.data?.quote.openPriceKrw)],
+                ["Prev close", formatNumber(previousClose(detailState.data))],
               ].map(
                 ([label, value]) => (
                   <div key={label}>
@@ -121,23 +93,17 @@ export function StockPage() {
             </div>
             <div className="stock-badges">
               {detailState.data?.subjectToForeignAcquisitionLimit ? (
-              <button
+              <span
                 className="stock-danger"
-                onClick={() => openAlert("price-limit")}
               >
                 <img src="/assets/status-warning.svg" alt="" />
                 {detailState.data.foreignOwnership.limitExhaustionRate === null ? "Foreign limit unavailable" : `${detailState.data.foreignOwnership.limitExhaustionRate.toFixed(1)}% foreign limit used`}
-              </button>) : null}
+              </span>) : null}
               {detailState.data?.quote.viActive || detailState.data?.quote.singlePriceTrading ? (
-              <button onClick={() => openAlert("vi")}>
-                {!isAlertSnapshot && <img src="/assets/timer.svg" alt="" />}
-                {isAlertSnapshot
-                  ? "VI Triggered single price auction"
-                  : "VI Triggered (01:43)"}
+              <button type="button" onClick={() => setAlert("vi")}>
+                <img src="/assets/timer.svg" alt="" />
+                VI active · single-price trading
               </button>) : null}
-              {isAlertSnapshot && (
-                <span className="stock-resume">Resumes 15:34 KST</span>
-              )}
             </div>
             <button
               className="insight-banner"
@@ -251,8 +217,7 @@ export function StockPage() {
                   </div>
                 </div>
                 <p className="prediction-note">
-                  The estimated maximum stays well below the cap, so foreign
-                  buy orders should execute normally today.
+                  {predictionNote(detailState.data)}
                 </p>
               </aside>
             </div>
@@ -338,10 +303,7 @@ export function StockPage() {
                   <br />
                   through a two-minute single-price call auction.
                 </p>
-                <strong>
-                  <img src="/assets/timer.svg" alt="" />
-                  {formatCountdown(remainingSeconds)} left
-                </strong>
+                <strong>Check the live trading status before placing an order.</strong>
               </>
             )}
             <button type="button" onClick={() => setAlert(null)}>
@@ -356,6 +318,33 @@ export function StockPage() {
 
 function percentage(value: number | null | undefined) {
   return value === null || value === undefined ? "Unavailable" : `${value.toFixed(2)}%`;
+}
+
+function signedNumber(value: number | null | undefined) {
+  if (value === null || value === undefined) return "Unavailable";
+  return `${value >= 0 ? "+" : ""}${formatNumber(value)}`;
+}
+
+function previousClose(stock: StockDetail | null) {
+  const current = stock?.quote.currentPriceKrw;
+  const change = stock?.quote.changeAmountKrw;
+  return current === null || current === undefined || change === null || change === undefined
+    ? null
+    : current - change;
+}
+
+function predictionNote(stock: StockDetail | null) {
+  const maximum = stock?.foreignLimitPrediction.maxRate;
+  const quantity = stock?.foreignOwnership.foreignLimitQuantity;
+  const total = stock?.foreignOwnership.totalListedQuantity;
+  if (maximum === null || maximum === undefined || !quantity || !total) {
+    return "A verified prediction or statutory limit is unavailable for this stock.";
+  }
+  const legalLimit = quantity / total * 100;
+  if (maximum >= legalLimit) {
+    return `The estimated maximum reaches or exceeds the ${legalLimit.toFixed(2)}% statutory limit. Check order eligibility before trading.`;
+  }
+  return `The estimated maximum is ${(legalLimit - maximum).toFixed(2)} percentage points below the ${legalLimit.toFixed(2)}% statutory limit.`;
 }
 
 function PriceChart({ items, label }: {

@@ -3,7 +3,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Header } from "../components/Layout";
 import { api, login, signup } from "../api";
 import { ApiError } from "../api";
-import type { InvestorType } from "../types";
+import { useRemote } from "../hooks/useRemote";
+import type { InvestorType, SupportedCountry } from "../types";
 
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{12,}$/;
@@ -18,6 +19,7 @@ function FormError({ children }: { children: string }) {
 }
 
 export function SignupPage() {
+  const countries = useRemote((signal) => api<SupportedCountry[]>("/api/v1/tax/countries", { signal }), []);
   const [step, setStep] = useState(1);
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
@@ -154,10 +156,10 @@ export function SignupPage() {
                 onChange={(event) => setNationality(event.target.value)}
               >
                 <option value="">Select your nationality</option>
-                <option value="US">United States</option>
-                <option disabled>Japan</option>
-                <option disabled>Singapore</option>
+                {(countries.data || []).map((country) => <option value={country.countryCode} key={country.countryCode}>{country.countryName}</option>)}
               </select>
+              {countries.loading ? <small>Loading supported countries…</small> : null}
+              {countries.error ? <FormError>{countries.error.message}</FormError> : null}
               {nationalityError && (
                 <FormError>Select your nationality</FormError>
               )}
