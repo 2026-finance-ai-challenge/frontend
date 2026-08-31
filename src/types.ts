@@ -1,4 +1,4 @@
-export type ApiProblem = { code?: string; message?: string; status?: number; retryAfter?: string }
+export type ApiProblem = { code?: string; message?: string; detail?: string; title?: string; status?: number; retryAfter?: string }
 
 export type InvestorType = 'INDIVIDUAL' | 'CORPORATE'
 
@@ -54,10 +54,11 @@ export type TaxDocument = {
 }
 
 export type TokenPair = {
+  tokenType: 'Bearer'
   accessToken: string
   refreshToken: string
-  accessTokenExpiresAt: string
-  refreshTokenExpiresAt: string
+  accessExpiresAt: string
+  refreshExpiresAt: string
   user: Profile
 }
 

@@ -1,5 +1,8 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
+import { useRemote } from "../hooks/useRemote";
+import type { SupportedCountry } from "../types";
 
 type TaxEligibility = {
   countryName: string;
@@ -16,6 +19,7 @@ type TaxEligibilityPanelProps = {
 };
 
 export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
+  const countries = useRemote((signal) => api<SupportedCountry[]>("/api/v1/tax/countries", { signal }), []);
   const [country, setCountry] = useState("US");
   const [investor, setInvestor] = useState("INDIVIDUAL");
   const [result, setResult] = useState<TaxEligibility | null>(null);
@@ -32,6 +36,10 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [close]);
+  useEffect(() => {
+    const supported = countries.data || [];
+    if (supported.length && !supported.some((item) => item.countryCode === country)) setCountry(supported[0].countryCode);
+  }, [countries.data, country]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -87,11 +95,7 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
               value={country}
               onChange={(event) => setCountry(event.target.value)}
             >
-              <option value="US">United States</option>
-              <option value="JP">Japan</option>
-              <option value="GB">United Kingdom</option>
-              <option value="SG">Singapore</option>
-              <option value="CN">China</option>
+              {(countries.data || []).map((item) => <option value={item.countryCode} key={item.countryCode}>{item.countryName}</option>)}
             </select>
           </label>
           <label>
@@ -104,7 +108,7 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
               <option value="CORPORATE">Corporate</option>
             </select>
           </label>
-          <button type="submit" disabled={busy}>{busy ? "Checking…" : "Check my rate"}</button>
+          <button type="submit" disabled={busy || !countries.data?.length}>{busy ? "Checking…" : "Check my rate"}</button>
         </form>
         {error ? <p className="auth-error" role="alert">{error}</p> : null}
         {result ? (
@@ -116,12 +120,10 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
           </div>
         ) : null}
       </div>
-      <div className="chat-input">
-        Ask anything about this market
-        <button type="button" aria-label="Send message">
-          <img src="/assets/agent-send.svg" alt="" />
-        </button>
-      </div>
+      <Link className="chat-input" to="/tax" onClick={close}>
+        Open full tax guide
+        <img src="/assets/chevron-right-gold.svg" alt="" />
+      </Link>
     </aside>
   );
 }

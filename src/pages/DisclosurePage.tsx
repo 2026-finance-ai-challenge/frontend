@@ -1,11 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { openKAgent } from "../agentEvents";
-import {
-  AgentHistoryView,
-  AgentOverflowMenu,
-} from "../components/AgentHistory";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
 import { ViewMoreButton } from "../components/ViewMoreButton";
@@ -24,86 +20,25 @@ type FilingInsight = {
   generatedAt: string | null;
 };
 
-const filings = [
-  [
-    "13:02:41",
-    "NAVER Corp",
-    "035420 · KOSDAQ",
-    "Convertible bond issuance decision",
-    "M&A",
-    "Low priority",
-  ],
-  [
-    "11:40:08",
-    "SK Hynix",
-    "000660 · KOSPI",
-    "Single supply agreement exceeding 5% of revenue",
-    "Earning",
-    "High priority",
-  ],
-  [
-    "09:15:22",
-    "Samsung Electronics",
-    "005930 · KOSPI",
-    "Cash dividend decision ₩361 per share",
-    "Government",
-    "Medium priority",
-  ],
-  [
-    "13:02:41",
-    "Doosan Enerbility",
-    "034020 · KOSPI",
-    "Treasury share acquisition trust agreement",
-    "Government",
-    "Medium priority",
-  ],
-];
+type FilingFiltersValue = { from: string; to: string; types: string[] };
 
-const filingGroups = [
-  [
-    "Thursday, Aug 14",
-    "3",
-    [
-      [0, "Neutral"],
-      [1, "Positive"],
-      [2, "Positive"],
-    ],
-  ],
-  [
-    "Wednesday, Aug 13",
-    "4",
-    [
-      [3, "Positive"],
-      [2, "Neutral"],
-      [1, "Positive"],
-      [3, "Neutral"],
-    ],
-  ],
-  [
-    "Tuesday, Aug 12",
-    "3",
-    [
-      [3, "Positive"],
-      [2, "Positive"],
-      [1, "Neutral"],
-    ],
-  ],
-  [
-    "Tuesday, Aug 12",
-    "3",
-    [
-      [3, "Positive"],
-      [2, "Positive"],
-      [1, "Neutral"],
-    ],
-  ],
+const DISCLOSURE_FILTERS = [
+  ["Reporting & Governance", ["Periodic Reports", "PERIODIC"], ["Audit Reports", "AUDIT"], ["Fair Trade", "FAIR_TRADE"]],
+  ["Capital & Shareholder Returns", ["Issuance Docs", "ISSUANCE"], ["Ownership Disclosure", "OWNERSHIP"], ["Investment Funds", "FUND"], ["Asset Securitization", "SECURITIZATION"]],
+  ["Corporate Events & Control", ["Major Management Matters", "MATERIAL_EVENT"], ["Listing/Delisting", "EXCHANGE"], ["Other", "OTHER"]],
 ] as const;
 
-function FilingRows({ stockCode }: { stockCode?: string }) {
+function dateBefore(days: number) {
+  const value = new Date();
+  value.setDate(value.getDate() - days);
+  return value.toISOString().slice(0, 10);
+}
+
+function FilingRows({ stockCode, filters }: { stockCode?: string; filters: FilingFiltersValue }) {
   const { pathname } = useLocation();
   const state = useCursorPage(
-    (cursor, signal) => api<{ items: Filing[]; nextCursor: string | null }>(`/api/v1/disclosures${queryString({ stockCode, cursor, limit: 20 })}`, { signal }),
-    [stockCode],
+    (cursor, signal) => api<{ items: Filing[]; nextCursor: string | null }>(`/api/v1/disclosures${queryString({ stockCode, from: filters.from || null, to: filters.to || null, types: filters.types.length ? filters.types.join(",") : null, cursor, limit: 20 })}`, { signal }),
+    [stockCode, filters.from, filters.to, filters.types.join(",")],
     (item) => item.receiptNumber,
   );
   const returnTo = pathname.startsWith("/stocks/")
@@ -114,18 +49,17 @@ function FilingRows({ stockCode }: { stockCode?: string }) {
   for (const filing of state.data?.items ?? []) groups.set(filing.filedDate, [...(groups.get(filing.filedDate) ?? []), filing]);
   return <RemoteState {...state} empty={(value) => !value.items.length}>
     {() => <><div className="disclosure-rows">
-      {[...groups.entries()].map(([day, rows], groupIndex) => (
+      {[...groups.entries()].map(([day, rows]) => (
         <section key={day}>
           <header>
             <span>{formatDate(day, false)}</span>
             <span>{rows.length} filings</span>
           </header>
-          {rows.map((filing, index) => (
+          {rows.map((filing) => (
               <Link
                 to={`/disclosures/${filing.receiptNumber}`}
                 state={{ returnTo }}
                 onClick={() => window.scrollTo(0, 0)}
-                className={index === 1 && groupIndex === 0 ? "active" : ""}
                 key={filing.receiptNumber}
               >
                 <span>{formatDate(filing.detectedAt)}</span>
@@ -147,6 +81,7 @@ function FilingRows({ stockCode }: { stockCode?: string }) {
 }
 
 export function DisclosurePage() {
+  const [filters, setFilters] = useState<FilingFiltersValue>({ from: "", to: "", types: [] });
   return (
     <div className="disclosure-page disclosure-index-page">
       <Header white />
@@ -157,79 +92,51 @@ export function DisclosurePage() {
           Disclosures summarised into What / Why / Impact, with an agent that
           answers follow-up questions from the original text.
         </p>
-        <FilingFilters />
-        <FilingRows />
+        <FilingFilters value={filters} onChange={setFilters} />
+        <FilingRows filters={filters} />
       </main>
     </div>
   );
 }
 
-function FilingFilters() {
-  const [range, setRange] = useState("1M");
+function FilingFilters({ value, onChange }: { value: FilingFiltersValue; onChange: (value: FilingFiltersValue) => void }) {
+  const selectedRange = [["1D", 1], ["1W", 7], ["1M", 30], ["3M", 90], ["1Y", 365]].find(([, days]) => value.from === dateBefore(Number(days)) && value.to === new Date().toISOString().slice(0, 10))?.[0];
+  const setRange = (days: number) => onChange({ ...value, from: dateBefore(days), to: new Date().toISOString().slice(0, 10) });
+  const toggleType = (type: string) => onChange({ ...value, types: value.types.includes(type) ? value.types.filter((item) => item !== type) : [...value.types, type] });
   return (
     <section className="filing-filters">
       <div className="filing-filter-heading">
         <span>Date range</span>
-        <button type="button" className="reset">
+        <button type="button" className="reset" onClick={() => onChange({ from: "", to: "", types: [] })}>
           Reset
         </button>
       </div>
       <div className="date-filter">
-        <input placeholder="mm/dd/yyyy" aria-label="Start date" />
+        <input type="date" value={value.from} onChange={(event) => onChange({ ...value, from: event.target.value })} aria-label="Start date" />
         <b>–</b>
-        <input placeholder="mm/dd/yyyy" aria-label="End date" />
-        {["1D", "1W", "1M", "3M", "1Y"].map((item) => (
+        <input type="date" value={value.to} onChange={(event) => onChange({ ...value, to: event.target.value })} aria-label="End date" />
+        {[["1D", 1], ["1W", 7], ["1M", 30], ["3M", 90], ["1Y", 365]].map(([item, days]) => (
           <button
             type="button"
-            className={range === item ? "active" : ""}
-            onClick={() => setRange(item)}
+            className={selectedRange === item ? "active" : ""}
+            onClick={() => setRange(Number(days))}
             key={item}
           >
             {item}
           </button>
         ))}
       </div>
-      {[
-        [
-          "Reporting & Governance",
-          "Periodic Reports",
-          "Audit Reports",
-          "Auditor Change",
-          "Corporate Governance",
-          "Fair Trade",
-          "Credit Rating",
-        ],
-        [
-          "Capital & Shareholder Returns",
-          "Issuance Docs",
-          "Capital Changes",
-          "Dividends",
-          "Share Buyback",
-          "Asset Securitization",
-          "Investment Funds",
-          "Bond Defaults",
-        ],
-        [
-          "Corporate Events & Control",
-          "Major Management Matters",
-          "M&A",
-          "Public Tender Offer",
-          "Business Transfer",
-          "Strategic Alliances",
-          "Ownership Disclosure",
-          "Listing/Delisting",
-          "Lawsuit/Arbitration",
-        ],
-      ].map((group) => (
+      {DISCLOSURE_FILTERS.map((group) => (
         <div className="checkbox-row" key={group[0]}>
           <span>{group[0]}</span>
-          {group.slice(1).map((item) => (
-            <label key={item}>
+          {group.slice(1).map(([label, type]) => (
+            <label key={type}>
               <input
                 type="checkbox"
-                defaultChecked={item === "Periodic Reports"}
+                checked={value.types.includes(type)}
+                onChange={() => toggleType(type)}
               />
-              {item}
+              {label}
             </label>
           ))}
         </div>
@@ -240,10 +147,11 @@ function FilingFilters() {
 
 export function StockDisclosureFeed() {
   const { stockCode } = useParams();
+  const [filters, setFilters] = useState<FilingFiltersValue>({ from: "", to: "", types: [] });
   return (
     <>
-      <FilingFilters />
-      <FilingRows stockCode={stockCode} />
+      <FilingFilters value={filters} onChange={setFilters} />
+      <FilingRows stockCode={stockCode} filters={filters} />
     </>
   );
 }
@@ -281,9 +189,9 @@ export function DisclosureDetailPage() {
                 </h1>
               </div>
               <div>
-                <a href={filing?.officialUrl || "#"} target="_blank" rel="noreferrer">
-                  <img src="/assets/download.svg" alt="" /> Download Original
-                </a>
+                {filing?.officialUrl ? <a href={filing.officialUrl} target="_blank" rel="noreferrer">
+                  <img src="/assets/download.svg" alt="" /> Open original
+                </a> : <span>Original document unavailable</span>}
                 <small>Submitted: {formatDate(filing?.detectedAt)}</small>
               </div>
             </div>
@@ -321,12 +229,10 @@ export function DisclosureDetailPage() {
             <aside className="mentioned filing-division">
               <h2>Division</h2>
               <div className="tags">
-                <span className="positive">
-                  <img src="/assets/trend-up.svg" alt="" />
-                  Positive
-                </span>
-                <span className="priority">High priority</span>
-                <span>Earning</span>
+                <span>{filing?.type || "Type unavailable"}</span>
+                <span>{filing?.documentStatus || "Status unavailable"}</span>
+                <span>{filing?.indexStatus || "Index unavailable"}</span>
+                {filing?.correction ? <span>Correction</span> : null}
               </div>
             </aside>
           </div>
@@ -337,10 +243,10 @@ export function DisclosureDetailPage() {
                 English translation
               </span>
               <span className="translation-actions">
-                <button aria-label="Print">
+                <button type="button" aria-label="Print" onClick={() => window.print()}>
                   <img src="/assets/print.svg" alt="" />
                 </button>
-                <button aria-label="Share">
+                <button type="button" aria-label="Share" onClick={() => void sharePage(filing?.titleEn || filing?.titleKo || "KART disclosure")}>
                   <img src="/assets/share.svg" alt="" />
                 </button>
               </span>
@@ -362,10 +268,23 @@ export function DisclosureDetailPage() {
 
 type FilingSection = FilingDetail["documents"][number]["sections"][number];
 
+async function sharePage(title: string) {
+  if (navigator.share) {
+    await navigator.share({ title, url: window.location.href });
+    return;
+  }
+  await navigator.clipboard.writeText(window.location.href);
+}
+
 function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; section: FilingSection }) {
   const translation = useRemote((signal) => api<TranslationResult>(`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`, { signal }), [receiptNumber, section.id]);
   const translated = translation.data?.status === "READY" ? translation.data.result : null;
   const requestTranslation = () => void api<TranslationResult>(`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`, { method: "POST" }).then(translation.setData);
+  useEffect(() => {
+    if (translation.data?.status !== "PENDING" && translation.data?.status !== "PROCESSING") return;
+    const timer = window.setTimeout(translation.retry, 2500);
+    return () => window.clearTimeout(timer);
+  }, [translation.data?.status, translation.retry]);
   return <section id={`section-${section.id}`}><h3>{translated?.translatedHeading || section.heading || section.kind}</h3>{translated?.translatedText ? <p>{translated.translatedText}</p> : translated?.translatedTableData ? <pre>{JSON.stringify(translated.translatedTableData, null, 2)}</pre> : section.kind === "TABLE" ? <pre>{JSON.stringify(section.tableData, null, 2)}</pre> : <p>{section.text || "Section text unavailable."}</p>}<div className="disclosure-section-actions">{translation.data?.status !== "READY" ? <button type="button" onClick={requestTranslation} disabled={translation.data?.status === "PENDING" || translation.data?.status === "PROCESSING"}>{translation.data?.status === "PENDING" || translation.data?.status === "PROCESSING" ? "Translation processing…" : "Translate section"}</button> : null}<button type="button" onClick={() => openKAgent({ contextType: "FILING", referenceId: receiptNumber, prompt: `Explain the ${section.heading || section.kind} section and its investor impact.` })}>Ask K-Agent</button></div></section>;
 }
 
@@ -384,78 +303,4 @@ function DisclosureQuestionBox({ receiptNumber, ready }: { receiptNumber: string
     finally { setBusy(false); }
   };
   return <section className="disclosure-question"><h2>Ask about this filing</h2><p>Answers are restricted to indexed sections of the current disclosure version.</p><form onSubmit={(event) => { event.preventDefault(); void ask(); }}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="What changed and how could it affect investors?" disabled={!ready || busy} /><button disabled={!ready || !question.trim() || busy}>{busy ? "Checking sources…" : "Ask"}</button></form>{!ready ? <small>The document must finish indexing before grounded questions are available.</small> : null}{error ? <p className="auth-error">{error}</p> : null}{answer ? <blockquote><p>{answer.refused ? answer.refusalReason : answer.answer}</p>{answer.citations.map((citation) => <small key={citation.id}><b>{citation.heading || "Source section"}</b> {citation.excerpt}</small>)}</blockquote> : null}</section>;
-}
-
-function FilingAgent({ close }: { close: () => void }) {
-  const [history, setHistory] = useState(false);
-
-  if (history) {
-    return (
-      <AgentHistoryView
-        close={close}
-        onConversation={() => setHistory(false)}
-      />
-    );
-  }
-
-  return (
-    <aside
-      className="agent-panel filing-agent"
-      role="dialog"
-      aria-modal="true"
-      aria-label="K-Agent chat"
-    >
-      <button className="agent-close" type="button" onClick={close}>
-        <img src="/assets/close.svg" alt="" /> Close
-      </button>
-      <header>
-        <img className="agent-logo" src="/assets/agent-badge.svg" alt="" />
-        <div>
-          <h2>K-Agent</h2>
-          <p>AI Financial Intelligence</p>
-        </div>
-        <AgentOverflowMenu onHistory={() => setHistory(true)} />
-      </header>
-      <div className="context-chip">
-        <img src="/assets/agent-context.svg" alt="" /> Context Attached: Samsung
-        Electronics Prospectus
-      </div>
-      <div className="chat">
-        <p className="user-message">
-          What is the definition effect of this new share issuance
-        </p>
-        <div className="ai-message">
-          <p>
-            KT has reached its 49% cap, so buy orders from foreign investors
-            will be rejected. SK Telecom sits at 46.10% of a 49% cap — about 94%
-            used — and could reach the cap intraday. KEPCO and KOGAS both have
-            substantial room.
-          </p>
-          <blockquote>
-            <b>Data Point Reference:</b>
-            <p>- SEOUL, South Korea — Samsung Electronics</p>
-            <p>- accelerating its efforts to create a more connected</p>
-          </blockquote>
-          <p>
-            so buy orders from foreign investors will be rejected. SK Telecom
-            sits at 46.10% of a 49% cap.
-          </p>
-          <p>
-            Source: <u>KRX foreign ownership snapshot, 15:30 KST</u>
-          </p>
-        </div>
-      </div>
-      <div className="faq">
-        <span>Frequently asked</span>
-        <button>Why is the KOSPI down today?</button>
-        <button>Which stocks are near their foreign ownership cap?</button>
-      </div>
-      <div className="chat-input">
-        Ask anything about this market{" "}
-        <button type="button">
-          <img src="/assets/agent-send.svg" alt="Send" />
-        </button>
-      </div>
-    </aside>
-  );
 }

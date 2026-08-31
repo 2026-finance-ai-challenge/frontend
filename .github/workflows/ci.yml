@@ -1,0 +1,44 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: 소스 체크아웃
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Node.js 구성
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v6.3.0
+        with:
+          node-version: "24"
+          cache: npm
+      - name: 의존성 설치
+        run: npm ci --ignore-scripts
+      - name: 타입 검사
+        run: npm run lint
+      - name: 운영 빌드
+        env:
+          VITE_API_BASE_URL: https://api.kartkr.cloud
+        run: npm run build
+      - name: 운영 번들 비밀·고정 IP 검사
+        run: |
+          if grep -R -E '168\.107\.61\.81|ghp_|OPENAI_API_KEY|DB_PASSWORD|REDIS_PASSWORD' dist; then
+            echo "운영 번들에 금지된 주소 또는 비밀 변수 이름이 포함되어 있습니다." >&2
+            exit 1
+          fi
+
