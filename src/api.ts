@@ -2,7 +2,7 @@ import type { ApiProblem, InvestorType, Profile, TokenPair } from './types'
 
 const configuredBase = (import.meta as ImportMeta & { env?: Record<string, string | undefined> })
   .env?.VITE_API_BASE_URL?.trim()
-export const API_BASE = configuredBase ? configuredBase.replace(/\/$/, '') : ''
+export const API_BASE = (configuredBase || 'https://api.kartkr.cloud').replace(/\/$/, '')
 
 export class ApiError extends Error {
   readonly status: number
@@ -10,7 +10,7 @@ export class ApiError extends Error {
   readonly retryAfter?: string
 
   constructor(problem: ApiProblem) {
-    super(problem.message || 'The request could not be completed.')
+    super(problem.message || problem.detail || problem.title || 'The request could not be completed.')
     this.name = 'ApiError'
     this.status = problem.status || 500
     this.code = problem.code || 'UNKNOWN_ERROR'
@@ -57,7 +57,7 @@ class SessionVault {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken: token }),
-      credentials: 'same-origin',
+      credentials: 'omit',
     }).then(async (response) => {
       if (!response.ok) {
         this.clear()
@@ -107,7 +107,7 @@ export async function api<T>(path: string, init: RequestInit = {}, allowRefresh 
     headers.set('Content-Type', 'application/json')
   }
   headers.set('Accept', 'application/json')
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: 'same-origin' })
+  const response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: 'omit' })
   if (response.status === 401 && allowRefresh && await session.refresh()) {
     return api<T>(path, init, false)
   }

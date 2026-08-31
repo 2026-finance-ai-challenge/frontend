@@ -24,7 +24,9 @@ export function useRemote<T>(
     setLoading(true);
     setError(null);
     loader(controller.signal)
-      .then((value) => setData(value))
+      .then((value) => {
+        if (!controller.signal.aborted) setData(value);
+      })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
         setError(

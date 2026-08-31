@@ -28,7 +28,9 @@ export function useCursorPage<T>(
     setLoading(true);
     setLoadingMore(false);
     loader(null, controller.signal)
-      .then(setData)
+      .then((value) => {
+        if (!controller.signal.aborted) setData(value);
+      })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
         setError(

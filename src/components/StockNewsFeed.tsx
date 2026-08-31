@@ -1,56 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "./RemoteState";
 import { ViewMoreButton } from "./ViewMoreButton";
+import { NewsThumbnail } from "./NewsThumbnail";
 import { useCursorPage } from "../hooks/useCursorPage";
 import type { NewsArticle } from "../types";
 
-const newsItems = [
-  [
-    "/assets/news-phone.png",
-    "Semiconductor Exports Surge in April",
-    "Negative",
-    "High priority",
-    "Foreign selling",
-  ],
-  [
-    "/assets/news-office.png",
-    "Regulatory Body Probes Short Selling Practices",
-    "Positive",
-    "Low priority",
-    "Listing",
-  ],
-  [
-    "/assets/news-expo.png",
-    "Semiconductor Exports Surge in April",
-    "Negative",
-    "Medium priority",
-    "Foreign selling",
-  ],
-  [
-    "/assets/news-dark.png",
-    "Regulatory Body Probes Short Selling Practices",
-    "Positive",
-    "Medium priority",
-    "Listing",
-  ],
-  [
-    "/assets/news-phone.png",
-    "Semiconductor Exports Surge in April",
-    "Negative",
-    "High priority",
-    "Foreign selling",
-  ],
-];
+const ITEMS_PER_PAGE = 5;
 
 export function TrendTag({ type }: { type: string }) {
-  const negative = type.toUpperCase() === "NEGATIVE";
+  const normalized = type.toUpperCase();
+  const negative = normalized === "NEGATIVE";
+  const positive = normalized === "POSITIVE";
 
   return (
-    <span className={negative ? "negative" : "positive"}>
+    <span className={negative ? "negative" : positive ? "positive" : "neutral"}>
       <img
-        src={negative ? "/assets/trend-down.svg" : "/assets/trend-up.svg"}
+        src={negative ? "/assets/trend-down.svg" : positive ? "/assets/trend-up.svg" : "/assets/trend-neutral.svg"}
         alt=""
       />
       {type}
@@ -58,10 +25,12 @@ export function TrendTag({ type }: { type: string }) {
   );
 }
 
-export function StockNewsFeed() {
+export function StockNewsFeed({ stockCode: stockCodeOverride }: { stockCode?: string } = {}) {
   const [filter, setFilter] = useState("All");
+  const [page, setPage] = useState(0);
   const { pathname } = useLocation();
-  const { stockCode } = useParams();
+  const { stockCode: routeStockCode } = useParams();
+  const stockCode = stockCodeOverride || routeStockCode;
   const newsState = useCursorPage(
     (cursor, signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({
       stockCode,
@@ -77,6 +46,10 @@ export function StockNewsFeed() {
   const returnTo = pathname.startsWith("/stocks/")
     ? `${pathname}?tab=news`
     : pathname;
+  useEffect(() => setPage(0), [filter, stockCode]);
+  const itemCount = newsState.data?.items.length ?? 0;
+  const pageStart = page * ITEMS_PER_PAGE;
+  const canGoNext = pageStart + ITEMS_PER_PAGE < itemCount;
 
   return (
     <>
@@ -96,24 +69,24 @@ export function StockNewsFeed() {
           )}
         </div>
         <div className="carousel-controls">
-          <button type="button" aria-label="Previous">
+          <button type="button" aria-label="Previous" disabled={page === 0} onClick={() => setPage((current) => Math.max(0, current - 1))}>
             <img src="/assets/carousel-prev.svg" alt="" />
           </button>
-          <button type="button" aria-label="Next">
+          <button type="button" aria-label="Next" disabled={!canGoNext} onClick={() => setPage((current) => current + 1)}>
             <img src="/assets/carousel-next.svg" alt="" />
           </button>
         </div>
       </div>
       <RemoteState {...newsState} empty={(value) => !value.items.length}>
       {(value) => <div className="news-list">
-        {value.items.map((item) => (
+        {value.items.slice(pageStart, pageStart + ITEMS_PER_PAGE).map((item) => (
           <Link
             to={`/news/${item.id}`}
             state={{ returnTo }}
             className="news-row"
             key={item.id}
           >
-            <img src={item.thumbnailUrl || "/assets/news-phone.png"} alt="" />
+            <NewsThumbnail src={item.thumbnailUrl} />
             <div>
               <div className="tags">
                 <TrendTag type={item.sentiment || "NEUTRAL"} />
@@ -123,7 +96,7 @@ export function StockNewsFeed() {
                 {item.eventType ? <span>{item.eventType}</span> : null}
               </div>
               <h2>{item.englishTitle || item.originalTitle}</h2>
-              <p>{item.publisher} · {formatDate(item.publishedAt)} · {item.englishTitle ? "Auto-translated" : "Translation pending"}</p>
+              <p>{item.publisher} · {formatDate(item.publishedAt)} · {item.englishTitle ? "Auto-translated" : "Original language"}</p>
               <p>{item.originalExcerpt || "Source excerpt unavailable."}</p>
             </div>
           </Link>
