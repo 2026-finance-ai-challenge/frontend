@@ -226,7 +226,7 @@ export function Header({
             ref={menuButtonRef}
             className="brand-menu-button"
             type="button"
-            aria-label="Open primary navigation"
+            aria-label={locale === "ko" ? "주 메뉴 열기" : "Open primary navigation"}
             aria-expanded={menuOpen}
             aria-controls="primary-navigation-menu"
             onClick={() => setMenuOpen(true)}
@@ -236,7 +236,7 @@ export function Header({
           <Link
             className="brand-home"
             to="/"
-            aria-label="KART home"
+            aria-label={locale === "ko" ? "KART 홈" : "KART home"}
             onClick={scrollHomeToTop}
           >
             <img
@@ -303,8 +303,8 @@ export function Header({
             </div>
           )}
         </form>
-        <nav className="nav-actions" aria-label="Utility navigation">
-          <button className="icon-button notification-button" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={() => void openNotifications()}>
+        <nav className="nav-actions" aria-label={locale === "ko" ? "사용자 메뉴" : "Utility navigation"}>
+          <button className="icon-button notification-button" aria-label={locale === "ko" ? "알림" : "Notifications"} aria-expanded={notificationsOpen} onClick={() => void openNotifications()}>
             <img src="/assets/notification.svg" alt="" />
             {notifications?.unreadCount ? <span>{notifications.unreadCount > 99 ? "99+" : notifications.unreadCount}</span> : null}
           </button>
@@ -324,7 +324,7 @@ export function Header({
             </select>
           </label>
           {profile ? (
-            <Link className="profile-link" to="/my" aria-label="Open my page">
+            <Link className="profile-link" to="/my" aria-label={locale === "ko" ? "마이페이지 열기" : "Open my page"}>
               <img src="/assets/profile.png" alt="" />
             </Link>
           ) : (
@@ -339,13 +339,13 @@ export function Header({
           ref={menuRef}
           className="primary-navigation-menu"
           id="primary-navigation-menu"
-          aria-label="Primary navigation"
+          aria-label={locale === "ko" ? "주 메뉴" : "Primary navigation"}
           tabIndex={-1}
         >
           <button
             className="primary-navigation-close"
             type="button"
-            aria-label="Close primary navigation"
+            aria-label={locale === "ko" ? "주 메뉴 닫기" : "Close primary navigation"}
             onClick={() => {
               setMenuOpen(false);
               menuButtonRef.current?.focus();
@@ -474,7 +474,7 @@ export function MarketBar() {
   const kospi = indices.find((item) => item.indexCode === "KOSPI" || item.indexName === "KOSPI");
   const kosdaq = indices.find((item) => item.indexCode === "KOSDAQ" || item.indexName === "KOSDAQ");
   const renderIndex = (item: typeof kospi, label: string) => <span>
-    <em>{label}</em> {item?.currentValue === null || item?.currentValue === undefined ? "Unavailable" : item.currentValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+    <em>{label}</em> {item?.currentValue === null || item?.currentValue === undefined ? (locale === "ko" ? "정보 없음" : "Unavailable") : item.currentValue.toLocaleString(locale === "ko" ? "ko-KR" : "en-US", { maximumFractionDigits: 2 })}
     {item?.changeRate !== null && item?.changeRate !== undefined ? <b className={item.changeRate >= 0 ? "up" : "down"}>{item.changeRate >= 0 ? "+" : ""}{item.changeRate.toFixed(2)}%</b> : null}
   </span>;
 
@@ -486,12 +486,12 @@ export function MarketBar() {
       <i />
       <span>
         <em>USD/KRW</em> {exchangeRate?.krwPerUnit == null
-          ? "Unavailable"
+          ? locale === "ko" ? "정보 없음" : "Unavailable"
           : exchangeRate.krwPerUnit.toLocaleString("en-US", { maximumFractionDigits: 2 })}
       </span>
       <i />
       <span>
-        <em>{locale === "ko" ? "외국인 순매수" : "Foreign net flow"}</em> {formatFlow(foreignFlow?.netPurchaseAmountKrw)}
+        <em>{locale === "ko" ? "외국인 순매수" : "Foreign net flow"}</em> {formatFlow(foreignFlow?.netPurchaseAmountKrw, locale)}
         {foreignFlow?.netPurchaseAmountKrw != null && foreignFlow.consecutiveDays > 0
           ? <b className={foreignFlow.netPurchaseAmountKrw >= 0 ? "up" : "down"}>
               {locale === "ko"
@@ -516,8 +516,8 @@ export function MarketBar() {
   );
 }
 
-function formatFlow(value: number | null | undefined) {
-  if (value === null || value === undefined) return "Unavailable";
+function formatFlow(value: number | null | undefined, locale: "en" | "ko") {
+  if (value === null || value === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
   const absolute = Math.abs(value);
   const divisor = absolute >= 1_000_000_000_000 ? 1_000_000_000_000 : 1_000_000_000;
   const suffix = divisor === 1_000_000_000_000 ? "T" : "B";

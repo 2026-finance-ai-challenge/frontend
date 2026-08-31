@@ -42,12 +42,12 @@ export function formatNumber(
   options?: Intl.NumberFormatOptions,
 ) {
   return value === null || value === undefined
-    ? "Unavailable"
+    ? document.documentElement.lang === "ko" ? "정보 없음" : "Unavailable"
     : new Intl.NumberFormat(document.documentElement.lang === "ko" ? "ko-KR" : "en-US", options).format(value);
 }
 
 export function formatDate(value: string | null | undefined, time = true) {
-  if (!value) return "Not available";
+  if (!value) return document.documentElement.lang === "ko" ? "정보 없음" : "Not available";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.valueOf())) return value;
   return new Intl.DateTimeFormat(document.documentElement.lang === "ko" ? "ko-KR" : "en-US", {

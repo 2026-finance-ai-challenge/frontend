@@ -84,7 +84,7 @@ export function StockPage() {
                 </h1>
                 <p>{stockCode}&nbsp;&nbsp; · &nbsp;&nbsp;{detailState.data?.market || "—"}</p>
                 <p>
-                  {detailState.data?.quote.status || (locale === "ko" ? "불러오는 중" : "Loading")} · {formatDate(detailState.data?.quote.asOf)} · {locale === "ko" ? `환율 ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)}원/USD` : `Converted at ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)} KRW/USD`}
+                  {localizedMarketStatus(detailState.data?.quote.status, locale)} · {formatDate(detailState.data?.quote.asOf)} · {locale === "ko" ? `환율 ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)}원/USD` : `Converted at ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)} KRW/USD`}
                 </p>
               </div>
               <div className="stock-price">
@@ -188,13 +188,13 @@ export function StockPage() {
                     ))}
                   </div>
                   <div className="chart-tool-icons">
-                    <button type="button" className={chartMode === "candles" ? "active" : ""} aria-label="Show candlestick chart" aria-pressed={chartMode === "candles"} onClick={() => setChartMode("candles")}>
+                    <button type="button" className={chartMode === "candles" ? "active" : ""} aria-label={locale === "ko" ? "캔들 차트 보기" : "Show candlestick chart"} aria-pressed={chartMode === "candles"} onClick={() => setChartMode("candles")}>
                       <img src="/assets/chart-candles.svg" alt="" />
                     </button>
-                    <button type="button" className={chartMode === "line" ? "active" : ""} aria-label="Show line chart" aria-pressed={chartMode === "line"} onClick={() => setChartMode("line")}>
+                    <button type="button" className={chartMode === "line" ? "active" : ""} aria-label={locale === "ko" ? "선 차트 보기" : "Show line chart"} aria-pressed={chartMode === "line"} onClick={() => setChartMode("line")}>
                       <img src="/assets/chart-line.svg" alt="" />
                     </button>
-                    <button type="button" aria-label="Toggle full-screen chart" onClick={() => void toggleFullscreen(chartCardRef.current)}>
+                    <button type="button" aria-label={locale === "ko" ? "차트 전체 화면 전환" : "Toggle full-screen chart"} onClick={() => void toggleFullscreen(chartCardRef.current)}>
                       <img src="/assets/chart-expand.svg" alt="" />
                     </button>
                   </div>
@@ -230,18 +230,18 @@ export function StockPage() {
                   </div>
                   <div>
                     <span>
-                      Min<small>{percentage(detailState.data?.foreignLimitPrediction.minRate)}</small>
+                      {locale === "ko" ? "최소" : "Min"}<small>{percentage(detailState.data?.foreignLimitPrediction.minRate, locale)}</small>
                     </span>
                     <span>
-                      Base<small>{percentage(detailState.data?.foreignLimitPrediction.baseRate)}</small>
+                      {locale === "ko" ? "기준" : "Base"}<small>{percentage(detailState.data?.foreignLimitPrediction.baseRate, locale)}</small>
                     </span>
                     <span>
-                      Max<small>{percentage(detailState.data?.foreignLimitPrediction.maxRate)}</small>
+                      {locale === "ko" ? "최대" : "Max"}<small>{percentage(detailState.data?.foreignLimitPrediction.maxRate, locale)}</small>
                     </span>
                   </div>
                 </div> : null}
                 {detailState.data?.subjectToForeignAcquisitionLimit && activePrediction ? <p className="prediction-note">
-                  {predictionNote(detailState.data)}
+                  {predictionNote(detailState.data, locale)}
                 </p> : null}
               </aside>
             </div>
@@ -250,7 +250,7 @@ export function StockPage() {
       </div>
 
       {insights && (
-        <aside className="peer-panel" aria-label="Company insights">
+        <aside className="peer-panel" aria-label={locale === "ko" ? "기업 인사이트" : "Company insights"}>
           <button className="panel-close" onClick={() => setInsights(false)}>
             <img src="/assets/close.svg" alt="" />
             {t("close")}
@@ -262,11 +262,11 @@ export function StockPage() {
           </div>
           <RemoteState {...peersState}>
           {(peerData) => <><div className="peer-intro">
-            <h3>{peerData.headline}</h3>
-            <p>{peerData.summary}</p>
+            <h3>{locale === "ko" ? `${detailState.data ? stockName(detailState.data) : peerData.stockNameEn}: 글로벌 피어 3가지 비교` : peerData.headline}</h3>
+            <p>{locale === "ko" ? "전체 사업과 핵심 분야 두 가지를 검증된 글로벌 상장사와 비교합니다. 유사도는 사업 이해를 위한 참고 지표이며 가치평가나 성과 예측이 아닙니다." : peerData.summary}</p>
             <div>
               <span>AI</span>
-              <span>{peerData.confidenceLevel}</span>
+              <span>{locale === "ko" ? confidenceLevelKo(peerData.confidenceLevel) : peerData.confidenceLevel}</span>
               <span>{Math.round(peerData.confidenceScore * 100)}% {locale === "ko" ? "신뢰도" : "confidence"}</span>
             </div>
           </div>
@@ -275,10 +275,10 @@ export function StockPage() {
               <article key={comparison.dimension}>
                 <span>{locale === "ko" ? peerDimensionKo(comparison.dimension) : comparison.dimension.replaceAll("_", " ")}</span>
                 <div className="peer-company">
-                  <img src={comparison.peer.logoUrl} alt="" onError={(event) => { event.currentTarget.hidden = true; }} />
+                  <img src={comparison.peer.logoUrl} alt={`${comparison.peer.companyName} ${locale === "ko" ? "로고" : "logo"}`} onError={(event) => { event.currentTarget.hidden = true; }} />
                   <h3>{comparison.peer.companyName}</h3>
                 </div>
-                <p>{comparison.description}</p>
+                <p>{locale === "ko" ? peerDescriptionKo(comparison.dimension, comparison.peer.companyName, comparison.peer.industry) : comparison.description}</p>
               </article>
             ))}
           </div>
@@ -343,11 +343,30 @@ function peerDimensionKo(value: string) {
   if (normalized.includes("overall") || normalized.includes("business")) return "전체 사업";
   if (normalized.includes("semiconductor")) return "반도체";
   if (normalized.includes("consumer")) return "소비자 전자";
+  if (normalized.includes("memory")) return "메모리";
   return value;
 }
 
-function percentage(value: number | null | undefined) {
-  return value === null || value === undefined ? "Unavailable" : `${value.toFixed(2)}%`;
+function peerDescriptionKo(dimension: string, companyName: string, industry: string) {
+  return `${peerDimensionKo(dimension)} 관점의 비교 기업인 ${companyName}은 ${peerIndustryKo(industry)} 분야의 글로벌 피어입니다. 일대일 가치평가가 아닌 사업 이해용 비교입니다.`;
+}
+
+function peerIndustryKo(value: string) {
+  return ({ Semiconductors: "반도체", "Consumer Electronics": "소비자 전자", Banking: "은행", Insurance: "보험", Automotive: "자동차" } as Record<string, string>)[value] || value || "유사 사업";
+}
+
+function confidenceLevelKo(value: string) {
+  return ({ HIGH: "높음", MEDIUM: "보통", LOW: "낮음" } as Record<string, string>)[value] || value;
+}
+
+function localizedMarketStatus(value: string | null | undefined, locale: "en" | "ko") {
+  if (!value) return locale === "ko" ? "불러오는 중" : "Loading";
+  if (locale === "en") return value;
+  return ({ OPEN: "장중", REGULAR: "장중", CLOSED: "장 마감", PRE_MARKET: "장 시작 전", AFTER_HOURS: "장 마감 후", HALTED: "거래 정지" } as Record<string, string>)[value] || value;
+}
+
+function percentage(value: number | null | undefined, locale: "en" | "ko") {
+  return value === null || value === undefined ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${value.toFixed(2)}%`;
 }
 
 function signedNumber(value: number | null | undefined, locale: "en" | "ko" = "en") {
@@ -363,18 +382,18 @@ function previousClose(stock: StockDetail | null) {
     : current - change;
 }
 
-function predictionNote(stock: StockDetail | null) {
+function predictionNote(stock: StockDetail | null, locale: "en" | "ko") {
   const maximum = stock?.foreignLimitPrediction.maxRate;
   const quantity = stock?.foreignOwnership.foreignLimitQuantity;
   const total = stock?.foreignOwnership.totalListedQuantity;
   if (maximum === null || maximum === undefined || !quantity || !total) {
-    return "A verified prediction or statutory limit is unavailable for this stock.";
+    return locale === "ko" ? "이 종목은 검증된 예측치 또는 법정 한도 정보가 없습니다." : "A verified prediction or statutory limit is unavailable for this stock.";
   }
   const legalLimit = quantity / total * 100;
   if (maximum >= legalLimit) {
-    return `The estimated maximum reaches or exceeds the ${legalLimit.toFixed(2)}% statutory limit. Check order eligibility before trading.`;
+    return locale === "ko" ? `예상 최대치가 법정 한도 ${legalLimit.toFixed(2)}%에 도달하거나 초과합니다. 거래 전 주문 가능 여부를 확인하세요.` : `The estimated maximum reaches or exceeds the ${legalLimit.toFixed(2)}% statutory limit. Check order eligibility before trading.`;
   }
-  return `The estimated maximum is ${(legalLimit - maximum).toFixed(2)} percentage points below the ${legalLimit.toFixed(2)}% statutory limit.`;
+  return locale === "ko" ? `예상 최대치는 법정 한도 ${legalLimit.toFixed(2)}%보다 ${(legalLimit - maximum).toFixed(2)}%p 낮습니다.` : `The estimated maximum is ${(legalLimit - maximum).toFixed(2)} percentage points below the ${legalLimit.toFixed(2)}% statutory limit.`;
 }
 
 function PriceChart({ items, mode, label }: {

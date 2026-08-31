@@ -217,7 +217,7 @@ export function DisclosureDetailPage() {
     insightRequest.current = disclosureId;
     void api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { method: "POST" })
       .then(insightState.setData)
-      .catch((reason: unknown) => setAutomaticError(reason instanceof Error ? reason.message : locale === "ko" ? "AI 요약을 생성하지 못했습니다." : "AI insight could not be generated."));
+      .catch((reason: unknown) => setAutomaticError(locale === "ko" ? "AI 요약을 생성하지 못했습니다." : reason instanceof Error ? reason.message : "AI insight could not be generated."));
   }, [disclosureId, filing?.indexStatus, insightState.data, insightState.error?.code, insightState.loading, insightState.setData, locale]);
 
   return (
@@ -281,7 +281,7 @@ export function DisclosureDetailPage() {
                     <b>{row[0]}</b>
                     <span>{row[1]}</span>
                   </p>
-                )) : <div className="api-state api-loading" role="status"><span>{automaticError || insightState.error?.message || insightState.data?.refusalReason || (filing?.indexStatus === "READY" ? (locale === "ko" ? "근거 기반 무엇·이유·영향 요약을 생성하는 중…" : "Generating the grounded What / Why / Impact summary…") : (locale === "ko" ? "공시 번역과 근거 기반 요약을 준비하는 중…" : "Preparing the filing for translation and grounded insight…"))}</span>{indexRequested && filing?.indexStatus !== "READY" ? <small>{locale === "ko" ? "색인 중이며 완료되면 자동으로 갱신됩니다." : "Indexing is in progress. This screen updates automatically."}</small> : null}</div>}
+                )) : <div className="api-state api-loading" role="status"><span>{automaticError || (locale === "ko" ? null : insightState.error?.message || insightState.data?.refusalReason) || (filing?.indexStatus === "READY" ? (locale === "ko" ? "근거 기반 무엇·이유·영향 요약을 생성하는 중…" : "Generating the grounded What / Why / Impact summary…") : (locale === "ko" ? "공시 번역과 근거 기반 요약을 준비하는 중…" : "Preparing the filing for translation and grounded insight…"))}</span>{indexRequested && filing?.indexStatus !== "READY" ? <small>{locale === "ko" ? "색인 중이며 완료되면 자동으로 갱신됩니다." : "Indexing is in progress. This screen updates automatically."}</small> : null}</div>}
             </section>
             <aside className="mentioned filing-division">
               <h2>{t("division")}</h2>

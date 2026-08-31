@@ -1231,18 +1231,22 @@ a {
   .icon-button {
     display: none;
   }
-  .market-bar span:nth-of-type(4),
-  .market-bar i:nth-of-type(3) {
-    display: none;
+  .market-bar {
+    overflow-x: auto;
+    justify-content: flex-start;
   }
   .hero-content h1 {
     font-size: 64px;
   }
   .filing-row {
-    grid-template-columns: 100px 180px 1fr;
+    height: auto;
+    min-height: 104px;
+    grid-template-columns: 120px minmax(160px, 220px) minmax(0, 1fr);
+    padding-block: 14px;
   }
-  .filing-row > *:nth-child(n + 4) {
-    display: none;
+  .filing-row-badges {
+    grid-column: 2 / -1;
+    justify-self: start !important;
   }
   .ownership-grid {
     grid-template-columns: 1fr;
@@ -1354,11 +1358,29 @@ a {
     padding-top: 100px;
   }
   .filing-row {
-    grid-template-columns: 90px 1fr;
-    padding: 14px 18px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    min-height: 0;
+    padding: 16px 18px;
   }
-  .filing-row > *:nth-child(n + 3) {
+  .filing-row::before,
+  .filing-row .filing-timeline-dot {
     display: none;
+  }
+  .filing-row strong {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .filing-row-badges {
+    grid-column: 1;
+    margin-top: 4px;
+  }
+  .filing-row-badges .tags {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
   .ownership-section,
   .tax-section {

@@ -1,5 +1,6 @@
 import type { MouseEvent } from "react";
 import { useWatchlist } from "../state/WatchlistContext";
+import { useLocale } from "../state/LocaleContext";
 
 type WatchlistHeartProps = {
   itemId: string;
@@ -17,6 +18,7 @@ export function WatchlistHeart({
   keepFocus = false,
 }: WatchlistHeartProps) {
   const { isSaved, toggle } = useWatchlist();
+  const { locale } = useLocale();
   const saved = isSaved(itemId);
 
   const handleMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
@@ -27,7 +29,9 @@ export function WatchlistHeart({
     <button
       className={className}
       type="button"
-      aria-label={`${saved ? "Remove" : "Add"} ${itemName} ${saved ? "from" : "to"} watchlist`}
+      aria-label={locale === "ko"
+        ? saved ? `${itemName} 관심종목에서 삭제` : `${itemName} 관심종목에 추가`
+        : `${saved ? "Remove" : "Add"} ${itemName} ${saved ? "from" : "to"} watchlist`}
       aria-pressed={saved}
       onMouseDown={handleMouseDown}
       onClick={() => void toggle(itemId)}
