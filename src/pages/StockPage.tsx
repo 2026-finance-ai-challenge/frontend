@@ -60,6 +60,8 @@ export function StockPage() {
   }, [profile, stockCode]);
   const quoteChangeRate = detailState.data?.quote.changeRate;
   const ownershipExhaustion = detailState.data?.foreignOwnership.limitExhaustionRate;
+  const activePrediction = detailState.data?.foreignLimitPrediction.status === "AVAILABLE"
+    && detailState.data.quote.marketSession === "REGULAR";
   return (
     <div className={`stock-page ${insights ? "panel-open" : ""}`}>
       <div className="stock-main">
@@ -202,7 +204,11 @@ export function StockPage() {
               </section>
               <aside className="ownership-panel">
                 <h2>Foreign ownership</h2>
-                <p>{detailState.data?.subjectToForeignAcquisitionLimit ? "ML prediction & statutory limit" : "Latest verified ownership"}</p>
+                <p>{activePrediction
+                  ? "ML prediction & statutory limit"
+                  : detailState.data?.subjectToForeignAcquisitionLimit
+                    ? "Latest verified ownership & statutory limit"
+                    : "Latest verified ownership"}</p>
                 <div className="ownership-line">
                   <span className={ownershipExhaustion == null ? "unavailable" : ""} style={{ width: `${ownershipExhaustion == null ? 0 : Math.min(ownershipExhaustion, 100)}%` }} />
                 </div>
@@ -216,7 +222,7 @@ export function StockPage() {
                     <strong>{detailState.data?.foreignOwnership.foreignLimitQuantity && detailState.data?.foreignOwnership.totalListedQuantity ? `${(detailState.data.foreignOwnership.foreignLimitQuantity / detailState.data.foreignOwnership.totalListedQuantity * 100).toFixed(2)}%` : "Not applicable"}</strong>
                   </div>
                 </div>
-                {detailState.data?.subjectToForeignAcquisitionLimit && detailState.data.foreignLimitPrediction ? <div className="prediction">
+                {detailState.data?.subjectToForeignAcquisitionLimit && activePrediction ? <div className="prediction">
                   <div>
                     <b>Today’s current prediction</b>
                     <span>95% CI</span>
@@ -233,7 +239,7 @@ export function StockPage() {
                     </span>
                   </div>
                 </div> : null}
-                {detailState.data?.subjectToForeignAcquisitionLimit && detailState.data.foreignLimitPrediction ? <p className="prediction-note">
+                {detailState.data?.subjectToForeignAcquisitionLimit && activePrediction ? <p className="prediction-note">
                   {predictionNote(detailState.data)}
                 </p> : null}
               </aside>
