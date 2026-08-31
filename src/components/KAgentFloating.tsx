@@ -4,6 +4,7 @@ import { api } from "../api";
 import { OPEN_AGENT_EVENT, type KAgentContext } from "../agentEvents";
 import { useProfile } from "../hooks/useRemote";
 import { AgentHistoryView, AgentOverflowMenu } from "./AgentHistory";
+import { useLocale } from "../state/LocaleContext";
 
 type Room = {
   id: string;
@@ -44,13 +45,14 @@ export function KAgentFloating() {
     <button type="button" className="agent-launcher" aria-label="Open K-Agent" aria-haspopup="dialog" aria-expanded={open} onClick={() => { setContext({ contextType: "GENERAL" }); setOpen(true); }} ref={launcherRef} hidden={open}>
       <span className="agent-launcher-surface" aria-hidden="true" />
       <span className="agent-launcher-inner" aria-hidden="true" />
-      <img src="/assets/k-agent-floating.svg" alt="" />
+      <img src="/assets/k-agent-floating-figma.svg" alt="" />
     </button>
     {open ? <KAgentPanel close={close} requestedContext={context} /> : null}
   </>;
 }
 
 function KAgentPanel({ close, requestedContext }: { close: () => void; requestedContext: KAgentContext }) {
+  const { locale } = useLocale();
   const profile = useProfile();
   const [history, setHistory] = useState(false);
   const [room, setRoom] = useState<Room | null>(null);
@@ -183,18 +185,18 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
   }} />;
   const generating = generation && ["PENDING", "PROCESSING"].includes(generation.status);
   return <aside className="agent-panel article-agent-panel global-agent-panel" role="dialog" aria-modal="true" aria-label="K-Agent chat">
-    <button className="agent-close" type="button" onClick={close} ref={closeButtonRef}><img src="/assets/close.svg" alt="" /> Close</button>
-    <header><img className="agent-logo" src="/assets/agent-badge.svg" alt="" /><div><h2>K-Agent</h2><p>AI Financial Intelligence</p></div><AgentOverflowMenu onHistory={() => setHistory(true)} onDelete={room ? () => void deleteConversation() : undefined} /></header>
-    <div className="context-chip"><img src="/assets/agent-context.svg" alt="" /> {room?.context.title || "Korea market assistant"}</div>
-    {!profile ? <div className="api-state"><b>Sign in to start a protected chat</b><span>Chat rooms and history are stored per account.</span><Link to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}>Log in</Link></div> : null}
+    <button className="agent-close" type="button" onClick={close} ref={closeButtonRef}><img src="/assets/close.svg" alt="" /> {locale === "ko" ? "닫기" : "Close"}</button>
+    <header><img className="agent-logo" src="/assets/agent-badge-figma.svg" alt="" /><div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div><AgentOverflowMenu onHistory={() => setHistory(true)} onDelete={room ? () => void deleteConversation() : undefined} /></header>
+    <div className="context-chip"><img src="/assets/agent-context.svg" alt="" /> {room?.context.title || (locale === "ko" ? "한국 시장 도우미" : "Korea market assistant")}</div>
+    {!profile ? <div className="api-state"><b>{locale === "ko" ? "보호된 대화를 시작하려면 로그인하세요" : "Sign in to start a protected chat"}</b><span>{locale === "ko" ? "대화방과 기록은 계정별로 안전하게 저장됩니다." : "Chat rooms and history are stored per account."}</span><Link to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}>{locale === "ko" ? "로그인" : "Log in"}</Link></div> : null}
     <div className="chat global-agent-chat" aria-live="polite">
-      {profile && messages.length === 0 ? <div className="ai-message"><p>Ask about Korean equities, news, DART filings, foreign ownership limits, or treaty tax information.</p></div> : null}
-      {messages.map((message) => message.id === streamedMessageId ? null : message.role === "USER" ? <p className="user-message user-message-enter" key={message.id}>{message.content}</p> : <div className="ai-message ai-message-enter" key={message.id}><p>{message.content}</p>{message.insufficientEvidence ? <small>{message.refusalReason || "Insufficient evidence"}</small> : null}{message.citations.map((citation) => citation.url ? <a key={citation.id} href={citation.url} target="_blank" rel="noreferrer">{citation.title}</a> : <small key={citation.id}>{citation.title}</small>)}{message.disclaimer ? <small>{message.disclaimer}</small> : null}<button type="button" className="agent-message-action" onClick={() => void regenerateMessage(message.id)} disabled={Boolean(generating)}>Regenerate</button></div>)}
-      {generating ? <div className="agent-thinking" role="status"><span className="agent-thinking-label">K-Agent is checking server sources</span><i /><i /><i /><button type="button" onClick={() => void stopGeneration()}>Stop</button></div> : null}
+      {profile && messages.length === 0 ? <div className="ai-message"><p>{locale === "ko" ? "한국 주식, 뉴스, DART 공시, 외국인 보유 한도 또는 조세조약을 질문하세요." : "Ask about Korean equities, news, DART filings, foreign ownership limits, or treaty tax information."}</p></div> : null}
+      {messages.map((message) => message.id === streamedMessageId ? null : message.role === "USER" ? <p className="user-message user-message-enter" key={message.id}>{message.content}</p> : <div className="ai-message ai-message-enter" key={message.id}><p>{message.content}</p>{message.insufficientEvidence ? <small>{message.refusalReason || (locale === "ko" ? "근거가 부족합니다" : "Insufficient evidence")}</small> : null}{message.citations.map((citation) => citation.url ? <a key={citation.id} href={citation.url} target="_blank" rel="noreferrer">{citation.title}</a> : <small key={citation.id}>{citation.title}</small>)}{message.disclaimer ? <small>{message.disclaimer}</small> : null}<button type="button" className="agent-message-action" onClick={() => void regenerateMessage(message.id)} disabled={Boolean(generating)}>{locale === "ko" ? "다시 생성" : "Regenerate"}</button></div>)}
+      {generating ? <div className="agent-thinking" role="status"><span className="agent-thinking-label">{locale === "ko" ? "K-Agent가 서버 근거를 확인하는 중" : "K-Agent is checking server sources"}</span><i /><i /><i /><button type="button" onClick={() => void stopGeneration()}>{locale === "ko" ? "중지" : "Stop"}</button></div> : null}
       {streamedMessageId ? <div className="ai-message ai-message-enter"><p className="typewriter-answer">{streamingAnswer}<span className="typing-cursor" aria-hidden="true" /></p></div> : null}
-      {generation?.status === "FAILED" ? <div className="api-state api-error"><span>{generation.errorCode || "AI generation failed."}</span><button type="button" onClick={() => void retryGeneration()}>Retry</button></div> : null}
+      {generation?.status === "FAILED" ? <div className="api-state api-error"><span>{generation.errorCode || (locale === "ko" ? "AI 답변 생성에 실패했습니다." : "AI generation failed.")}</span><button type="button" onClick={() => void retryGeneration()}>{locale === "ko" ? "다시 시도" : "Retry"}</button></div> : null}
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
     </div>
-    <form className="chat-input global-agent-input" onSubmit={(event) => void sendMessage(event)}><input type="text" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Ask anything about this market" aria-label="Message K-Agent" disabled={!profile} /><button type="submit" aria-label="Send message" disabled={!draft.trim() || !profile || Boolean(generating)}><img src="/assets/agent-send.svg" alt="" /></button></form>
+    <form className="chat-input global-agent-input" onSubmit={(event) => void sendMessage(event)}><input type="text" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={locale === "ko" ? "한국 시장에 대해 질문하세요" : "Ask anything about this market"} aria-label={locale === "ko" ? "K-Agent에게 메시지" : "Message K-Agent"} disabled={!profile} /><button type="submit" aria-label={locale === "ko" ? "메시지 전송" : "Send message"} disabled={!draft.trim() || !profile || Boolean(generating)}><img src="/assets/agent-send.svg" alt="" /></button></form>
   </aside>;
 }
