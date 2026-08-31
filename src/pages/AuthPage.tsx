@@ -5,6 +5,7 @@ import { api, login, signup } from "../api";
 import { ApiError } from "../api";
 import { useRemote } from "../hooks/useRemote";
 import type { InvestorType, SupportedCountry } from "../types";
+import { useLocale } from "../state/LocaleContext";
 
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{12,}$/;
@@ -19,6 +20,7 @@ function FormError({ children }: { children: string }) {
 }
 
 export function SignupPage() {
+  const { locale } = useLocale();
   const countries = useRemote((signal) => api<SupportedCountry[]>("/api/v1/tax/countries", { signal }), []);
   const [step, setStep] = useState(1);
   const [loginId, setLoginId] = useState("");
@@ -91,7 +93,7 @@ export function SignupPage() {
       <main>
         {step === 1 ? (
           <form className="auth-card signup-card" onSubmit={next}>
-            <h1>Welcome to Kart</h1>
+            <h1>{locale === "ko" ? "KART에 오신 것을 환영합니다" : "Welcome to Kart"}</h1>
             <label>
               ID
               <div className="email-check">
@@ -104,22 +106,22 @@ export function SignupPage() {
                   }}
                   onBlur={() => void checkLoginId()}
                   autoComplete="username"
-                  placeholder="Enter your ID"
+                  placeholder={locale === "ko" ? "아이디 입력" : "Enter your ID"}
                 />
                 <button
                   type="button"
                   disabled={availability === "checking"}
                   onClick={() => void checkLoginId()}
                 >
-                  {availability === "checking" ? "Checking" : "Check"}
+                  {availability === "checking" ? (locale === "ko" ? "확인 중" : "Checking") : (locale === "ko" ? "중복 확인" : "Check")}
                 </button>
               </div>
-              {availability === "available" && <small className="safe">Available account</small>}
-              {availability === "unavailable" && <FormError>This ID is already in use</FormError>}
-              {loginIdError && availability !== "unavailable" && <FormError>Use 4–30 letters, numbers, dots, underscores, or hyphens</FormError>}
+              {availability === "available" && <small className="safe">{locale === "ko" ? "사용할 수 있는 아이디입니다" : "Available account"}</small>}
+              {availability === "unavailable" && <FormError>{locale === "ko" ? "이미 사용 중인 아이디입니다" : "This ID is already in use"}</FormError>}
+              {loginIdError && availability !== "unavailable" && <FormError>{locale === "ko" ? "영문, 숫자, 점, 밑줄 또는 하이픈 4~30자로 입력하세요" : "Use 4–30 letters, numbers, dots, underscores, or hyphens"}</FormError>}
             </label>
             <label>
-              Password
+              {locale === "ko" ? "비밀번호" : "Password"}
               <input
                 className={passwordError ? "invalid" : ""}
                 type="password"
@@ -127,16 +129,16 @@ export function SignupPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 onBlur={() => setPasswordTouched(true)}
                 aria-invalid={passwordError}
-                placeholder="Create a password"
+                placeholder={locale === "ko" ? "비밀번호 생성" : "Create a password"}
               />
               {passwordError && (
                 <FormError>
-                  Min 12 characters with upper/lowercase, number, and symbol
+                  {locale === "ko" ? "대·소문자, 숫자, 특수문자를 포함해 12자 이상 입력하세요" : "Min 12 characters with upper/lowercase, number, and symbol"}
                 </FormError>
               )}
             </label>
             <label>
-              Password Confirm
+              {locale === "ko" ? "비밀번호 확인" : "Password Confirm"}
               <input
                 className={confirmError ? "invalid" : ""}
                 type="password"
@@ -144,29 +146,29 @@ export function SignupPage() {
                 onChange={(event) => setConfirm(event.target.value)}
                 onBlur={() => setConfirmTouched(true)}
                 aria-invalid={confirmError}
-                placeholder="Enter password again"
+                placeholder={locale === "ko" ? "비밀번호 다시 입력" : "Enter password again"}
               />
-              {confirmError && <FormError>Password does not match</FormError>}
+              {confirmError && <FormError>{locale === "ko" ? "비밀번호가 일치하지 않습니다" : "Password does not match"}</FormError>}
             </label>
             <label>
-              Nationality
+              {locale === "ko" ? "국적" : "Nationality"}
               <select
                 className={nationalityError ? "invalid" : ""}
                 value={nationality}
                 onChange={(event) => setNationality(event.target.value)}
               >
-                <option value="">Select your nationality</option>
+                <option value="">{locale === "ko" ? "국적 선택" : "Select your nationality"}</option>
                 {(countries.data || []).map((country) => <option value={country.countryCode} key={country.countryCode}>{country.countryName}</option>)}
               </select>
-              {countries.loading ? <small>Loading supported countries…</small> : null}
+              {countries.loading ? <small>{locale === "ko" ? "지원 국가 불러오는 중…" : "Loading supported countries…"}</small> : null}
               {countries.error ? <FormError>{countries.error.message}</FormError> : null}
               {nationalityError && (
-                <FormError>Select your nationality</FormError>
+                <FormError>{locale === "ko" ? "국적을 선택하세요" : "Select your nationality"}</FormError>
               )}
             </label>
             {requestError ? <FormError>{requestError}</FormError> : null}
-            <button className="auth-primary">Continue to next step</button>
-            <Link to="/login">Log in</Link>
+            <button className="auth-primary">{locale === "ko" ? "다음 단계" : "Continue to next step"}</button>
+            <Link to="/login">{locale === "ko" ? "로그인" : "Log in"}</Link>
           </form>
         ) : (
           <ConsentStep
@@ -187,6 +189,7 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
   confirm: string;
   nationality: string;
 }) {
+  const { locale } = useLocale();
   const [profile, setProfile] = useState<InvestorType>("INDIVIDUAL");
   const [consents, setConsents] = useState([true, false, false]);
   const navigate = useNavigate();
@@ -194,7 +197,7 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
   const [error, setError] = useState("");
   const createAccount = async () => {
     if (!consents.every(Boolean)) {
-      setError("All required consents must be accepted.");
+      setError(locale === "ko" ? "필수 동의 항목을 모두 선택하세요." : "All required consents must be accepted.");
       return;
     }
     setBusy(true);
@@ -218,24 +221,24 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
   };
   return (
     <section className="auth-card consent-card">
-      <h2>Investor Profile</h2>
+      <h2>{locale === "ko" ? "투자자 유형" : "Investor Profile"}</h2>
       <div className="profile-options">
         <button
           className={profile === "INDIVIDUAL" ? "active" : ""}
           onClick={() => setProfile("INDIVIDUAL")}
         >
-          <b>Individual</b>
-          <span>Standard retail market insight.</span>
+          <b>{locale === "ko" ? "개인" : "Individual"}</b>
+          <span>{locale === "ko" ? "일반 개인 투자자를 위한 시장 인사이트" : "Standard retail market insight."}</span>
         </button>
         <button
           className={profile === "CORPORATE" ? "active" : ""}
           onClick={() => setProfile("CORPORATE")}
         >
-          <b>Institutional</b>
-          <span>Focus on corporate filings &amp; bulk data.</span>
+          <b>{locale === "ko" ? "기관·법인" : "Institutional"}</b>
+          <span>{locale === "ko" ? "기업 공시와 대량 데이터 중심" : <>Focus on corporate filings &amp; bulk data.</>}</span>
         </button>
       </div>
-      <h2>Required Consents</h2>
+      <h2>{locale === "ko" ? "필수 동의" : "Required Consents"}</h2>
       {[0, 1, 2].map((index) => (
         <label className="consent" key={index}>
           <input
@@ -251,7 +254,7 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
           />
           {index === 0 ? (
             <span>
-              I agree the {" "}
+              {locale === "ko" ? "" : "I agree the "}
               <Link
                 className="consent-policy-link"
                 to="/legal/terms"
@@ -259,13 +262,13 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
                 rel="noreferrer"
                 onClick={(event) => event.stopPropagation()}
               >
-                Terms of Service.
+                {locale === "ko" ? "서비스 이용약관" : "Terms of Service."}
               </Link>{" "}
-              <em>(Req.)</em>
+              {locale === "ko" ? "에 동의합니다. " : " "}<em>{locale === "ko" ? "(필수)" : "(Req.)"}</em>
             </span>
           ) : index === 1 ? (
             <span>
-              I have read and consent to the {" "}
+              {locale === "ko" ? "" : "I have read and consent to the "}
               <Link
                 className="consent-policy-link"
                 to="/legal/privacy"
@@ -273,13 +276,13 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
                 rel="noreferrer"
                 onClick={(event) => event.stopPropagation()}
               >
-                Privacy Policy.
+                {locale === "ko" ? "개인정보 처리방침" : "Privacy Policy."}
               </Link>{" "}
-              <em>(Req.)</em>
+              {locale === "ko" ? "을 읽고 동의합니다. " : " "}<em>{locale === "ko" ? "(필수)" : "(Req.)"}</em>
             </span>
           ) : (
             <span>
-              I acknowledge the {" "}
+              {locale === "ko" ? "" : "I acknowledge the "}
               <Link
                 className="consent-policy-link"
                 to="/legal/fsc-disclaimer"
@@ -287,17 +290,17 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
                 rel="noreferrer"
                 onClick={(event) => event.stopPropagation()}
               >
-                FSC Information Disclaimer
+                {locale === "ko" ? "금융위원회 정보 면책 고지" : "FSC Information Disclaimer"}
               </Link>
               <br />
-              regarding AI-generated insights. <em>(Req.)</em>
+              {locale === "ko" ? "의 AI 생성 인사이트 관련 내용을 확인했습니다. " : "regarding AI-generated insights. "}<em>{locale === "ko" ? "(필수)" : "(Req.)"}</em>
             </span>
           )}
         </label>
       ))}
       {error ? <FormError>{error}</FormError> : null}
       <button className="auth-primary" disabled={busy} onClick={() => void createAccount()}>
-        {busy ? "Creating…" : "Create Account"}
+        {busy ? (locale === "ko" ? "계정 생성 중…" : "Creating…") : (locale === "ko" ? "계정 만들기" : "Create Account")}
         <img src="/assets/chevron-right-white.svg" alt="" />
       </button>
     </section>
@@ -305,6 +308,7 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
 }
 
 export function LoginPage() {
+  const { locale } = useLocale();
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -330,7 +334,7 @@ export function LoginPage() {
       <Header white />
       <main>
         <form className="auth-card login-card" onSubmit={submit}>
-          <h1>Welcome Back</h1>
+          <h1>{locale === "ko" ? "다시 오신 것을 환영합니다" : "Welcome Back"}</h1>
           <label>
             ID
             <input
@@ -338,17 +342,17 @@ export function LoginPage() {
               value={loginId}
               onChange={(event) => setLoginId(event.target.value)}
               autoComplete="username"
-              placeholder="Enter your ID"
+              placeholder={locale === "ko" ? "아이디 입력" : "Enter your ID"}
             />
           </label>
           <label>
-            Password
+            {locale === "ko" ? "비밀번호" : "Password"}
             <input
               className={error ? "invalid" : ""}
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="Password"
+              placeholder={locale === "ko" ? "비밀번호" : "Password"}
             />
           </label>
           {error ? (
@@ -357,9 +361,9 @@ export function LoginPage() {
               {error}
             </p>
           ) : null}
-          <button className="auth-primary" disabled={busy}>{busy ? "Signing in…" : "Log in"}</button>
+          <button className="auth-primary" disabled={busy}>{busy ? (locale === "ko" ? "로그인 중…" : "Signing in…") : (locale === "ko" ? "로그인" : "Log in")}</button>
           <p className="signup-prompt">
-            New to KART? <Link to="/signup">Sign up</Link>
+            {locale === "ko" ? "KART가 처음이신가요? " : "New to KART? "}<Link to="/signup">{locale === "ko" ? "회원가입" : "Sign up"}</Link>
           </p>
         </form>
       </main>
