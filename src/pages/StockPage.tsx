@@ -348,7 +348,7 @@ function peerDimensionKo(value: string) {
 }
 
 function peerDescriptionKo(dimension: string, companyName: string, industry: string) {
-  return `${peerDimensionKo(dimension)} 관점의 비교 기업인 ${companyName}은 ${peerIndustryKo(industry)} 분야의 글로벌 피어입니다. 일대일 가치평가가 아닌 사업 이해용 비교입니다.`;
+  return `${peerDimensionKo(dimension)} 관점의 비교 기업은 ${companyName}입니다. ${peerIndustryKo(industry)} 분야의 글로벌 피어이며, 일대일 가치평가가 아닌 사업 이해용 비교입니다.`;
 }
 
 function peerIndustryKo(value: string) {
