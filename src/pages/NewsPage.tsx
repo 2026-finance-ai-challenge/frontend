@@ -144,7 +144,7 @@ export function NewsDetailPage() {
                 {article?.eventType ? <span className="info-tag">{article.eventType}</span> : null}
               </div>
               <h1>
-                {article?.englishTitle || article?.originalTitle || "Loading article…"}
+                {article?.englishTitle || "Loading article…"}
               </h1>
               <p>{article?.publisher || "—"} · {formatDate(article?.publishedAt)} · {translation ? "Auto-translated" : translationPending ? "Translation loading" : "Translation unavailable"}</p>
             </div>
@@ -176,7 +176,7 @@ export function NewsDetailPage() {
                   <img src="/assets/selection-info.svg" alt="" /> Drag over any
                   highlighted term to look it up.
                 </button>
-                <button type="button" className="article-share" aria-label="Share article" onClick={() => void shareArticle(article?.englishTitle || article?.originalTitle || "KART news")}>
+                <button type="button" className="article-share" aria-label="Share article" onClick={() => void shareArticle(article?.englishTitle || "KART news")}>
                   <img src="/assets/share.svg" alt="" />
                 </button>
                 <RemoteState {...articleState}>
@@ -184,7 +184,7 @@ export function NewsDetailPage() {
                     ? <>{translation.translatedParagraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
                     : translationPending
                       ? <div className="api-state api-loading" role="status">Translating the source and preparing What / Why / Impact…</div>
-                      : <><p>{value.originalBody || value.originalExcerpt || "Article body is unavailable from the source."}</p><small className="translation-source-notice">Original Korean source shown because an English translation is unavailable.</small></>}
+                      : <div className="api-state api-error">The verified English translation is temporarily unavailable.</div>}
                 </RemoteState>
                 {selectedText ? <div className="selection-popup article-selection-action">
                   <span>Explain “{selectedText.slice(0, 60)}”</span>

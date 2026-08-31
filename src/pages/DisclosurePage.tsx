@@ -9,6 +9,7 @@ import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
 import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import type { Filing, FilingDetail } from "../types";
+import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 
 type FilingInsight = {
   sufficientEvidence: boolean;
@@ -46,8 +47,8 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
     ? `${pathname}?tab=disclosure`
     : pathname;
 
-  const groups = new Map<string, Filing[]>();
-  for (const filing of state.data?.items ?? []) groups.set(filing.filedDate, [...(groups.get(filing.filedDate) ?? []), filing]);
+	const groups = new Map<string, PublishedFiling[]>();
+	for (const filing of (state.data?.items ?? []).filter(isPublishedFiling)) groups.set(filing.filedDate, [...(groups.get(filing.filedDate) ?? []), filing]);
   return <RemoteState {...state} empty={(value) => !value.items.length}>
     {() => <><div className="disclosure-rows">
       {[...groups.entries()].map(([day, rows]) => (
@@ -69,10 +70,10 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
                   <b>{filing.issuerNameEn || filing.issuerNameKo}</b>
                   <small>{filing.stockCode} · {filing.market}</small>
                 </span>
-                <strong>{filing.titleEn || filing.titleKo}</strong>
-                <em>{filing.type}</em>
-                <span className={filing.indexStatus === "READY" ? "positive" : "medium"}>{filing.indexStatus}</span>
-                <span>{filing.correction ? "Correction" : filing.documentStatus}</span>
+                <strong>{filing.titleEn}</strong>
+                <em>{filing.eventType.replaceAll("_", " ")}</em>
+                <span className={filing.importance === "HIGH" || filing.importance === "CRITICAL" ? "positive" : "medium"}>{filing.importance}</span>
+                <span className={filing.sentiment.toLowerCase()}>{filing.sentiment}</span>
               </Link>
           ))}
         </section>
@@ -113,9 +114,9 @@ function FilingFilters({ value, onChange }: { value: FilingFiltersValue; onChang
         </button>
       </div>
       <div className="date-filter">
-        <input type="date" value={value.from} onChange={(event) => onChange({ ...value, from: event.target.value })} aria-label="Start date" />
+        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={value.from} onChange={(event) => onChange({ ...value, from: event.target.value })} aria-label="Start date" />
         <b>–</b>
-        <input type="date" value={value.to} onChange={(event) => onChange({ ...value, to: event.target.value })} aria-label="End date" />
+        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value={value.to} onChange={(event) => onChange({ ...value, to: event.target.value })} aria-label="End date" />
         {[["1D", 1], ["1W", 7], ["1M", 30], ["3M", 90], ["1Y", 365]].map(([item, days]) => (
           <button
             type="button"
@@ -237,7 +238,6 @@ export function DisclosureDetailPage() {
                   {translatedLead?.translatedHeading
                     || translatedLead?.translatedText
                     || filing?.titleEn
-                    || filing?.titleKo
                     || "Loading disclosure…"}
                 </h1>
               </div>
@@ -282,9 +282,9 @@ export function DisclosureDetailPage() {
             <aside className="mentioned filing-division">
               <h2>Division</h2>
               <div className="tags">
-                <span>{filing?.type || "Type unavailable"}</span>
-                <span>{filing?.documentStatus || "Status unavailable"}</span>
-                <span>{filing?.indexStatus || "Index unavailable"}</span>
+                <span>{filing?.eventType?.replaceAll("_", " ") || "Event unavailable"}</span>
+                <span>{filing?.importance || "Importance unavailable"}</span>
+                <span>{filing?.sentiment || "Sentiment unavailable"}</span>
                 {filing?.correction ? <span>Correction</span> : null}
               </div>
             </aside>
@@ -299,7 +299,7 @@ export function DisclosureDetailPage() {
                 <button type="button" aria-label="Print" onClick={() => window.print()}>
                   <img src="/assets/print.svg" alt="" />
                 </button>
-                <button type="button" aria-label="Share" onClick={() => void sharePage(filing?.titleEn || filing?.titleKo || "KART disclosure")}>
+                <button type="button" aria-label="Share" onClick={() => void sharePage(filing?.titleEn || "KART disclosure")}>
                   <img src="/assets/share.svg" alt="" />
                 </button>
               </span>
@@ -309,7 +309,7 @@ export function DisclosureDetailPage() {
               highlighted term to look it up.
             </button>
             <RemoteState {...detailState}>
-              {(value) => <div className="disclosure-structured-body">{value.documents.flatMap((document) => document.sections).map((section) => <DisclosureSection receiptNumber={disclosureId} section={section} key={section.id} />)}</div>}
+              {(value) => <div className="disclosure-structured-body">{value.documents.flatMap((document) => document.sections).filter((section) => section.kind !== "TEXT").map((section) => <DisclosureSection receiptNumber={disclosureId} section={section} key={section.id} />)}</div>}
             </RemoteState>
           </section>
           <DisclosureQuestionBox receiptNumber={disclosureId} ready={filing?.indexStatus === "READY"} />
