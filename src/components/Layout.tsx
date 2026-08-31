@@ -313,9 +313,9 @@ export function Header({
             {!notificationsError && notifications?.items.length === 0 ? <p className="search-empty">No notifications yet.</p> : null}
             {notifications?.items.map((item) => <button type="button" className={item.read ? "is-read" : ""} onClick={() => void readNotification(item)} key={item.id}><span><b>{item.title}</b><small>{item.body}</small></span><time>{new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</time></button>)}
           </div> : null}
-          <button className="language">
+          <span className="language" aria-label="Language: English">
             <img src="/assets/flag-us.svg" alt="United States" /> EN
-          </button>
+          </span>
           {profile ? (
             <Link className="profile-link" to="/my" aria-label="Open my page">
               <img src="/assets/profile.png" alt="" />
@@ -349,9 +349,8 @@ export function Header({
           <div className="primary-navigation-links">
             {primaryNavigation.map((item) => {
               const active =
-                (item.to !== "/#foreign" &&
-                  location.pathname.startsWith(item.to)) ||
-                (location.pathname === "/" && item.to === "/disclosures");
+                item.to !== "/#foreign" &&
+                location.pathname.startsWith(item.to);
 
               return (
                 <Link
@@ -385,8 +384,8 @@ export function Footer() {
         </div>
         <div>
           <h3>Team</h3>
-          <a href="#about">About</a>
-          <a href="#people">People</a>
+          <a href="https://github.com/2026-finance-ai-challenge" target="_blank" rel="noreferrer">About</a>
+          <a href="https://github.com/orgs/2026-finance-ai-challenge/people" target="_blank" rel="noreferrer">People</a>
         </div>
         <div>
           <h3>Product</h3>
@@ -423,6 +422,13 @@ export function MarketBar() {
     changeRate: number | null;
     status: string;
   }>>([]);
+  const [exchangeRate, setExchangeRate] = useState<{
+    currency: string;
+    krwPerUnit: number | null;
+    status: string;
+    asOf: string | null;
+    source: string;
+  } | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(
@@ -433,9 +439,14 @@ export function MarketBar() {
   }, []);
   useEffect(() => {
     const controller = new AbortController();
-    api<typeof indices>("/api/v1/market/indices", { signal: controller.signal })
-      .then(setIndices)
-      .catch(() => setIndices([]));
+    void Promise.all([
+      api<typeof indices>("/api/v1/market/indices", { signal: controller.signal })
+        .then(setIndices)
+        .catch(() => setIndices([])),
+      api<NonNullable<typeof exchangeRate>>("/api/v1/market/exchange-rates/USD", { signal: controller.signal })
+        .then(setExchangeRate)
+        .catch(() => setExchangeRate(null)),
+    ]);
     return () => controller.abort();
   }, []);
 
@@ -453,7 +464,10 @@ export function MarketBar() {
       {renderIndex(kosdaq, "KOSDAQ")}
       <i />
       <span>
-        <em>USD/KRW</em> Available on stock detail
+        <em>USD/KRW</em> {exchangeRate?.krwPerUnit == null
+          ? "Unavailable"
+          : exchangeRate.krwPerUnit.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+        {exchangeRate?.status && exchangeRate.status !== "UNAVAILABLE" ? <b>{exchangeRate.status}</b> : null}
       </span>
       <i />
       <span>

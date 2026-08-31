@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { StockNewsFeed } from "../components/StockNewsFeed";
@@ -10,6 +10,16 @@ import { useProfile, useRemote } from "../hooks/useRemote";
 import type { GlobalPeer, StockDetail } from "../types";
 
 type StockAlert = "vi" | "price-limit";
+type ChartMode = "candles" | "line";
+type DailyPrice = {
+  tradingDate: string;
+  openPriceKrw: number;
+  highPriceKrw: number;
+  lowPriceKrw: number;
+  closePriceKrw: number;
+  volume: number;
+  source: string;
+};
 
 function periodToLimit(period: string) {
   return ({ "1D": 2, "1W": 7, "1M": 31, "3M": 93, "1Y": 366 } as Record<string, number>)[period] ?? 31;
@@ -21,10 +31,12 @@ export function StockPage() {
   const profile = useProfile();
   const [period, setPeriod] = useState(params.get("period") || "1M");
   const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile]);
-  const historyState = useRemote((signal) => api<{ status: string; items: Array<{ tradingDate: string; closePriceKrw: number }> }>(`/api/v1/market/stocks/${stockCode}/history?limit=${periodToLimit(period)}`, { signal }), [stockCode, period]);
+  const historyState = useRemote((signal) => api<{ status: string; items: DailyPrice[] }>(`/api/v1/market/stocks/${stockCode}/history?limit=${periodToLimit(period)}`, { signal }), [stockCode, period]);
   const peersState = useRemote((signal) => api<GlobalPeer>(`/api/v1/market/stocks/${stockCode}/global-peers`, { signal }), [stockCode]);
   const [insights, setInsights] = useState(params.get("insights") === "1");
   const [alert, setAlert] = useState<StockAlert | null>(null);
+  const [chartMode, setChartMode] = useState<ChartMode>("line");
+  const chartCardRef = useRef<HTMLElement>(null);
   const initialTab = params.get("tab");
   const [activeTab, setActiveTab] = useState<
     "chart" | "news" | "disclosure"
@@ -46,6 +58,8 @@ export function StockPage() {
       body: JSON.stringify({ itemType: "STOCK", referenceId: stockCode, stockCode }),
     }).catch(() => undefined);
   }, [profile, stockCode]);
+  const quoteChangeRate = detailState.data?.quote.changeRate;
+  const ownershipExhaustion = detailState.data?.foreignOwnership.limitExhaustionRate;
   return (
     <div className={`stock-page ${insights ? "panel-open" : ""}`}>
       <div className="stock-main">
@@ -71,8 +85,8 @@ export function StockPage() {
               </div>
               <div className="stock-price">
                 <strong>{formatNumber(detailState.data?.quote.currentPriceKrw, { style: "currency", currency: "KRW", maximumFractionDigits: 0 })}</strong>
-                <span className={(detailState.data?.quote.changeRate ?? 0) >= 0 ? "is-positive" : ""}>
-                  {signedNumber(detailState.data?.quote.changeAmountKrw)} <img src={(detailState.data?.quote.changeRate ?? 0) >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" /> {detailState.data?.quote.changeRate === null || detailState.data?.quote.changeRate === undefined ? "Unavailable" : `${detailState.data.quote.changeRate >= 0 ? "+" : ""}${detailState.data.quote.changeRate.toFixed(2)}%`}
+                <span className={quoteChangeRate == null ? "" : quoteChangeRate >= 0 ? "is-positive" : ""}>
+                  {signedNumber(detailState.data?.quote.changeAmountKrw)} {quoteChangeRate == null ? null : <img src={quoteChangeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {quoteChangeRate == null ? "Unavailable" : `${quoteChangeRate >= 0 ? "+" : ""}${quoteChangeRate.toFixed(2)}%`}
                 </span>
               </div>
             </div>
@@ -157,7 +171,7 @@ export function StockPage() {
             <StockDisclosureFeed />
           ) : (
             <div className="chart-layout">
-              <section className="chart-card">
+              <section className="chart-card" ref={chartCardRef}>
                 <div className="chart-tools">
                   <div>
                     {["1D", "1W", "1M", "3M", "1Y"].map((item) => (
@@ -171,23 +185,26 @@ export function StockPage() {
                     ))}
                   </div>
                   <div className="chart-tool-icons">
-                    <img
-                      src="/assets/chart-candles.svg"
-                      alt="Candlestick chart"
-                    />
-                    <img src="/assets/chart-line.svg" alt="Line chart" />
-                    <img src="/assets/chart-expand.svg" alt="Expand chart" />
+                    <button type="button" className={chartMode === "candles" ? "active" : ""} aria-label="Show candlestick chart" aria-pressed={chartMode === "candles"} onClick={() => setChartMode("candles")}>
+                      <img src="/assets/chart-candles.svg" alt="" />
+                    </button>
+                    <button type="button" className={chartMode === "line" ? "active" : ""} aria-label="Show line chart" aria-pressed={chartMode === "line"} onClick={() => setChartMode("line")}>
+                      <img src="/assets/chart-line.svg" alt="" />
+                    </button>
+                    <button type="button" aria-label="Toggle full-screen chart" onClick={() => void toggleFullscreen(chartCardRef.current)}>
+                      <img src="/assets/chart-expand.svg" alt="" />
+                    </button>
                   </div>
                 </div>
                 <RemoteState {...historyState} empty={(value) => !value.items.length}>
-                  {(value) => <PriceChart items={value.items} label={`${detailState.data?.nameEn || stockCode} ${period} price chart`} />}
+                  {(value) => <PriceChart items={value.items} mode={chartMode} label={`${detailState.data?.nameEn || stockCode} ${period} ${chartMode} price chart`} />}
                 </RemoteState>
               </section>
               <aside className="ownership-panel">
                 <h2>Foreign ownership</h2>
                 <p>ML prediction &amp; statutory limit</p>
                 <div className="ownership-line">
-                  <span />
+                  <span className={ownershipExhaustion == null ? "unavailable" : ""} style={{ width: `${ownershipExhaustion == null ? 0 : Math.min(ownershipExhaustion, 100)}%` }} />
                 </div>
                 <div className="ownership-values">
                   <div>
@@ -347,23 +364,46 @@ function predictionNote(stock: StockDetail | null) {
   return `The estimated maximum is ${(legalLimit - maximum).toFixed(2)} percentage points below the ${legalLimit.toFixed(2)}% statutory limit.`;
 }
 
-function PriceChart({ items, label }: {
-  items: Array<{ tradingDate: string; closePriceKrw: number }>;
+function PriceChart({ items, mode, label }: {
+  items: DailyPrice[];
+  mode: ChartMode;
   label: string;
 }) {
-  const prices = items.map((item) => item.closePriceKrw);
+  const prices = items.flatMap((item) => [item.lowPriceKrw, item.highPriceKrw]);
   const min = Math.min(...prices);
   const max = Math.max(...prices);
   const range = Math.max(max - min, 1);
+  const yFor = (price: number) => 250 - ((price - min) / range) * 220;
   const points = items.map((item, index) => {
     const x = items.length === 1 ? 0 : index / (items.length - 1) * 1000;
-    const y = 250 - ((item.closePriceKrw - min) / range) * 220;
+    const y = yFor(item.closePriceKrw);
     return `${x},${y}`;
   }).join(" ");
   return <svg className="live-stock-chart" role="img" aria-label={label} viewBox="0 0 1000 280" preserveAspectRatio="none">
     <title>{label}</title>
-    <polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+    {mode === "line"
+      ? <polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+      : items.map((item, index) => {
+        const x = items.length === 1 ? 500 : index / (items.length - 1) * 1000;
+        const rising = item.closePriceKrw >= item.openPriceKrw;
+        const bodyTop = Math.min(yFor(item.openPriceKrw), yFor(item.closePriceKrw));
+        const bodyHeight = Math.max(Math.abs(yFor(item.openPriceKrw) - yFor(item.closePriceKrw)), 2);
+        const width = Math.max(3, Math.min(18, 720 / Math.max(items.length, 1)));
+        return <g className={rising ? "candle-up" : "candle-down"} key={item.tradingDate}>
+          <line x1={x} x2={x} y1={yFor(item.highPriceKrw)} y2={yFor(item.lowPriceKrw)} vectorEffect="non-scaling-stroke" />
+          <rect x={x - width / 2} y={bodyTop} width={width} height={bodyHeight} />
+        </g>;
+      })}
     <text x="0" y="275">{items[0]?.tradingDate}</text>
     <text x="1000" y="275" textAnchor="end">{items.at(-1)?.tradingDate}</text>
   </svg>;
+}
+
+async function toggleFullscreen(element: HTMLElement | null) {
+  if (!element) return;
+  if (document.fullscreenElement) {
+    await document.exitFullscreen();
+    return;
+  }
+  await element.requestFullscreen();
 }

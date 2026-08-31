@@ -8,7 +8,8 @@ import { openKAgent } from "../agentEvents";
 import { api } from "../api";
 import { RemoteState, formatDate, formatNumber } from "../components/RemoteState";
 import { useProfile, useRemote } from "../hooks/useRemote";
-import type { NewsArticle, StockDetail, TranslationResult } from "../types";
+import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
+import type { NewsArticle, StockDetail } from "../types";
 
 type TermExplanation = {
   selectedText: string;
@@ -24,6 +25,7 @@ type TermExplanation = {
 function StockNewsHeader({ stockCode }: { stockCode: string }) {
   const stockState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode]);
   const stock = stockState.data;
+  const changeRate = stock?.quote.changeRate;
   return (
     <div className="news-stock-hero">
       <Header />
@@ -39,8 +41,8 @@ function StockNewsHeader({ stockCode }: { stockCode: string }) {
           </h1>
           <span className="mini-price">
             <strong>{formatNumber(stock?.quote.currentPriceKrw, { style: "currency", currency: "KRW", maximumFractionDigits: 0 })}</strong>
-            <small className={(stock?.quote.changeRate ?? 0) >= 0 ? "is-positive" : ""}>
-              {stock?.quote.changeAmountKrw == null ? "Unavailable" : `${stock.quote.changeAmountKrw >= 0 ? "+" : ""}${formatNumber(stock.quote.changeAmountKrw)}`} <img src={(stock?.quote.changeRate ?? 0) >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" /> {stock?.quote.changeRate == null ? "Unavailable" : `${stock.quote.changeRate >= 0 ? "+" : ""}${stock.quote.changeRate.toFixed(2)}%`}
+            <small className={changeRate == null ? "" : changeRate >= 0 ? "is-positive" : ""}>
+              {stock?.quote.changeAmountKrw == null ? "Unavailable" : `${stock.quote.changeAmountKrw >= 0 ? "+" : ""}${formatNumber(stock.quote.changeAmountKrw)}`} {changeRate == null ? null : <img src={changeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {changeRate == null ? "Unavailable" : `${changeRate >= 0 ? "+" : ""}${changeRate.toFixed(2)}%`}
             </small>
           </span>
         </div>
@@ -110,7 +112,7 @@ export function NewsDetailPage() {
   const { newsId = "" } = useParams();
   const profile = useProfile();
   const articleState = useRemote((signal) => api<NewsArticle>(`/api/v1/news/${newsId}`, { signal }), [newsId]);
-  const translationState = useRemote((signal) => api<TranslationResult>(`/api/v1/news/${newsId}/translation`, { signal }), [newsId]);
+  const translationState = useAutomaticTranslation(`/api/v1/news/${newsId}/translation`, Boolean(newsId));
   const [selectedText, setSelectedText] = useState("");
   const [termExplanation, setTermExplanation] = useState<TermExplanation | null>(null);
   const returnTo =
@@ -121,11 +123,12 @@ export function NewsDetailPage() {
     if (!profile || !newsId) return;
     void api("/api/v1/me/recently-viewed", { method: "POST", body: JSON.stringify({ itemType: "NEWS", referenceId: newsId, stockCode: article?.relatedStocks[0]?.stockCode || null }) }).catch(() => undefined);
   }, [article?.relatedStocks, newsId, profile]);
-  useEffect(() => {
-    if (translationState.data?.status !== "PENDING" && translationState.data?.status !== "PROCESSING") return;
-    const timer = window.setTimeout(translationState.retry, 2500);
-    return () => window.clearTimeout(timer);
-  }, [translationState.data?.status, translationState.retry]);
+  const translationPending = translationState.loading
+    || translationState.requesting
+    || translationState.data?.status === "NOT_REQUESTED"
+    || translationState.data?.status === "PENDING"
+    || translationState.data?.status === "PROCESSING";
+  const translationError = translationState.requestError || translationState.error;
 
   return (
     <div className="article-page">
@@ -143,7 +146,7 @@ export function NewsDetailPage() {
               <h1>
                 {article?.englishTitle || article?.originalTitle || "Loading article…"}
               </h1>
-              <p>{article?.publisher || "—"} · {formatDate(article?.publishedAt)} · {article?.englishTitle ? "Auto-translated" : "Original language"}</p>
+              <p>{article?.publisher || "—"} · {formatDate(article?.publishedAt)} · {translation ? "Auto-translated" : translationPending ? "Translation loading" : "Translation unavailable"}</p>
             </div>
             <NewsThumbnail src={article?.thumbnailUrl} />
           </section>
@@ -154,13 +157,13 @@ export function NewsDetailPage() {
                   AI Insight summary{" "}
                   <img src="/assets/agent-badge.svg" alt="AI" />
                 </h2>
-                {(translation ? [["What", translation.what], ["Why", translation.why], ["Impact", translation.impact]] : [["What", article?.what], ["Why", article?.why], ["Impact", article?.impact]]).map((row) => (
+                {(translation ? [["What", translation.what], ["Why", translation.why], ["Impact", translation.impact]] : [["What", null], ["Why", null], ["Impact", null]]).map((row) => (
                   <p key={row[0]}>
                     <b>{row[0]}</b>
-                    <span>{row[1] || "Grounded insight is not ready."}</span>
+                    <span>{row[1] || (translationPending ? "Translation and grounded insight are loading…" : "Grounded insight is unavailable for this source.")}</span>
                   </p>
                 ))}
-                {translationState.data?.status !== "READY" ? <button type="button" disabled={translationState.data?.status === "PENDING" || translationState.data?.status === "PROCESSING"} onClick={() => void api<TranslationResult>(`/api/v1/news/${newsId}/translation`, { method: "POST" }).then(translationState.setData)}>{translationState.data?.status === "PENDING" || translationState.data?.status === "PROCESSING" ? "Translation processing…" : "Generate English translation & insight"}</button> : null}
+                {translationError ? <small className="translation-status-error">{translationError.message}</small> : null}
               </section>
               <article className="article-body" onMouseUp={() => {
                 const text = window.getSelection()?.toString().trim() || "";
@@ -177,7 +180,11 @@ export function NewsDetailPage() {
                   <img src="/assets/share.svg" alt="" />
                 </button>
                 <RemoteState {...articleState}>
-                  {(value) => <>{(translation?.translatedParagraphs || value.englishBody?.split("\n\n") || value.originalBody?.split("\n\n") || [value.originalExcerpt || "Article body is unavailable from the source."]).map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>}
+                  {(value) => translation?.translatedParagraphs?.length
+                    ? <>{translation.translatedParagraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
+                    : translationPending
+                      ? <div className="api-state api-loading" role="status">Translating the source and preparing What / Why / Impact…</div>
+                      : <><p>{value.originalBody || value.originalExcerpt || "Article body is unavailable from the source."}</p><small className="translation-source-notice">Original Korean source shown because an English translation is unavailable.</small></>}
                 </RemoteState>
                 {selectedText ? <div className="selection-popup article-selection-action">
                   <span>Explain “{selectedText.slice(0, 60)}”</span>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { openKAgent } from "../agentEvents";
@@ -7,7 +7,8 @@ import { RemoteState, formatDate } from "../components/RemoteState";
 import { ViewMoreButton } from "../components/ViewMoreButton";
 import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
-import type { Filing, FilingDetail, TranslationResult } from "../types";
+import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
+import type { Filing, FilingDetail } from "../types";
 
 type FilingInsight = {
   sufficientEvidence: boolean;
@@ -162,10 +163,58 @@ export function DisclosureDetailPage() {
   const detailState = useRemote((signal) => api<FilingDetail>(`/api/v1/disclosures/${disclosureId}`, { signal }), [disclosureId]);
   const insightState = useRemote((signal) => api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { signal }), [disclosureId]);
   const filing = detailState.data;
+  const leadSection = filing?.documents
+    .flatMap((document) => document.sections)
+    .find((section) => section.kind === "TITLE")
+    ?? filing?.documents.flatMap((document) => document.sections)[0];
+  const leadTranslation = useAutomaticTranslation(
+    leadSection
+      ? `/api/v1/disclosures/${disclosureId}/sections/${leadSection.id}/translation`
+      : `/api/v1/disclosures/${disclosureId}/sections/pending/translation`,
+    Boolean(leadSection),
+  );
+  const translatedLead = leadTranslation.data?.status === "READY"
+    ? leadTranslation.data.result
+    : null;
   const [indexRequested, setIndexRequested] = useState(false);
+  const [automaticError, setAutomaticError] = useState("");
+  const indexRequest = useRef<string | null>(null);
+  const insightRequest = useRef<string | null>(null);
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ??
     "/disclosures";
+
+  useEffect(() => {
+    indexRequest.current = null;
+    insightRequest.current = null;
+    setIndexRequested(false);
+    setAutomaticError("");
+  }, [disclosureId]);
+
+  useEffect(() => {
+    if (!filing || filing.indexStatus === "READY" || filing.documentStatus !== "READY") return;
+    if (indexRequest.current === disclosureId) return;
+    indexRequest.current = disclosureId;
+    setIndexRequested(true);
+    void api(`/api/v1/disclosures/${disclosureId}/index`, { method: "POST" })
+      .catch((reason: unknown) => setAutomaticError(reason instanceof Error ? reason.message : "Document indexing could not be requested."));
+  }, [disclosureId, filing]);
+
+  useEffect(() => {
+    if (!indexRequested || !filing || filing.indexStatus === "READY") return;
+    const timer = window.setTimeout(detailState.retry, 2_500);
+    return () => window.clearTimeout(timer);
+  }, [detailState.retry, filing, indexRequested]);
+
+  useEffect(() => {
+    if (filing?.indexStatus !== "READY" || insightState.loading || insightState.data) return;
+    if (insightState.error?.code !== "DISCLOSURE_INSIGHT_NOT_READY") return;
+    if (insightRequest.current === disclosureId) return;
+    insightRequest.current = disclosureId;
+    void api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { method: "POST" })
+      .then(insightState.setData)
+      .catch((reason: unknown) => setAutomaticError(reason instanceof Error ? reason.message : "AI insight could not be generated."));
+  }, [disclosureId, filing?.indexStatus, insightState.data, insightState.error?.code, insightState.loading, insightState.setData]);
 
   return (
     <div className="filing-detail">
@@ -185,7 +234,11 @@ export function DisclosureDetailPage() {
                   <span>{filing?.market || "—"}</span>
                 </div>
                 <h1>
-                  {filing?.titleEn || filing?.titleKo || "Loading disclosure…"}
+                  {translatedLead?.translatedHeading
+                    || translatedLead?.translatedText
+                    || filing?.titleEn
+                    || filing?.titleKo
+                    || "Loading disclosure…"}
                 </h1>
               </div>
               <div>
@@ -224,7 +277,7 @@ export function DisclosureDetailPage() {
                     <b>{row[0]}</b>
                     <span>{row[1]}</span>
                   </p>
-                )) : <div className="api-state"><span>{insightState.loading ? "Loading AI insight…" : insightState.error?.message || insightState.data?.refusalReason || "No grounded insight has been generated."}</span>{filing?.indexStatus === "READY" ? <button onClick={() => void api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { method: "POST" }).then(insightState.setData)}>Generate insight</button> : filing && !indexRequested ? <button onClick={() => void api(`/api/v1/disclosures/${disclosureId}/index`, { method: "POST" }).then(() => setIndexRequested(true))}>Prepare document for AI</button> : null}{indexRequested ? <small>Indexing requested. The grounded insight will be available after processing.</small> : null}</div>}
+                )) : <div className="api-state api-loading" role="status"><span>{automaticError || insightState.error?.message || insightState.data?.refusalReason || (filing?.indexStatus === "READY" ? "Generating the grounded What / Why / Impact summary…" : "Preparing the filing for translation and grounded insight…")}</span>{indexRequested && filing?.indexStatus !== "READY" ? <small>Indexing is in progress. This screen updates automatically.</small> : null}</div>}
             </section>
             <aside className="mentioned filing-division">
               <h2>Division</h2>
@@ -277,15 +330,55 @@ async function sharePage(title: string) {
 }
 
 function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; section: FilingSection }) {
-  const translation = useRemote((signal) => api<TranslationResult>(`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`, { signal }), [receiptNumber, section.id]);
+  const sectionRef = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+  const translation = useAutomaticTranslation(`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`, visible);
   const translated = translation.data?.status === "READY" ? translation.data.result : null;
-  const requestTranslation = () => void api<TranslationResult>(`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`, { method: "POST" }).then(translation.setData);
   useEffect(() => {
-    if (translation.data?.status !== "PENDING" && translation.data?.status !== "PROCESSING") return;
-    const timer = window.setTimeout(translation.retry, 2500);
-    return () => window.clearTimeout(timer);
-  }, [translation.data?.status, translation.retry]);
-  return <section id={`section-${section.id}`}><h3>{translated?.translatedHeading || section.heading || section.kind}</h3>{translated?.translatedText ? <p>{translated.translatedText}</p> : translated?.translatedTableData ? <pre>{JSON.stringify(translated.translatedTableData, null, 2)}</pre> : section.kind === "TABLE" ? <pre>{JSON.stringify(section.tableData, null, 2)}</pre> : <p>{section.text || "Section text unavailable."}</p>}<div className="disclosure-section-actions">{translation.data?.status !== "READY" ? <button type="button" onClick={requestTranslation} disabled={translation.data?.status === "PENDING" || translation.data?.status === "PROCESSING"}>{translation.data?.status === "PENDING" || translation.data?.status === "PROCESSING" ? "Translation processing…" : "Translate section"}</button> : null}<button type="button" onClick={() => openKAgent({ contextType: "FILING", referenceId: receiptNumber, prompt: `Explain the ${section.heading || section.kind} section and its investor impact.` })}>Ask K-Agent</button></div></section>;
+    const target = sectionRef.current;
+    if (!target) return;
+    if (!("IntersectionObserver" in window)) {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      setVisible(true);
+      observer.disconnect();
+    }, { rootMargin: "600px 0px" });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
+  const pending = visible && (
+    translation.loading
+    || translation.requesting
+    || translation.data?.status === "NOT_REQUESTED"
+    || translation.data?.status === "PENDING"
+    || translation.data?.status === "PROCESSING"
+  );
+  const table = translated?.translatedTableData ?? section.tableData;
+  return <section id={`section-${section.id}`} ref={sectionRef} aria-busy={pending}>
+    <h3>{translated?.translatedHeading || (pending ? "Translating section…" : section.heading || section.kind)}</h3>
+    {translated?.translatedText
+      ? <p>{translated.translatedText}</p>
+      : translated?.translatedTableData
+        ? <StructuredTable data={translated.translatedTableData} />
+        : pending
+          ? <div className="api-state api-loading" role="status">Loading the cached translation or generating it for the first view…</div>
+          : section.kind === "TABLE"
+            ? <><StructuredTable data={table} /><small className="translation-source-notice">Original Korean table shown because an English translation is unavailable.</small></>
+            : <><p>{section.text || "Section text unavailable."}</p><small className="translation-source-notice">Original Korean source shown because an English translation is unavailable.</small></>}
+    {translation.requestError ? <small className="translation-status-error">{translation.requestError.message}</small> : null}
+  </section>;
+}
+
+function StructuredTable({ data }: { data: unknown }) {
+  if (!Array.isArray(data) || !data.every(Array.isArray)) {
+    return <pre>{JSON.stringify(data, null, 2)}</pre>;
+  }
+  return <div className="disclosure-table-scroll"><table><tbody>{data.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell: unknown, cellIndex: number) => cellIndex === 0
+    ? <th scope="row" key={cellIndex}>{String(cell ?? "")}</th>
+    : <td key={cellIndex}>{String(cell ?? "")}</td>)}</tr>)}</tbody></table></div>;
 }
 
 type DisclosureAnswer = { answer: string; refused: boolean; refusalReason: string | null; citations: Array<{ id: string; heading: string | null; excerpt: string | null }> };
