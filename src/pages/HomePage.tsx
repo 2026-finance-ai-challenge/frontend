@@ -11,6 +11,8 @@ import { useRemote } from "../hooks/useRemote";
 import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import type { Filing, NewsArticle, Stock, StockDetail, SupportedCountry } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
+import { useLocale } from "../state/LocaleContext";
+import { IntelligenceBadges } from "../components/IntelligenceBadges";
 
 const quickActions = [
   ["/assets/news.svg", "Today’s news", "/news"],
@@ -44,6 +46,7 @@ function ownershipTone(item: ForeignMonitor): keyof typeof ownershipLabels {
 }
 
 export function HomePage() {
+  const { locale } = useLocale();
   const [taxAgentOpen, setTaxAgentOpen] = useState(false);
   const [ownershipStart, setOwnershipStart] = useState(0);
   const [newsStart, setNewsStart] = useState(0);
@@ -100,19 +103,18 @@ export function HomePage() {
         <MarketBar />
         <main className="page-shell hero-content">
           <h1>
-            Korea <u>analysis</u>,<br />
-            regulation{" "}
+            {locale === "ko" ? <>한국 시장 <u>분석</u>,<br />규제</> : <>Korea <u>analysis</u>,<br />regulation</>}{" "}
             <sup>
               <img src="/assets/hero-marker.svg" alt="KART" />
             </sup>
             <br />
-            &amp; trading <u>Intelligence</u>
+            {locale === "ko" ? <>&amp; 투자 <u>인텔리전스</u></> : <>&amp; trading <u>Intelligence</u></>}
           </h1>
           <div className="quick-actions">
-            {quickActions.map(([icon, label, to]) => (
+            {quickActions.map(([icon, label, to], index) => (
               <Link to={to} key={label}>
                 <img src={icon} alt="" />
-                {label}
+                {locale === "ko" ? ["오늘의 뉴스", "DART 공시", "외국인 보유 한도", "내 세율 확인"][index] : label}
               </Link>
             ))}
           </div>
@@ -124,12 +126,12 @@ export function HomePage() {
           <div className="section-heading">
             <div>
               <h2>
-                AI News Summary <span>· Real-time</span>
+                {locale === "ko" ? "AI 뉴스 요약" : "AI News Summary"} <span>· {locale === "ko" ? "실시간" : "Real-time"}</span>
               </h2>
               <p>
-                Hover a card to reveal the What / Why / Impact summary.
+                {locale === "ko" ? "카드에서 무엇·이유·영향 요약을 확인하세요." : "Hover a card to reveal the What / Why / Impact summary."}
                 <br />
-                Use the arrows to move through the feed one story at a time.
+                {locale === "ko" ? "화살표로 뉴스를 한 건씩 탐색할 수 있습니다." : "Use the arrows to move through the feed one story at a time."}
               </p>
             </div>
             <div className="slider-controls">
@@ -152,18 +154,14 @@ export function HomePage() {
         <section className="section-block filing-section">
           <div className="section-heading">
             <div>
-              <h2>DART filings pulse</h2>
-              <p>
-                One filing per row, newest first submission date and time
-                <br />
-                on the left, company and title on the right.
-              </p>
+              <h2>{locale === "ko" ? "DART 공시 동향" : "DART filings pulse"}</h2>
+              <p>{locale === "ko" ? <>최신 공시를 제출 시각과 함께 한 줄씩 확인하고<br />기업명과 공시 제목을 바로 비교하세요.</> : <>One filing per row, newest first submission date and time<br />on the left, company and title on the right.</>}</p>
             </div>
           </div>
           <div className="filing-table">
             <RemoteState {...filingsState} empty={(value) => !value.items.length}>
               {() => <>{filingGroups.map(([day, items]) => <div key={day}>
-                <div className="table-day"><span>{formatDate(day, false)}</span><span>{items.length} filings</span></div>
+                <div className="table-day"><span>{formatDate(day, false)}</span><span>{items.length}{locale === "ko" ? "건" : " filings"}</span></div>
                 {items.map((filing) => <FilingRow filing={filing} key={filing.receiptNumber} />)}
               </div>)}</>}
             </RemoteState>
@@ -174,26 +172,17 @@ export function HomePage() {
         <section className="section-block ownership-section" id="foreign">
           <div className="section-heading">
             <div>
-              <h2>Foreign ownership limit gauge</h2>
-              <p>
-                The monitored Korean stocks below carry a statutory cap on
-                foreign ownership.
-                <br />
-                Filter by status, then read how much headroom is left before
-                orders start getting rejected.
-              </p>
+              <h2>{locale === "ko" ? "외국인 보유 한도" : "Foreign ownership limit gauge"}</h2>
+              <p>{locale === "ko" ? <>아래 종목은 외국인 보유 법정 한도가 적용됩니다.<br />현재 사용률과 주문 제한까지 남은 여유를 확인하세요.</> : <>The monitored Korean stocks below carry a statutory cap on foreign ownership.<br />Filter by status, then read how much headroom is left before orders start getting rejected.</>}</p>
               <div className="status-copy">
                 <span>
-                  <b className="danger-text">{ownershipItems.filter((item) => ownershipTone(item) === "danger").length}</b> <u>At the cap</u>&nbsp; Buy
-                  orders rejected right now.
+                  <b className="danger-text">{ownershipItems.filter((item) => ownershipTone(item) === "danger").length}</b> <u>{locale === "ko" ? "한도 도달" : "At the cap"}</u>&nbsp; {locale === "ko" ? "현재 매수 주문 제한" : "Buy orders rejected right now."}
                 </span>
                 <span>
-                  <b className="warning-text">{ownershipItems.filter((item) => ownershipTone(item) === "warning").length}</b> <u>Near the cap</u>&nbsp;
-                  90% or more of the quota used.
+                  <b className="warning-text">{ownershipItems.filter((item) => ownershipTone(item) === "warning").length}</b> <u>{locale === "ko" ? "한도 근접" : "Near the cap"}</u>&nbsp; {locale === "ko" ? "한도의 90% 이상 사용" : "90% or more of the quota used."}
                 </span>
                 <span>
-                  <b className="safe-text">{ownershipItems.filter((item) => ownershipTone(item) === "safe").length}</b> <u>Open</u>&nbsp; Room to buy
-                  without restriction.
+                  <b className="safe-text">{ownershipItems.filter((item) => ownershipTone(item) === "safe").length}</b> <u>{locale === "ko" ? "여유" : "Open"}</u>&nbsp; {locale === "ko" ? "한도 내 매수 가능" : "Room to buy without restriction."}
                 </span>
               </div>
             </div>
@@ -254,7 +243,7 @@ export function HomePage() {
                       {tone === "danger" ? (
                         <img src="/assets/status-warning.svg" alt="" />
                       ) : null}
-                      {ownershipLabels[tone]}
+                      {locale === "ko" ? ({ danger: "한도 도달", warning: "한도 근접", safe: "여유", unavailable: "데이터 없음" } as const)[tone] : ownershipLabels[tone]}
                     </span>
                     <div>
                       <h3>{item.stock.nameEn || item.stock.nameKo}</h3>
@@ -262,16 +251,16 @@ export function HomePage() {
                     </div>
                   </div>
                   <strong className={tone}>
-                    {remaining === null ? "Unavailable" : remaining.toFixed(2)}
-                    <small>{remaining === null ? "No verified ownership snapshot" : "% remaining"}</small>
+                    {remaining === null ? locale === "ko" ? "정보 없음" : "Unavailable" : remaining.toFixed(2)}
+                    <small>{remaining === null ? locale === "ko" ? "확인된 보유 현황 없음" : "No verified ownership snapshot" : locale === "ko" ? "% 잔여" : "% remaining"}</small>
                   </strong>
                   <div className={`gauge gauge-${tone}`}>
                     <span className={tone} style={{ width }} />
                     <i style={{ left: width }} />
                   </div>
                   <div className="gauge-labels">
-                    <span>Used {used === null ? "Unavailable" : `${used.toFixed(2)}%`}</span>
-                    <span>Cap {cap === null ? "Unavailable" : `${cap.toFixed(2)}%`}</span>
+                    <span>{locale === "ko" ? "사용" : "Used"} {used === null ? locale === "ko" ? "정보 없음" : "Unavailable" : `${used.toFixed(2)}%`}</span>
+                    <span>{locale === "ko" ? "한도" : "Cap"} {cap === null ? locale === "ko" ? "정보 없음" : "Unavailable" : `${cap.toFixed(2)}%`}</span>
                   </div>
                 </Link>
               );
@@ -283,39 +272,30 @@ export function HomePage() {
         <section className="section-block tax-section">
           <div className="section-heading">
             <div>
-              <h2>Dividend withholding tax</h2>
-              <p>
-                Compare Korea’s domestic default with the published treaty rate for your residence.
-                <br />A reduced rate is conditional and must be confirmed before payment.
-              </p>
+              <h2>{locale === "ko" ? "배당 원천징수 세율" : "Dividend withholding tax"}</h2>
+              <p>{locale === "ko" ? <>한국 기본세율과 거주국 조세조약 세율을 비교하세요.<br />인하 세율은 지급 전 요건 확인과 서류 제출이 필요합니다.</> : <>Compare Korea’s domestic default with the published treaty rate for your residence.<br />A reduced rate is conditional and must be confirmed before payment.</>}</p>
             </div>
           </div>
           <div className="tax-grid">
             <article className="tax-card">
               <div className="tax-rates">
                 <div>
-                  <span>Default rate</span>
+                  <span>{locale === "ko" ? "기본세율" : "Default rate"}</span>
                   <strong>
                     {taxRatesState.data?.[0]?.domesticDefaultRate ?? "—"}<small>%</small>
                   </strong>
-                  <small>20% national + 2% local surtax</small>
+                  <small>{locale === "ko" ? "국세 20% + 지방소득세 2%" : "20% national + 2% local surtax"}</small>
                 </div>
                 <b>›</b>
                 <div>
-                  <span>Treaty rate starts</span>
+                  <span>{locale === "ko" ? "조약세율 시작" : "Treaty rate starts"}</span>
                   <strong className="safe-text">
                     {taxRatesState.data?.[0]?.treatyDividendRate ?? "—"}<small>%</small>
                   </strong>
-                  <small>Portfolio dividends, most treaties</small>
+                  <small>{locale === "ko" ? "대부분 조약의 포트폴리오 배당" : "Portfolio dividends, most treaties"}</small>
                 </div>
               </div>
-              <p>
-                The reduced rate is <b>not applied automatically.</b> Your
-                broker must hold an Application for Reduced Tax Rate and a
-                Certificate of Residence before the dividend payment date.
-                Without a pre-filed application, a refund claim may still be
-                possible within the statutory period.
-              </p>
+              <p>{locale === "ko" ? <>인하 세율은 <b>자동 적용되지 않습니다.</b> 배당 지급일 전에 증권사가 제한세율 적용신청서와 거주자증명서를 보유해야 합니다. 사전 신청을 놓쳤다면 법정 기간 안에 환급을 청구할 수 있습니다.</> : <>The reduced rate is <b>not applied automatically.</b> Your broker must hold an Application for Reduced Tax Rate and a Certificate of Residence before the dividend payment date. Without a pre-filed application, a refund claim may still be possible within the statutory period.</>}</p>
               <button
                 className="primary-button eligibility-button"
                 type="button"
@@ -324,16 +304,16 @@ export function HomePage() {
                 onClick={() => setTaxAgentOpen(true)}
                 ref={eligibilityButtonRef}
               >
-                Check eligibility
+                {locale === "ko" ? "적용 가능 여부 확인" : "Check eligibility"}
                 <img src="/assets/chevron-right-gold.svg" alt="" />
               </button>
             </article>
             <article className="treaty-card">
               <div className="treaty-head">
-                <span>Country of residence</span>
-                <span>Default</span>
-                <span>Treaty</span>
-                <span>Difference</span>
+                <span>{locale === "ko" ? "거주 국가" : "Country of residence"}</span>
+                <span>{locale === "ko" ? "기본" : "Default"}</span>
+                <span>{locale === "ko" ? "조약" : "Treaty"}</span>
+                <span>{locale === "ko" ? "차이" : "Difference"}</span>
               </div>
               {taxRatesState.data?.map((rate) => {
                 const difference = rate.treatyDividendRate === null ? null : rate.treatyDividendRate - rate.domesticDefaultRate;
@@ -354,10 +334,7 @@ export function HomePage() {
               {taxRatesState.error ? <div className="api-state api-error">Treaty rate data unavailable.</div> : null}
             </article>
           </div>
-          <p className="tax-note">
-            Standard treaty rates for individual portfolio dividends. Your rate
-            may differ—confirm with your broker. Not tax advice.
-          </p>
+          <p className="tax-note">{locale === "ko" ? "개인 포트폴리오 배당의 일반 조약세율입니다. 실제 적용 세율은 증권사에 확인하세요. 세무 자문이 아닙니다." : "Standard treaty rates for individual portfolio dividends. Your rate may differ—confirm with your broker. Not tax advice."}</p>
         </section>
       </main>
       <Footer />
@@ -367,6 +344,7 @@ export function HomePage() {
 }
 
 function FilingRow({ filing }: { filing: PublishedFiling }) {
+  const { locale, stockName } = useLocale();
   return (
     <Link
       className="filing-row"
@@ -379,37 +357,28 @@ function FilingRow({ filing }: { filing: PublishedFiling }) {
       />
       <span>{formatDate(filing.detectedAt)}</span>
       <span>
-        <b>{filing.issuerNameEn || filing.issuerNameKo}</b>
+        <b>{stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo })}</b>
         <small>{filing.stockCode} · {filing.market}</small>
       </span>
-      <strong>{filing.titleEn}</strong>
-      <em>{filing.eventType.replaceAll("_", " ")}</em>
-      <span className={filing.importance === "HIGH" || filing.importance === "CRITICAL" ? "positive" : "medium"}>{filing.importance}</span>
-      <span className={filing.sentiment.toLowerCase()}>{filing.sentiment}</span>
+      <strong>{locale === "ko" ? filing.titleKo : filing.titleEn || filing.titleKo}</strong>
+      <span className="filing-row-badges"><IntelligenceBadges sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
     </Link>
   );
 }
 
 function HomeNewsCard({ article }: { article: NewsArticle }) {
-  const translation = useAutomaticTranslation(`/api/v1/news/${article.id}/translation`);
+  const { locale, t } = useLocale();
+  const translation = useAutomaticTranslation(`/api/v1/news/${article.id}/translation`, locale === "en");
   const insight = translation.data?.status === "READY" ? translation.data.result : null;
-  const sentiment = (article.sentiment || "Neutral").toLowerCase();
   return <Link className="news-card" to={`/news/${article.id}`}>
-    <div className="tags">
-      <span className={sentiment === "negative" ? "negative" : sentiment === "positive" ? "positive" : ""}>
-        <img src={sentiment === "negative" ? "/assets/trend-down.svg" : sentiment === "positive" ? "/assets/trend-up.svg" : "/assets/trend-neutral.svg"} alt="" />
-        {article.sentiment || "Analysis pending"}
-      </span>
-      <span className={article.importance === "HIGH" || article.importance === "CRITICAL" ? "priority" : "medium"}>{article.importance ? `${article.importance} priority` : "Pending"}</span>
-      {article.eventType ? <span>{article.eventType}</span> : null}
-    </div>
-    <h3>{article.englishTitle}</h3>
+    <IntelligenceBadges sentiment={article.sentiment} importance={article.importance} eventType={article.eventType} />
+    <h3>{locale === "ko" ? article.originalTitle : article.englishTitle || article.originalTitle}</h3>
     <p className="meta">{formatDate(article.publishedAt)} · {article.publisher}</p>
     <NewsThumbnail src={article.thumbnailUrl} />
     <div className="insight">
-      <p><b>What</b>{insight?.what || "Preparing verified insight…"}</p>
-      <p><b>Why</b>{insight?.why || "Preparing verified insight…"}</p>
-      <p><b>Impact</b>{insight?.impact || "Preparing verified insight…"}</p>
+      <p><b>{t("what")}</b>{insight?.what || article.what || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")}</p>
+      <p><b>{t("why")}</b>{insight?.why || article.why || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")}</p>
+      <p><b>{t("impact")}</b>{insight?.impact || article.impact || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")}</p>
     </div>
   </Link>;
 }

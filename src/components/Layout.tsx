@@ -11,6 +11,7 @@ import { getKoreaMarketSnapshot } from "../utils/koreaMarketClock";
 import { api, queryString } from "../api";
 import { useProfile } from "../hooks/useRemote";
 import type { NotificationInbox, NotificationItem, Stock } from "../types";
+import { useLocale } from "../state/LocaleContext";
 
 type HeaderProps = {
   initialQuery?: string;
@@ -18,14 +19,6 @@ type HeaderProps = {
 };
 
 type HeaderSurface = "cream" | "white" | "dark";
-
-const primaryNavigation = [
-  { label: "AI News Summary", to: "/news" },
-  { label: "Dart filings", to: "/disclosures" },
-  { label: "Foreigner ownership limits", to: "/#foreign" },
-  { label: "Check my tax rate", to: "/tax" },
-  { label: "My page & Watchlist", to: "/my" },
-];
 
 function readHeaderSurface(header: HTMLElement): HeaderSurface {
   const sampleY = Math.min(window.innerHeight - 1, header.offsetHeight + 1);
@@ -69,6 +62,14 @@ export function Header({
   const navigate = useNavigate();
   const location = useLocation();
   const profile = useProfile();
+  const { locale, setLocale, t, stockName } = useLocale();
+  const primaryNavigation = [
+    { label: locale === "ko" ? "AI 뉴스 요약" : "AI News Summary", to: "/news" },
+    { label: locale === "ko" ? "DART 공시" : "DART filings", to: "/disclosures" },
+    { label: locale === "ko" ? "외국인 보유 한도" : "Foreigner ownership limits", to: "/#foreign" },
+    { label: locale === "ko" ? "내 세율 확인" : "Check my tax rate", to: "/tax" },
+    { label: locale === "ko" ? "마이페이지·관심종목" : "My page & Watchlist", to: "/my" },
+  ];
   const notificationTarget = (item: NotificationItem) => {
     if (item.referenceType === "NEWS" && item.referenceId) return `/news/${item.referenceId}`;
     if (item.referenceType === "FILING" && item.referenceId) return `/disclosures/${item.referenceId}`;
@@ -255,10 +256,10 @@ export function Header({
             onChange={(event) => updateQuery(event.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => window.setTimeout(() => setFocused(false), 120)}
-            placeholder="Company, ticker, or filings"
-            aria-label="Search companies, tickers, or filings"
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchPlaceholder")}
           />
-          <button type="submit" aria-label="Search">
+          <button type="submit" aria-label={locale === "ko" ? "검색" : "Search"}>
             <img src="/assets/search-submit.svg" alt="" />
           </button>
           {focused && query && (
@@ -273,7 +274,7 @@ export function Header({
                       type="button"
                       onClick={() => navigate(`/stocks/${item.stockCode}`)}
                     >
-                      <strong>{item.nameEn || item.nameKo}</strong>
+                      <strong>{stockName(item)}</strong>
                       <small>
                         {item.stockCode} · {item.market}
                       </small>
@@ -282,13 +283,13 @@ export function Header({
                       className="search-heart-button"
                       iconClassName="search-heart"
                       itemId={item.stockCode}
-                      itemName={item.nameEn || item.nameKo}
+                      itemName={stockName(item)}
                       keepFocus
                     />
                   </div>
                 ))}
               {!searching && results.length === 0 ? (
-                <p className="search-empty">No supported stock found.</p>
+                <p className="search-empty">{locale === "ko" ? "지원 종목을 찾지 못했습니다." : "No supported stock found."}</p>
               ) : null}
               <button
                 className="all-results"
@@ -297,7 +298,7 @@ export function Header({
                   navigate(`/search?q=${encodeURIComponent(query)}`)
                 }
               >
-                View all results for ‘{query}’
+                {locale === "ko" ? `‘${query}’ 전체 결과 보기` : `View all results for ‘${query}’`}
               </button>
             </div>
           )}
@@ -308,21 +309,27 @@ export function Header({
             {notifications?.unreadCount ? <span>{notifications.unreadCount > 99 ? "99+" : notifications.unreadCount}</span> : null}
           </button>
           {notificationsOpen ? <div className="notification-popover">
-            <header><b>Notifications</b><button type="button" onClick={() => void readAllNotifications()} disabled={!notifications?.unreadCount}>Mark all read</button></header>
+            <header><b>{locale === "ko" ? "알림" : "Notifications"}</b><button type="button" onClick={() => void readAllNotifications()} disabled={!notifications?.unreadCount}>{locale === "ko" ? "모두 읽음" : "Mark all read"}</button></header>
             {notificationsError ? <p className="auth-error">{notificationsError}</p> : null}
-            {!notificationsError && notifications?.items.length === 0 ? <p className="search-empty">No notifications yet.</p> : null}
+            {!notificationsError && notifications?.items.length === 0 ? <p className="search-empty">{locale === "ko" ? "새 알림이 없습니다." : "No notifications yet."}</p> : null}
             {notifications?.items.map((item) => <button type="button" className={item.read ? "is-read" : ""} onClick={() => void readNotification(item)} key={item.id}><span><b>{item.title}</b><small>{item.body}</small></span><time>{new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</time></button>)}
           </div> : null}
-          <span className="language" aria-label="Languages: English and Korean">
-            <img src="/assets/flag-us.svg" alt="United States" /> EN <i>/</i> KR
-          </span>
+          <label className="language" aria-label={locale === "ko" ? "사이트 언어" : "Site language"}>
+            {locale === "en"
+              ? <img src="/assets/flag-us.svg" alt="United States" />
+              : <span className="language-flag" role="img" aria-label="대한민국">🇰🇷</span>}
+            <select value={locale} onChange={(event) => setLocale(event.target.value as "en" | "ko")}>
+              <option value="en">EN</option>
+              <option value="ko">KR</option>
+            </select>
+          </label>
           {profile ? (
             <Link className="profile-link" to="/my" aria-label="Open my page">
               <img src="/assets/profile.png" alt="" />
             </Link>
           ) : (
             <Link className="login-button" to="/login">
-              Log in
+              {t("login")}
             </Link>
           )}
         </nav>
@@ -372,6 +379,7 @@ export function Header({
 }
 
 export function Footer() {
+  const { locale } = useLocale();
   return (
     <footer className="site-footer">
       <div className="footer-grid">
@@ -383,37 +391,39 @@ export function Footer() {
           />
         </div>
         <div>
-          <h3>Team</h3>
-          <a href="https://github.com/2026-finance-ai-challenge" target="_blank" rel="noreferrer">About</a>
-          <a href="https://github.com/orgs/2026-finance-ai-challenge/people" target="_blank" rel="noreferrer">People</a>
+          <h3>{locale === "ko" ? "팀" : "Team"}</h3>
+          <a href="https://github.com/2026-finance-ai-challenge" target="_blank" rel="noreferrer">{locale === "ko" ? "소개" : "About"}</a>
+          <a href="https://github.com/orgs/2026-finance-ai-challenge/people" target="_blank" rel="noreferrer">{locale === "ko" ? "구성원" : "People"}</a>
         </div>
         <div>
-          <h3>Product</h3>
-          <Link to="/news">AI news summary</Link>
-          <Link to="/disclosures">Dart filings</Link>
-          <a href="#foreign">Foreigner ownership limits</a>
-          <Link to="/tax">Check my tax rate</Link>
+          <h3>{locale === "ko" ? "서비스" : "Product"}</h3>
+          <Link to="/news">{locale === "ko" ? "AI 뉴스 요약" : "AI news summary"}</Link>
+          <Link to="/disclosures">{locale === "ko" ? "DART 공시" : "Dart filings"}</Link>
+          <a href="#foreign">{locale === "ko" ? "외국인 보유 한도" : "Foreigner ownership limits"}</a>
+          <Link to="/tax">{locale === "ko" ? "내 세율 확인" : "Check my tax rate"}</Link>
         </div>
       </div>
       <div className="footer-meta">
         <span>Copyright 2026 KART all rights reserved</span>
-        <Link to="/legal/privacy">Privacy policy</Link>
-        <Link to="/legal/fsc-disclaimer">FSC Information Disclaimer</Link>
+        <Link to="/legal/privacy">{locale === "ko" ? "개인정보처리방침" : "Privacy policy"}</Link>
+        <Link to="/legal/fsc-disclaimer">{locale === "ko" ? "금융위원회 정보 고지" : "FSC Information Disclaimer"}</Link>
       </div>
     </footer>
   );
 }
 
 export function BackLink({ to }: { to: string }) {
+  const { t } = useLocale();
   return (
     <Link className="back-link" to={to}>
       <img src="/assets/back.svg" alt="" />
-      Back
+      {t("back")}
     </Link>
   );
 }
 
 export function MarketBar() {
+  const { locale } = useLocale();
   const [market, setMarket] = useState(() => getKoreaMarketSnapshot());
   const [indices, setIndices] = useState<Array<{
     indexCode: string;
@@ -481,10 +491,12 @@ export function MarketBar() {
       </span>
       <i />
       <span>
-        <em>Foreign net flow</em> {formatFlow(foreignFlow?.netPurchaseAmountKrw)}
+        <em>{locale === "ko" ? "외국인 순매수" : "Foreign net flow"}</em> {formatFlow(foreignFlow?.netPurchaseAmountKrw)}
         {foreignFlow?.netPurchaseAmountKrw != null && foreignFlow.consecutiveDays > 0
           ? <b className={foreignFlow.netPurchaseAmountKrw >= 0 ? "up" : "down"}>
-              {foreignFlow.consecutiveDays}{ordinalSuffix(foreignFlow.consecutiveDays)} net {foreignFlow.netPurchaseAmountKrw >= 0 ? "buying" : "selling"}
+              {locale === "ko"
+                ? `${foreignFlow.consecutiveDays}일 연속 순${foreignFlow.netPurchaseAmountKrw >= 0 ? "매수" : "매도"}`
+                : `${foreignFlow.consecutiveDays}${ordinalSuffix(foreignFlow.consecutiveDays)} net ${foreignFlow.netPurchaseAmountKrw >= 0 ? "buying" : "selling"}`}
             </b>
           : null}
       </span>
@@ -495,7 +507,7 @@ export function MarketBar() {
       >
         <img src="/assets/market-open.svg" alt="" />
         <span>
-          {market.label}
+          {locale === "ko" ? market.isOpen ? "시장 개장" : "시장 마감" : market.label}
           <br />
           <time dateTime={market.dateTime}>{market.timeLabel}</time>
         </span>

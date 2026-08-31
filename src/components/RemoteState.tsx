@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ApiError } from "../api";
+import { useLocale } from "../state/LocaleContext";
 
 export function RemoteState<T>({
   data,
@@ -16,21 +17,22 @@ export function RemoteState<T>({
   children: (data: T) => ReactNode;
   empty?: (data: T) => boolean;
 }) {
+  const { t } = useLocale();
   if (loading && data === null) {
-    return <div className="api-state api-loading" role="status">Loading current data…</div>;
+    return <div className="api-state api-loading" role="status">{t("loading")}</div>;
   }
   if (error) {
     return (
       <div className="api-state api-error" role="alert">
-        <b>{error.status === 401 ? "Sign in required" : "Data unavailable"}</b>
+        <b>{error.status === 401 ? t("signInRequired") : t("dataUnavailable")}</b>
         <span>{error.message}</span>
-        {error.status !== 401 ? <button onClick={retry}>Retry</button> : null}
+        {error.status !== 401 ? <button onClick={retry}>{t("retry")}</button> : null}
       </div>
     );
   }
   if (data === null) return null;
   if (empty?.(data)) {
-    return <div className="api-state">No matching data is available.</div>;
+    return <div className="api-state">{t("noData")}</div>;
   }
   return <>{children(data)}</>;
 }
@@ -41,14 +43,14 @@ export function formatNumber(
 ) {
   return value === null || value === undefined
     ? "Unavailable"
-    : new Intl.NumberFormat("en-US", options).format(value);
+    : new Intl.NumberFormat(document.documentElement.lang === "ko" ? "ko-KR" : "en-US", options).format(value);
 }
 
 export function formatDate(value: string | null | undefined, time = true) {
   if (!value) return "Not available";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.valueOf())) return value;
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(document.documentElement.lang === "ko" ? "ko-KR" : "en-US", {
     month: "short",
     day: "numeric",
     ...(time ? { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" } : {}),

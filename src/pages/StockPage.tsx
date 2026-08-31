@@ -8,6 +8,7 @@ import { api } from "../api";
 import { RemoteState, formatDate, formatNumber } from "../components/RemoteState";
 import { useProfile, useRemote } from "../hooks/useRemote";
 import type { GlobalPeer, StockDetail } from "../types";
+import { useLocale } from "../state/LocaleContext";
 
 type StockAlert = "vi" | "price-limit";
 type ChartMode = "candles" | "line";
@@ -26,6 +27,7 @@ function periodToLimit(period: string) {
 }
 
 export function StockPage() {
+  const { locale, t, stockName } = useLocale();
   const [params] = useSearchParams();
   const { stockCode = "" } = useParams();
   const profile = useProfile();
@@ -72,32 +74,32 @@ export function StockPage() {
             {detailState.error ? <RemoteState {...detailState}>{() => null}</RemoteState> : null}
             <div className="stock-title-row">
               <div>
-                <h1>
-                  {detailState.data?.nameEn || detailState.data?.nameKo || "Loading stock…"}{" "}
+                <h1 className={(detailState.data ? stockName(detailState.data) : "").length > 24 ? "is-long-title" : ""}>
+                  {detailState.data ? stockName(detailState.data) : locale === "ko" ? "종목을 불러오는 중…" : "Loading stock…"}{" "}
                   <WatchlistHeart
                     className="heart-button"
                     itemId={stockCode}
-                    itemName={detailState.data?.nameEn || detailState.data?.nameKo || stockCode}
+                    itemName={detailState.data ? stockName(detailState.data) : stockCode}
                   />
                 </h1>
                 <p>{stockCode}&nbsp;&nbsp; · &nbsp;&nbsp;{detailState.data?.market || "—"}</p>
                 <p>
-                  {detailState.data?.quote.status || "Loading"} · {formatDate(detailState.data?.quote.asOf)} · Converted at {formatNumber(detailState.data?.exchangeRate.krwPerUnit)} KRW/USD
+                  {detailState.data?.quote.status || (locale === "ko" ? "불러오는 중" : "Loading")} · {formatDate(detailState.data?.quote.asOf)} · {locale === "ko" ? `환율 ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)}원/USD` : `Converted at ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)} KRW/USD`}
                 </p>
               </div>
               <div className="stock-price">
                 <strong>{formatNumber(detailState.data?.quote.currentPriceKrw, { style: "currency", currency: "KRW", maximumFractionDigits: 0 })}</strong>
                 <span className={quoteChangeRate == null ? "" : quoteChangeRate >= 0 ? "is-positive" : ""}>
-                  {signedNumber(detailState.data?.quote.changeAmountKrw)} {quoteChangeRate == null ? null : <img src={quoteChangeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {quoteChangeRate == null ? "Unavailable" : `${quoteChangeRate >= 0 ? "+" : ""}${quoteChangeRate.toFixed(2)}%`}
+                  {signedNumber(detailState.data?.quote.changeAmountKrw, locale)} {quoteChangeRate == null ? null : <img src={quoteChangeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {quoteChangeRate == null ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${quoteChangeRate >= 0 ? "+" : ""}${quoteChangeRate.toFixed(2)}%`}
                 </span>
               </div>
             </div>
             <div className="stock-metrics">
               {[
-                ["High", formatNumber(detailState.data?.quote.highPriceKrw)],
-                ["Low", formatNumber(detailState.data?.quote.lowPriceKrw)],
-                ["Volume", formatNumber(detailState.data?.quote.volume, { notation: "compact" })],
-                ["Prev close", formatNumber(previousClose(detailState.data))],
+                [locale === "ko" ? "고가" : "High", formatNumber(detailState.data?.quote.highPriceKrw)],
+                [locale === "ko" ? "저가" : "Low", formatNumber(detailState.data?.quote.lowPriceKrw)],
+                [locale === "ko" ? "거래량" : "Volume", formatNumber(detailState.data?.quote.volume, { notation: "compact" })],
+                [locale === "ko" ? "전일 종가" : "Prev close", formatNumber(previousClose(detailState.data))],
               ].map(
                 ([label, value]) => (
                   <div key={label}>
@@ -113,12 +115,12 @@ export function StockPage() {
                 className="stock-danger"
               >
                 <img src="/assets/status-warning.svg" alt="" />
-                {detailState.data.foreignOwnership.limitExhaustionRate === null ? "Foreign limit unavailable" : `${detailState.data.foreignOwnership.limitExhaustionRate.toFixed(1)}% foreign limit used`}
+                {detailState.data.foreignOwnership.limitExhaustionRate === null ? (locale === "ko" ? "외국인 한도 정보 없음" : "Foreign limit unavailable") : (locale === "ko" ? `외국인 한도 ${detailState.data.foreignOwnership.limitExhaustionRate.toFixed(1)}% 사용` : `${detailState.data.foreignOwnership.limitExhaustionRate.toFixed(1)}% foreign limit used`)}
               </span>) : null}
               {detailState.data?.quote.viActive || detailState.data?.quote.singlePriceTrading ? (
               <button type="button" onClick={() => setAlert("vi")}>
                 <img src="/assets/timer.svg" alt="" />
-                VI active · single-price trading
+                {locale === "ko" ? "VI 발동 · 단일가 매매" : "VI active · single-price trading"}
               </button>) : null}
             </div>
             <button
@@ -127,14 +129,13 @@ export function StockPage() {
             >
               <img src="/assets/info.svg" alt="" />
               <span>
-                <strong>Quick check company insight!</strong>
+                <strong>{locale === "ko" ? "기업 인사이트 빠른 확인" : "Quick check company insight!"}</strong>
                 <small>
-                  See which global companies this business most closely
-                  resembles.
+                  {locale === "ko" ? "사업 구조가 가장 비슷한 글로벌 기업을 확인하세요." : "See which global companies this business most closely resembles."}
                 </small>
               </span>
               <em>
-                View insights{" "}
+                {t("viewInsights")}{" "}
                 <img src="/assets/chevron-right-gold.svg" alt="" />
               </em>
             </button>
@@ -150,21 +151,21 @@ export function StockPage() {
               className={activeTab === "chart" ? "active" : ""}
               onClick={() => setActiveTab("chart")}
             >
-              Chart
+              {t("chart")}
             </button>
             <button
               type="button"
               className={activeTab === "news" ? "active" : ""}
               onClick={() => setActiveTab("news")}
             >
-              News
+              {t("news")}
             </button>
             <button
               type="button"
               className={activeTab === "disclosure" ? "active" : ""}
               onClick={() => setActiveTab("disclosure")}
             >
-              Disclosure
+              {t("disclosure")}
             </button>
           </div>
           {activeTab === "news" ? (
@@ -203,28 +204,28 @@ export function StockPage() {
                 </RemoteState>
               </section>
               <aside className="ownership-panel">
-                <h2>Foreign ownership</h2>
+                <h2>{locale === "ko" ? "외국인 보유" : "Foreign ownership"}</h2>
                 <p>{activePrediction
-                  ? "ML prediction & statutory limit"
+                  ? (locale === "ko" ? "AI 예측 및 법정 한도" : "ML prediction & statutory limit")
                   : detailState.data?.subjectToForeignAcquisitionLimit
-                    ? "Latest verified ownership & statutory limit"
-                    : "Latest verified ownership"}</p>
+                    ? (locale === "ko" ? "최신 확인 보유율 및 법정 한도" : "Latest verified ownership & statutory limit")
+                    : (locale === "ko" ? "최신 확인 보유율" : "Latest verified ownership")}</p>
                 <div className="ownership-line">
                   <span className={ownershipExhaustion == null ? "unavailable" : ""} style={{ width: `${ownershipExhaustion == null ? 0 : Math.min(ownershipExhaustion, 100)}%` }} />
                 </div>
                 <div className="ownership-values">
                   <div>
-                    <span>Previous ownership</span>
-                    <strong>{detailState.data?.foreignOwnership.ownershipRate === null || detailState.data?.foreignOwnership.ownershipRate === undefined ? "Unavailable" : `${detailState.data.foreignOwnership.ownershipRate.toFixed(2)}%`}</strong>
+                    <span>{locale === "ko" ? "직전 보유율" : "Previous ownership"}</span>
+                    <strong>{detailState.data?.foreignOwnership.ownershipRate === null || detailState.data?.foreignOwnership.ownershipRate === undefined ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${detailState.data.foreignOwnership.ownershipRate.toFixed(2)}%`}</strong>
                   </div>
                   <div>
-                    <span>Legal limit</span>
-                    <strong>{detailState.data?.foreignOwnership.foreignLimitQuantity && detailState.data?.foreignOwnership.totalListedQuantity ? `${(detailState.data.foreignOwnership.foreignLimitQuantity / detailState.data.foreignOwnership.totalListedQuantity * 100).toFixed(2)}%` : "Not applicable"}</strong>
+                    <span>{locale === "ko" ? "법정 한도" : "Legal limit"}</span>
+                    <strong>{detailState.data?.foreignOwnership.foreignLimitQuantity && detailState.data?.foreignOwnership.totalListedQuantity ? `${(detailState.data.foreignOwnership.foreignLimitQuantity / detailState.data.foreignOwnership.totalListedQuantity * 100).toFixed(2)}%` : (locale === "ko" ? "해당 없음" : "Not applicable")}</strong>
                   </div>
                 </div>
                 {detailState.data?.subjectToForeignAcquisitionLimit && activePrediction ? <div className="prediction">
                   <div>
-                    <b>Today’s current prediction</b>
+                    <b>{locale === "ko" ? "오늘의 현재 예측" : "Today’s current prediction"}</b>
                     <span>95% CI</span>
                   </div>
                   <div>
@@ -252,38 +253,37 @@ export function StockPage() {
         <aside className="peer-panel" aria-label="Company insights">
           <button className="panel-close" onClick={() => setInsights(false)}>
             <img src="/assets/close.svg" alt="" />
-            Close
+            {t("close")}
           </button>
-          <h2>Company insights</h2>
+          <h2>{t("companyInsights")}</h2>
           <div className="context-chip">
             <img src="/assets/agent-context.svg" alt="" />
-            Context attached · {detailState.data?.nameEn || detailState.data?.nameKo || stockCode}
+            {locale === "ko" ? "연결된 컨텍스트" : "Context attached"} · {detailState.data ? stockName(detailState.data) : stockCode}
           </div>
           <RemoteState {...peersState}>
           {(peerData) => <><div className="peer-intro">
-            <h3>
-              {peerData.stockNameEn} maps closest
-              <br />
-              to {peerData.primaryPeer.companyName}
-            </h3>
+            <h3>{peerData.headline}</h3>
             <p>{peerData.summary}</p>
             <div>
               <span>AI</span>
               <span>{peerData.confidenceLevel}</span>
-              <span>{Math.round(peerData.confidenceScore * 100)}% confidence</span>
+              <span>{Math.round(peerData.confidenceScore * 100)}% {locale === "ko" ? "신뢰도" : "confidence"}</span>
             </div>
           </div>
           <div className="peer-cards">
             {peerData.comparisons.map((comparison) => (
               <article key={comparison.dimension}>
-                <span>{comparison.dimension}</span>
-                <h3>{comparison.peer.companyName}</h3>
+                <span>{locale === "ko" ? peerDimensionKo(comparison.dimension) : comparison.dimension.replaceAll("_", " ")}</span>
+                <div className="peer-company">
+                  <img src={comparison.peer.logoUrl} alt="" onError={(event) => { event.currentTarget.hidden = true; }} />
+                  <h3>{comparison.peer.companyName}</h3>
+                </div>
                 <p>{comparison.description}</p>
               </article>
             ))}
           </div>
           <p className="peer-note">
-            {peerData.source} · Financial data as of {peerData.financialDataAsOf}. A reference point for orientation, not a valuation claim.
+            {locale === "ko" ? `${peerData.financialDataAsOf} 기준 재무 데이터입니다. 가치평가나 투자 권유가 아닌 비교 참고 정보입니다.` : `Financial data as of ${peerData.financialDataAsOf}. A reference point for orientation, not a valuation claim.`}
           </p>
           </>}
           </RemoteState>
@@ -308,29 +308,28 @@ export function StockPage() {
             />
             {alert === "price-limit" ? (
               <>
-                <h2 id="alert-title">Daily Price Limit Reached</h2>
+                <h2 id="alert-title">{locale === "ko" ? "일일 가격제한폭 도달" : "Daily Price Limit Reached"}</h2>
                 <p>
-                  This stock has reached the daily price limit.
+                  {locale === "ko" ? "이 종목이 일일 가격제한폭에 도달했습니다." : "This stock has reached the daily price limit."}
                   <br />
-                  Orders may be delayed due to pending orders at the limit
-                  price.
+                  {locale === "ko" ? "가격제한폭에 쌓인 대기 주문으로 체결이 지연될 수 있습니다." : "Orders may be delayed due to pending orders at the limit price."}
                 </p>
               </>
             ) : (
               <>
-                <h2 id="alert-title">Volatility Interruption Triggered</h2>
+                <h2 id="alert-title">{locale === "ko" ? "변동성 완화장치 발동" : "Volatility Interruption Triggered"}</h2>
                 <p>
-                  A VI has been triggered for this stock.
+                  {locale === "ko" ? "이 종목에 VI가 발동했습니다." : "A VI has been triggered for this stock."}
                   <br />
-                  Continuous matching is suspended and orders will be processed
+                  {locale === "ko" ? "연속 매매가 중단되고 주문은 2분간 단일가 방식으로 처리됩니다." : <>Continuous matching is suspended and orders will be processed
                   <br />
-                  through a two-minute single-price call auction.
+                  through a two-minute single-price call auction.</>}
                 </p>
-                <strong>Check the live trading status before placing an order.</strong>
+                <strong>{locale === "ko" ? "주문 전 실시간 매매 상태를 확인하세요." : "Check the live trading status before placing an order."}</strong>
               </>
             )}
             <button type="button" onClick={() => setAlert(null)}>
-              Confirm
+              {locale === "ko" ? "확인" : "Confirm"}
             </button>
           </div>
         </div>
@@ -339,12 +338,20 @@ export function StockPage() {
   );
 }
 
+function peerDimensionKo(value: string) {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("overall") || normalized.includes("business")) return "전체 사업";
+  if (normalized.includes("semiconductor")) return "반도체";
+  if (normalized.includes("consumer")) return "소비자 전자";
+  return value;
+}
+
 function percentage(value: number | null | undefined) {
   return value === null || value === undefined ? "Unavailable" : `${value.toFixed(2)}%`;
 }
 
-function signedNumber(value: number | null | undefined) {
-  if (value === null || value === undefined) return "Unavailable";
+function signedNumber(value: number | null | undefined, locale: "en" | "ko" = "en") {
+  if (value === null || value === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
   return `${value >= 0 ? "+" : ""}${formatNumber(value)}`;
 }
 
