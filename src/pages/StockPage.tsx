@@ -202,7 +202,7 @@ export function StockPage() {
               </section>
               <aside className="ownership-panel">
                 <h2>Foreign ownership</h2>
-                <p>ML prediction &amp; statutory limit</p>
+                <p>{detailState.data?.subjectToForeignAcquisitionLimit ? "ML prediction & statutory limit" : "Latest verified ownership"}</p>
                 <div className="ownership-line">
                   <span className={ownershipExhaustion == null ? "unavailable" : ""} style={{ width: `${ownershipExhaustion == null ? 0 : Math.min(ownershipExhaustion, 100)}%` }} />
                 </div>
@@ -216,7 +216,7 @@ export function StockPage() {
                     <strong>{detailState.data?.foreignOwnership.foreignLimitQuantity && detailState.data?.foreignOwnership.totalListedQuantity ? `${(detailState.data.foreignOwnership.foreignLimitQuantity / detailState.data.foreignOwnership.totalListedQuantity * 100).toFixed(2)}%` : "Not applicable"}</strong>
                   </div>
                 </div>
-                <div className="prediction">
+                {detailState.data?.subjectToForeignAcquisitionLimit && detailState.data.foreignLimitPrediction ? <div className="prediction">
                   <div>
                     <b>Today’s current prediction</b>
                     <span>95% CI</span>
@@ -232,10 +232,10 @@ export function StockPage() {
                       Max<small>{percentage(detailState.data?.foreignLimitPrediction.maxRate)}</small>
                     </span>
                   </div>
-                </div>
-                <p className="prediction-note">
+                </div> : null}
+                {detailState.data?.subjectToForeignAcquisitionLimit && detailState.data.foreignLimitPrediction ? <p className="prediction-note">
                   {predictionNote(detailState.data)}
-                </p>
+                </p> : null}
               </aside>
             </div>
           )}

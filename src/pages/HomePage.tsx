@@ -8,7 +8,9 @@ import { ViewMoreButton } from "../components/ViewMoreButton";
 import { NewsThumbnail } from "../components/NewsThumbnail";
 import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
+import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import type { Filing, NewsArticle, Stock, StockDetail, SupportedCountry } from "../types";
+import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 
 const quickActions = [
   ["/assets/news.svg", "Today’s news", "/news"],
@@ -61,15 +63,12 @@ export function HomePage() {
   );
   const taxRatesState = useRemote(async (signal) => {
     const supported = await api<SupportedCountry[]>("/api/v1/tax/countries", { signal });
-    const preferredOrder = ["US", "GB", "SG", "CN", "CA"];
-    const selected = preferredOrder
-      .map((code) => supported.find((country) => country.countryCode === code))
-      .filter((country): country is SupportedCountry => Boolean(country))
-      .slice(0, 5);
-    return Promise.all(selected.map((country) => api<TaxEligibility>("/api/v1/tax/eligibility", {
+    const country = supported.find((item) => item.countryCode === "US");
+    if (!country) return [];
+    return Promise.all([country].map((item) => api<TaxEligibility>("/api/v1/tax/eligibility", {
       method: "POST",
       signal,
-      body: JSON.stringify({ residencyCountry: country.countryCode, investorType: "INDIVIDUAL" }),
+      body: JSON.stringify({ residencyCountry: item.countryCode, investorType: "INDIVIDUAL" }),
     })));
   }, []);
   const eligibilityButtonRef = useRef<HTMLButtonElement>(null);
@@ -86,8 +85,8 @@ export function HomePage() {
       )
     : [];
   const filingGroups = useMemo(() => {
-    const groups = new Map<string, Filing[]>();
-    for (const filing of filingsState.data?.items ?? []) {
+		const groups = new Map<string, PublishedFiling[]>();
+    for (const filing of (filingsState.data?.items ?? []).filter(isPublishedFiling)) {
       const day = filing.filedDate;
       groups.set(day, [...(groups.get(day) ?? []), filing]);
     }
@@ -235,20 +234,20 @@ export function HomePage() {
           <RemoteState {...ownershipState} empty={(value) => !value.length}>
             {() => <div className="ownership-grid">
             {visibleOwnership.map((item) => {
-              const used = item.stock.foreignOwnership?.ownershipRate ?? null;
+              const used = item.prediction?.baseRate ?? item.stock.foreignOwnership?.ownershipRate ?? null;
               const cap = item.stock.foreignOwnership?.foreignLimitQuantity && item.stock.foreignOwnership?.totalListedQuantity
                 ? item.stock.foreignOwnership.foreignLimitQuantity / item.stock.foreignOwnership.totalListedQuantity * 100
                 : null;
               const tone = ownershipTone(item);
               const remaining = cap !== null && used !== null ? Math.max(cap - used, 0) : null;
-              const exhaustion = item.stock.foreignOwnership?.limitExhaustionRate;
+              const exhaustion = cap !== null && used !== null && cap > 0 ? used / cap * 100 : null;
               const width = `${exhaustion == null ? 0 : Math.min(exhaustion, 100)}%`;
 
               return (
-                <article
+                <Link
                   className="ownership-card"
                   key={item.stock.stockCode}
-                  tabIndex={0}
+                  to={`/stocks/${item.stock.stockCode}`}
                 >
                   <div className="card-title">
                     <span className={tone}>
@@ -274,7 +273,7 @@ export function HomePage() {
                     <span>Used {used === null ? "Unavailable" : `${used.toFixed(2)}%`}</span>
                     <span>Cap {cap === null ? "Unavailable" : `${cap.toFixed(2)}%`}</span>
                   </div>
-                </article>
+                </Link>
               );
             })}
           </div>}
@@ -347,6 +346,11 @@ export function HomePage() {
                   ))}
                 </div>;
               })}
+              {["Additional treaty data", "Additional treaty data", "Additional treaty data", "Additional treaty data"].map((label, index) => (
+                <div className="treaty-row-locked" aria-label="Additional country treaty data unavailable" key={`${label}-${index}`}>
+                  <span>{label}</span><span>—</span><span>—</span><span>—</span>
+                </div>
+              ))}
               {taxRatesState.error ? <div className="api-state api-error">Treaty rate data unavailable.</div> : null}
             </article>
           </div>
@@ -362,7 +366,7 @@ export function HomePage() {
   );
 }
 
-function FilingRow({ filing }: { filing: Filing }) {
+function FilingRow({ filing }: { filing: PublishedFiling }) {
   return (
     <Link
       className="filing-row"
@@ -378,15 +382,17 @@ function FilingRow({ filing }: { filing: Filing }) {
         <b>{filing.issuerNameEn || filing.issuerNameKo}</b>
         <small>{filing.stockCode} · {filing.market}</small>
       </span>
-      <strong>{filing.titleEn || filing.titleKo}</strong>
-      <em>{filing.type}</em>
-      <span className={filing.indexStatus === "READY" ? "positive" : "medium"}>{filing.indexStatus}</span>
-      <span className="neutral">{filing.correction ? "Correction" : filing.documentStatus}</span>
+      <strong>{filing.titleEn}</strong>
+      <em>{filing.eventType.replaceAll("_", " ")}</em>
+      <span className={filing.importance === "HIGH" || filing.importance === "CRITICAL" ? "positive" : "medium"}>{filing.importance}</span>
+      <span className={filing.sentiment.toLowerCase()}>{filing.sentiment}</span>
     </Link>
   );
 }
 
 function HomeNewsCard({ article }: { article: NewsArticle }) {
+  const translation = useAutomaticTranslation(`/api/v1/news/${article.id}/translation`);
+  const insight = translation.data?.status === "READY" ? translation.data.result : null;
   const sentiment = (article.sentiment || "Neutral").toLowerCase();
   return <Link className="news-card" to={`/news/${article.id}`}>
     <div className="tags">
@@ -397,13 +403,13 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
       <span className={article.importance === "HIGH" || article.importance === "CRITICAL" ? "priority" : "medium"}>{article.importance ? `${article.importance} priority` : "Pending"}</span>
       {article.eventType ? <span>{article.eventType}</span> : null}
     </div>
-    <h3>{article.englishTitle || article.originalTitle}</h3>
+    <h3>{article.englishTitle}</h3>
     <p className="meta">{formatDate(article.publishedAt)} · {article.publisher}</p>
     <NewsThumbnail src={article.thumbnailUrl} />
     <div className="insight">
-      <p><b>What</b>{article.what || "Grounded insight is unavailable."}</p>
-      <p><b>Why</b>{article.why || "Grounded insight is unavailable."}</p>
-      <p><b>Impact</b>{article.impact || "Grounded insight is unavailable."}</p>
+      <p><b>What</b>{insight?.what || "Preparing verified insight…"}</p>
+      <p><b>Why</b>{insight?.why || "Preparing verified insight…"}</p>
+      <p><b>Impact</b>{insight?.impact || "Preparing verified insight…"}</p>
     </div>
   </Link>;
 }

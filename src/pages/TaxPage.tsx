@@ -34,7 +34,7 @@ export function TaxPage() {
   const [error, setError] = useState("");
   useEffect(() => {
     const supported = countries.data || [];
-    if (supported.length && !supported.some((item) => item.countryCode === country)) setCountry(supported[0].countryCode);
+    if (supported.some((item) => item.countryCode === "US") && country !== "US") setCountry("US");
   }, [countries.data, country]);
   return (
     <div className="tax-page">
@@ -80,8 +80,13 @@ export function TaxPage() {
                   value={country}
                   onChange={(event) => setCountry(event.target.value)}
                 >
-                  {(countries.data || []).map((item) => <option value={item.countryCode} key={item.countryCode}>{item.countryName}</option>)}
+                  {(countries.data || []).map((item) => (
+                    <option disabled={item.countryCode !== "US"} value={item.countryCode} key={item.countryCode}>
+                      {item.countryName}{item.countryCode === "US" ? "" : " · Coming soon"}
+                    </option>
+                  ))}
                 </select>
+                <small>Verified eligibility is currently available for United States residents only.</small>
               </label>
               <label>
                 Investor type
