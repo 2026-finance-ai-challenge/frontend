@@ -42,9 +42,10 @@ export function useAutomaticTranslation(path: string, enabled = true) {
 
   useEffect(() => {
     if (!enabled || (state.data?.status !== "PENDING" && state.data?.status !== "PROCESSING")) return;
+    if (state.loading) return;
     const timer = window.setTimeout(state.retry, 2_500);
     return () => window.clearTimeout(timer);
-  }, [enabled, state.data?.status, state.retry]);
+  }, [enabled, state.data?.status, state.loading, state.retry]);
 
   return { ...state, requestError, requesting };
 }
