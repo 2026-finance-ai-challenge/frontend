@@ -131,9 +131,7 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
     return created;
   };
 
-  const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const content = draft.trim();
+  const submitContent = async (content: string) => {
     if (!content || !profile || generation && ["PENDING", "PROCESSING"].includes(generation.status)) return;
     setDraft(""); setError(""); setStreamingAnswer(""); setStreamedMessageId(null);
     try {
@@ -147,6 +145,10 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Your message was not sent.");
     }
+  };
+  const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await submitContent(draft.trim());
   };
 
   const deleteConversation = async () => {
@@ -191,7 +193,15 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
     <div className="context-chip"><img src="/assets/agent-context.svg" alt="" /> {room?.context.title || (locale === "ko" ? "한국 시장 도우미" : "Korea market assistant")}</div>
     {!profile ? <div className="api-state"><b>{locale === "ko" ? "보호된 대화를 시작하려면 로그인하세요" : "Sign in to start a protected chat"}</b><span>{locale === "ko" ? "대화방과 기록은 계정별로 안전하게 저장됩니다." : "Chat rooms and history are stored per account."}</span><Link to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}>{locale === "ko" ? "로그인" : "Log in"}</Link></div> : null}
     <div className="chat global-agent-chat" aria-live="polite">
-      {profile && messages.length === 0 ? <div className="ai-message"><p>{locale === "ko" ? "한국 주식, 뉴스, DART 공시, 외국인 보유 한도 또는 조세조약을 질문하세요." : "Ask about Korean equities, news, DART filings, foreign ownership limits, or treaty tax information."}</p></div> : null}
+      {profile && messages.length === 0 ? <>
+        <div className="ai-message"><p>{locale === "ko" ? "한국 주식, 뉴스, DART 공시, 외국인 보유 한도 또는 조세조약을 질문하세요." : "Ask about Korean equities, news, DART filings, foreign ownership limits, or treaty tax information."}</p></div>
+        <div className="agent-suggestions" aria-label={locale === "ko" ? "추천 질문" : "Suggested questions"}>
+          {(locale === "ko"
+            ? ["오늘 시장의 핵심 변동 요인은?", "최근 중요 공시를 근거와 함께 설명해줘", "외국인 보유 한도가 임박한 종목은?"]
+            : ["What is moving Korea's market today?", "Explain recent high-priority filings with sources", "Which stocks are near their foreign ownership cap?"]
+          ).map((suggestion) => <button type="button" key={suggestion} onClick={() => void submitContent(suggestion)}>{suggestion}</button>)}
+        </div>
+      </> : null}
       {messages.map((message) => message.id === streamedMessageId ? null : message.role === "USER" ? <p className="user-message user-message-enter" key={message.id}>{message.content}</p> : <div className="ai-message ai-message-enter" key={message.id}><p>{message.content}</p>{message.insufficientEvidence ? <small>{message.refusalReason || (locale === "ko" ? "근거가 부족합니다" : "Insufficient evidence")}</small> : null}{message.citations.map((citation) => citation.url ? <a key={citation.id} href={citation.url} target="_blank" rel="noreferrer">{citation.title}</a> : <small key={citation.id}>{citation.title}</small>)}{message.disclaimer ? <small>{message.disclaimer}</small> : null}<button type="button" className="agent-message-action" onClick={() => void regenerateMessage(message.id)} disabled={Boolean(generating)}>{locale === "ko" ? "다시 생성" : "Regenerate"}</button></div>)}
       {generating ? <div className="agent-thinking" role="status"><span className="agent-thinking-label">{locale === "ko" ? "K-Agent가 서버 근거를 확인하는 중" : "K-Agent is checking server sources"}</span><i /><i /><i /><button type="button" onClick={() => void stopGeneration()}>{locale === "ko" ? "중지" : "Stop"}</button></div> : null}
       {streamedMessageId ? <div className="ai-message ai-message-enter"><p className="typewriter-answer">{streamingAnswer}<span className="typing-cursor" aria-hidden="true" /></p></div> : null}

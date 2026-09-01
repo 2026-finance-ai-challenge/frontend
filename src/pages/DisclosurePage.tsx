@@ -12,6 +12,7 @@ import type { Filing, FilingDetail } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
+import { FitText } from "../components/FitText";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
 import { hasVerifiedEnglishTitle, isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
@@ -77,7 +78,7 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
                 <span>{formatDate(filing.detectedAt)}</span>
                 <i className={filing.correction ? "red" : "neutral"} />
                 <span>
-                  <b className={adaptiveTextClass(issuer, "filing-issuer", 19, 32)}>{issuer}</b>
+                  <FitText className="filing-issuer" value={issuer} />
                   <small>{filing.stockCode} · {filing.market}</small>
                 </span>
                 <strong className={adaptiveTextClass(title, "filing-title")}>{title}</strong>
@@ -362,10 +363,10 @@ function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; 
   );
   return <section id={`section-${section.id}`} aria-busy={pending}>
     {translated?.translatedHeading ? <h3>{translated.translatedHeading}</h3> : null}
-    {translated?.translatedText
-      ? <p>{translated.translatedText}</p>
-      : translated?.translatedTableData
-        ? <StructuredTable data={translated.translatedTableData} />
+    {translated?.translatedTableData
+      ? <StructuredTable data={translated.translatedTableData} />
+      : translated?.translatedText
+        ? <p>{translated.translatedText}</p>
         : pending
           ? <LoadingSkeleton lines={section.tableData ? 5 : 3} className="disclosure-section-skeleton" />
           : <div className="api-state api-error">Translation generation failed and no cache was stored.</div>}

@@ -14,8 +14,13 @@ export function IntelligenceBadges({ sentiment, importance, eventType, variant =
   const importanceLabel = importance
     ? locale === "ko" ? `${importanceLabelKo(importance)} 중요도` : `${importance} priority`
     : locale === "ko" ? "분석 중" : "Analysis pending";
-  const sentimentBadge = <span className={`signal-badge is-${normalized.toLowerCase()}`}>
-      <img src={normalized === "NEGATIVE" ? "/assets/trend-down.svg" : normalized === "POSITIVE" ? "/assets/trend-up.svg" : "/assets/trend-neutral.svg"} alt="" />
+  const sentimentAsset = normalized === "NEGATIVE"
+    ? "/assets/sentiment-negative-figma.svg"
+    : normalized === "POSITIVE"
+      ? "/assets/sentiment-positive-figma.svg"
+      : "/assets/sentiment-neutral-figma.svg";
+  const sentimentBadge = <span className={`signal-badge sentiment-badge is-${normalized.toLowerCase()}`}>
+      <img className="sentiment-badge-icon" src={sentimentAsset} alt="" />
       {sentimentLabel}
     </span>;
   const importanceBadge = <span className={`signal-badge is-${(importance || "pending").toLowerCase()}`}>{importanceLabel}</span>;
