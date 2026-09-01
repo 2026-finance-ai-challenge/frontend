@@ -685,9 +685,6 @@ a {
   height: 10px;
   object-fit: fill;
 }
-.intelligence-badges .is-positive .sentiment-badge-icon {
-  transform: scaleY(-1);
-}
 .intelligence-badges .is-neutral .sentiment-badge-icon {
   height: 2px;
 }
@@ -777,6 +774,29 @@ a {
   line-height: 25px;
   color: #aaa;
 }
+.news-card-content {
+  min-width: 0;
+  padding-right: 174px;
+}
+.news-card-thumbnail {
+  position: absolute;
+  top: 78px;
+  right: 30px;
+  width: 150px;
+  height: 96px;
+  border-radius: 8px;
+  object-fit: cover;
+  overflow: hidden;
+}
+.news-card-thumbnail.news-thumbnail-empty {
+  display: grid;
+  place-items: center;
+  background: #f5f5f2;
+}
+.news-card-thumbnail.news-thumbnail-empty img {
+  width: 30px;
+  height: 30px;
+}
 .news-card .insight {
   position: absolute;
   top: 176px;
@@ -831,6 +851,13 @@ a {
 }
 .insight b {
   color: var(--gold);
+}
+.news-card .insight .insight-hover-prompt {
+  display: flex;
+  align-items: center;
+  color: #777;
+  font-size: 16px;
+  line-height: 22px;
 }
 .loading-skeleton {
   display: grid;
@@ -920,7 +947,7 @@ a {
 .filing-row::before {
   content: "";
   position: absolute;
-  left: 174px;
+  left: 200px;
   top: 0;
   bottom: 0;
   width: 1px;
@@ -944,7 +971,7 @@ a {
 .filing-row .filing-timeline-dot {
   position: absolute;
   z-index: 1;
-  left: 168px;
+  left: 194px;
   top: 50%;
   width: 12px;
   height: 12px;
@@ -982,6 +1009,9 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
 }
 .filing-row .filing-title--compact {
   font-size: 18px;
@@ -1652,29 +1682,56 @@ a {
     grid-template-columns: 1fr;
   }
   .news-card,
-  .news-card.has-wrapped-title { height: 300px; }
+  .news-card.has-wrapped-title {
+    height: 310px;
+    padding: 24px;
+  }
+  .news-card-content {
+    padding-right: 110px;
+  }
+  .news-card-thumbnail {
+    top: 102px;
+    right: 24px;
+    width: 96px;
+    height: 72px;
+  }
   .news-card h3 {
     display: -webkit-box;
     overflow: hidden;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+    font-size: 22px;
+    line-height: 27px;
+  }
+  .news-card .news-card-title--compact {
+    font-size: 20px;
+    line-height: 25px;
+  }
+  .news-card .news-card-title--dense {
+    font-size: 17px;
+    line-height: 22px;
+  }
+  .news-card .meta {
+    font-size: 14px;
+    line-height: 20px;
   }
   .news-card .insight,
   .news-card.has-wrapped-title .insight {
-    top: 220px;
+    top: 245px;
+    padding-inline: 24px;
   }
   .news-card:hover,
   .news-card:focus-visible,
   .news-card.has-wrapped-title:hover,
   .news-card.has-wrapped-title:focus-visible {
-    height: 400px;
+    height: 430px;
   }
   .news-card:hover .insight,
   .news-card:focus-visible .insight,
   .news-card.has-wrapped-title:hover .insight,
   .news-card.has-wrapped-title:focus-visible .insight {
-    top: 220px;
-    height: 180px;
+    top: 245px;
+    height: 185px;
   }
   .filing-section {
     padding-top: 100px;
@@ -1820,6 +1877,12 @@ a {
 .stock-price strong {
   font-size: 60px;
   letter-spacing: -0.04em;
+}
+.stock-price .stock-price-secondary {
+  color: #777;
+  font-size: 15px;
+  font-weight: 500;
+  margin-top: 3px;
 }
 .stock-price span {
   font-size: 22px;
@@ -2587,6 +2650,35 @@ a {
 .news-row p {
   color: #777;
   line-height: 1.4;
+}
+.news-pointer-insight {
+  position: fixed;
+  z-index: 1200;
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px 22px;
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+.news-pointer-insight p {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 14px;
+  margin: 0 0 12px;
+  color: #555;
+  font-size: 14px;
+  line-height: 20px;
+}
+.news-pointer-insight p:last-child {
+  margin-bottom: 0;
+}
+.news-pointer-insight b {
+  color: var(--gold);
+}
+.news-pointer-insight .loading-skeleton i {
+  height: 11px;
 }
 .article-page.agent-open .article-main {
   width: 100%;
@@ -3866,13 +3958,20 @@ mark {
   display: flex;
   gap: 10px;
 }
-.entity-chips span {
+.entity-chips span,
+.entity-chips a {
   background: #efeee8;
   padding: 7px 10px;
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  color: inherit;
+  text-decoration: none;
+}
+.entity-chips a:hover,
+.entity-chips a:focus-visible {
+  outline: 1px solid var(--gold);
 }
 .entity-chips img {
   width: 18px;

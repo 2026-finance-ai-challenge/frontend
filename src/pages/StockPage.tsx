@@ -88,7 +88,8 @@ export function StockPage() {
                 </p>
               </div>
               <div className="stock-price">
-                <strong>{formatNumber(detailState.data?.quote.currentPriceKrw, { style: "currency", currency: "KRW", maximumFractionDigits: 0 })}</strong>
+                <strong>{formatStockPrice(detailState.data, locale, true)}</strong>
+                <small className="stock-price-secondary">{formatStockPrice(detailState.data, locale, false)}</small>
                 <span className={quoteChangeRate == null ? "" : quoteChangeRate >= 0 ? "is-positive" : ""}>
                   {signedNumber(detailState.data?.quote.changeAmountKrw, locale)} {quoteChangeRate == null ? null : <img src={quoteChangeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {quoteChangeRate == null ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${quoteChangeRate >= 0 ? "+" : ""}${quoteChangeRate.toFixed(2)}%`}
                 </span>
@@ -372,6 +373,17 @@ function percentage(value: number | null | undefined, locale: "en" | "ko") {
 function signedNumber(value: number | null | undefined, locale: "en" | "ko" = "en") {
   if (value === null || value === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
   return `${value >= 0 ? "+" : ""}${formatNumber(value)}`;
+}
+
+function formatStockPrice(stock: StockDetail | null, locale: "en" | "ko", primary: boolean) {
+  const useUsd = primary ? locale === "en" : locale === "ko";
+  const value = useUsd ? stock?.currentPriceUsd : stock?.quote.currentPriceKrw;
+  if (value === null || value === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
+  return formatNumber(value, {
+    style: "currency",
+    currency: useUsd ? "USD" : "KRW",
+    maximumFractionDigits: useUsd ? 2 : 0,
+  });
 }
 
 function previousClose(stock: StockDetail | null) {
