@@ -12,8 +12,9 @@ import type { Filing, FilingDetail } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
+import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
-import { isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
+import { hasVerifiedEnglishTitle, isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
 import { adaptiveTextClass } from "../utils/text";
 
 type FilingInsight = {
@@ -54,7 +55,7 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
     : pathname;
 
 	const groups = new Map<string, PublishedFiling[]>();
-	for (const filing of (state.data?.items ?? []).filter(isPublishedFiling)) groups.set(filing.filedDate, [...(groups.get(filing.filedDate) ?? []), filing]);
+	for (const filing of (state.data?.items ?? []).filter(isPublishedFiling).filter(hasVerifiedEnglishTitle)) groups.set(filing.filedDate, [...(groups.get(filing.filedDate) ?? []), filing]);
   return <RemoteState {...state} empty={(value) => !value.items.length}>
     {() => <><div className="disclosure-rows">
       {[...groups.entries()].map(([day, rows]) => (
@@ -64,7 +65,7 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
             <span>{locale === "ko" ? `공시 ${rows.length}건` : `${rows.length} filings`}</span>
           </header>
           {rows.map((filing) => {
-            const title = locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "English title is being prepared…";
+            const title = locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "";
             const issuer = stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo });
             return (
               <Link
@@ -240,8 +241,7 @@ export function DisclosureDetailPage() {
                   <span>{filing?.market || "—"}</span>
                 </div>
                 <h1 className={((locale === "ko" ? filing?.titleKo : englishTitle) || "").length > 70 ? "is-long-title" : ""}>
-                  {locale === "ko" ? filing?.titleKo || "공시를 불러오는 중…" : englishTitle
-                    || (filing ? "English title is being prepared…" : "Loading disclosure…")}
+                  {locale === "ko" ? filing?.titleKo || "공시를 불러오는 중…" : englishTitle || "Loading disclosure…"}
                 </h1>
               </div>
               <div>
@@ -280,7 +280,7 @@ export function DisclosureDetailPage() {
                     <b>{row[0]}</b>
                     <span>{row[1]}</span>
                   </p>
-                )) : <div className="api-state api-loading" role="status"><span>{automaticError || (locale === "ko" ? null : insightState.error?.message || insight?.refusalReason) || (filing?.indexStatus === "READY" ? (locale === "ko" ? "근거 기반 무엇·이유·영향 요약을 생성하는 중…" : "Generating the grounded What / Why / Impact summary…") : (locale === "ko" ? "공시 번역과 근거 기반 요약을 준비하는 중…" : "Preparing the filing for translation and grounded insight…"))}</span>{indexRequested && filing?.indexStatus !== "READY" ? <small>{locale === "ko" ? "색인 중이며 완료되면 자동으로 갱신됩니다." : "Indexing is in progress. This screen updates automatically."}</small> : null}</div>}
+                )) : automaticError ? <div className="api-state api-error">{automaticError}</div> : <LoadingSkeleton lines={3} className="summary-panel-skeleton" />}
             </section>
             <aside className="mentioned filing-division">
               <h2>{t("division")}</h2>
@@ -367,8 +367,8 @@ function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; 
       : translated?.translatedTableData
         ? <StructuredTable data={translated.translatedTableData} />
         : pending
-          ? <div className="api-state api-loading" role="status">Loading the cached translation or generating it for the first view…</div>
-          : <div className="api-state api-error">A verified English translation is temporarily unavailable.</div>}
+          ? <LoadingSkeleton lines={section.tableData ? 5 : 3} className="disclosure-section-skeleton" />
+          : <div className="api-state api-error">Translation generation failed and no cache was stored.</div>}
     {translation.requestError ? <small className="translation-status-error">{translation.requestError.message}</small> : null}
   </section>;
 }

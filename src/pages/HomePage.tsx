@@ -12,7 +12,8 @@ import type { Filing, ForeignLimitMonitor, NewsArticle, SupportedCountry } from 
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
-import { verifiedEnglishText } from "../utils/english";
+import { LoadingSkeleton } from "../components/LoadingSkeleton";
+import { hasVerifiedEnglishTitle, verifiedEnglishText } from "../utils/english";
 import { adaptiveTextClass } from "../utils/text";
 
 const quickActions = [
@@ -58,12 +59,12 @@ export function HomePage() {
     window.requestAnimationFrame(() => eligibilityButtonRef.current?.focus());
   };
   const ownershipItems = [...(ownershipState.data ?? [])].sort((a, b) => ownershipExhaustion(b) - ownershipExhaustion(a));
-  const newsItems = newsState.data?.items ?? [];
+  const newsItems = (newsState.data?.items ?? []).filter(hasVerifiedEnglishTitle);
   const visibleNews = newsItems.slice(newsStart, newsStart + 2);
   const visibleOwnership = ownershipItems.slice(0, 3);
   const filingGroups = useMemo(() => {
 		const groups = new Map<string, PublishedFiling[]>();
-    for (const filing of (filingsState.data?.items ?? []).filter(isPublishedFiling)) {
+    for (const filing of (filingsState.data?.items ?? []).filter(isPublishedFiling).filter(hasVerifiedEnglishTitle)) {
       const day = filing.filedDate;
       groups.set(day, [...(groups.get(day) ?? []), filing]);
     }
@@ -243,7 +244,7 @@ export function HomePage() {
 
 function FilingRow({ filing }: { filing: PublishedFiling }) {
   const { locale, stockName } = useLocale();
-  const title = locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "English title is being prepared…";
+  const title = locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "";
   const issuer = stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo });
   return (
     <Link
@@ -277,15 +278,15 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
   }, [hovered, insightRequested]);
   const translation = useAutomaticTranslation(
     `/api/v1/news/${article.id}/translation`,
-    locale === "en" && insightRequested,
+    insightRequested,
   );
   const insight = translation.data?.status === "READY" ? translation.data.result : null;
-  const title = locale === "ko" ? article.originalTitle : verifiedEnglishText(article.englishTitle) || "English title is being prepared…";
+  const title = locale === "ko" ? article.originalTitle : verifiedEnglishText(article.englishTitle) || "";
   const wrappedTitle = Array.from(title).length > 34;
-  const summary = [
-    [t("what"), insight?.what || article.what || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")],
-    [t("why"), insight?.why || article.why || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")],
-    [t("impact"), insight?.impact || article.impact || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")],
+  const summary: Array<[string, string | null | undefined]> = [
+    [t("what"), insight?.what || article.what],
+    [t("why"), insight?.why || article.why],
+    [t("impact"), insight?.impact || article.impact],
   ];
   return <Link
     className={`news-card ${wrappedTitle ? "has-wrapped-title" : ""}`}
@@ -296,9 +297,9 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
   >
     <IntelligenceBadges sentiment={article.sentiment} importance={article.importance} eventType={article.eventType} />
     <h3 className={adaptiveTextClass(title, "news-card-title", 36, 62)}>{title}</h3>
-    <p className="meta">{formatDate(article.publishedAt)} · {article.publisher}</p>
+    <p className="meta">{article.publisher} · {formatDate(article.publishedAt)} · {locale === "ko" ? "한글 원문" : "Auto-translated"}</p>
     <div className="insight">
-      {summary.map(([label, value]) => <p key={label}><b>{label}</b><span>{value}</span></p>)}
+      {summary.map(([label, value]) => <p key={label}><b>{label}</b>{value ? <span>{value}</span> : <LoadingSkeleton className="insight-loading" />}</p>)}
     </div>
   </Link>;
 }

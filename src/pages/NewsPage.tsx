@@ -12,6 +12,7 @@ import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import type { NewsArticle, StockDetail } from "../types";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
+import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
 import { isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
 
@@ -108,7 +109,7 @@ export function NewsDetailPage() {
   const { newsId = "" } = useParams();
   const profile = useProfile();
   const articleState = useRemote((signal) => api<NewsArticle>(`/api/v1/news/${newsId}`, { signal }), [newsId]);
-  const translationState = useAutomaticTranslation(`/api/v1/news/${newsId}/translation`, Boolean(newsId) && locale === "en");
+  const translationState = useAutomaticTranslation(`/api/v1/news/${newsId}/translation`, Boolean(newsId));
   const selectionAssistant = useSelectionAssistant<HTMLDivElement>();
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ?? "/news";
@@ -138,7 +139,7 @@ export function NewsDetailPage() {
             <div>
               <IntelligenceBadges sentiment={article?.sentiment} importance={article?.importance} eventType={article?.eventType} />
               <h1 className={((locale === "ko" ? article?.originalTitle : englishTitle) || "").length > 70 ? "is-long-title" : ""}>
-                {locale === "ko" ? article?.originalTitle || "뉴스를 불러오는 중…" : englishTitle || (article ? "English title is being prepared…" : "Loading article…")}
+                {locale === "ko" ? article?.originalTitle || "뉴스를 불러오는 중…" : englishTitle || "Loading article…"}
               </h1>
               <p>{article?.publisher || "—"} · {formatDate(article?.publishedAt)} · {locale === "ko" ? "한글 원문" : translation ? "Auto-translated" : translationPending ? "Translation loading" : "Translation unavailable"}</p>
             </div>
@@ -154,7 +155,7 @@ export function NewsDetailPage() {
                 {(translation ? [[t("what"), translation.what], [t("why"), translation.why], [t("impact"), translation.impact]] : [[t("what"), locale === "ko" ? article?.what : verifiedEnglishText(article?.what)], [t("why"), locale === "ko" ? article?.why : verifiedEnglishText(article?.why)], [t("impact"), locale === "ko" ? article?.impact : verifiedEnglishText(article?.impact)]]).map((row) => (
                   <p key={row[0]}>
                     <b>{row[0]}</b>
-                    <span>{row[1] || (translationPending ? t("translationLoading") : locale === "ko" ? "근거 기반 요약을 준비하지 못했습니다." : "Grounded insight is unavailable for this source.")}</span>
+                    {row[1] ? <span>{row[1]}</span> : translationPending ? <LoadingSkeleton className="insight-loading" /> : <span>{locale === "ko" ? "근거 기반 요약을 준비하지 못했습니다." : "Grounded insight could not be generated for this source."}</span>}
                   </p>
                 ))}
                 {translationError ? <small className="translation-status-error">{translationError.message}</small> : null}
@@ -180,8 +181,8 @@ export function NewsDetailPage() {
                       : translation?.translatedParagraphs?.length
                       ? <>{translation.translatedParagraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
                       : translationPending
-                        ? <div className="api-state api-loading" role="status">{locale === "ko" ? "원문과 무엇·이유·영향 요약을 준비하는 중…" : "Translating the source and preparing What / Why / Impact…"}</div>
-                        : <div className="api-state api-error">{locale === "ko" ? "한글 원문을 일시적으로 불러올 수 없습니다." : "The verified English translation is temporarily unavailable."}</div>}
+                        ? <LoadingSkeleton lines={8} className="article-copy-skeleton" />
+                        : <div className="api-state api-error">{locale === "ko" ? "원문을 불러오지 못했습니다." : "Translation generation failed and no cache was stored."}</div>}
                   </RemoteState>
                   <SelectionAssistant
                     selection={selectionAssistant.selection}

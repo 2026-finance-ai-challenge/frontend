@@ -25,7 +25,7 @@ export function ownershipExhaustion(item: ForeignLimitMonitor) {
 
 export function ForeignOwnershipCard({ item }: { item: ForeignLimitMonitor }) {
   const { locale, stockName } = useLocale();
-  const used = item.prediction?.baseRate ?? item.stock.foreignOwnership?.ownershipRate ?? null;
+  const used = item.stock.foreignOwnership?.ownershipRate ?? null;
   const cap = item.stock.foreignOwnership?.foreignLimitQuantity && item.stock.foreignOwnership?.totalListedQuantity
     ? item.stock.foreignOwnership.foreignLimitQuantity / item.stock.foreignOwnership.totalListedQuantity * 100
     : null;
