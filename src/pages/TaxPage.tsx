@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "../components/Layout";
-import { openKAgent } from "../agentEvents";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
 import { useProfile, useRemote } from "../hooks/useRemote";
@@ -136,10 +135,6 @@ export function TaxPage() {
           ) : null}
           {profile ? <TaxDocumentsPanel country={country} documents={documents} /> : <section className="tax-message"><p><Link to="/login?returnTo=%2Ftax">{locale === "ko" ? "로그인" : "Log in"}</Link>{locale === "ko" ? " 후 세무 서류를 안전하게 업로드하고 검증할 수 있습니다." : " to upload and verify tax documents securely."}</p></section>}
         </div>
-        <button type="button" className="tax-input" onClick={() => openKAgent({ contextType: "TAX_GUIDE", referenceId: country, prompt: "Explain the verified tax treaty result and caveats for my selected residency." })}>
-          {locale === "ko" ? "이 검증 결과를 K-Agent에 질문하기" : "Ask K-Agent about this verified result"}
-          <img src="/assets/agent-send.svg" alt="" />
-        </button>
         <p className="tax-disclaimer">
           {locale === "ko" ? "KART는 AI 도구이며 오류가 있을 수 있습니다. 인용된 출처를 반드시 다시 확인하세요." : "KART is an AI tool and can make mistakes. Please double-check the cited sources."}
         </p>

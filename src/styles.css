@@ -2831,25 +2831,24 @@ mark {
   flex-shrink: 0;
 }
 .global-agent-panel {
-  top: 120px;
-  left: 0;
-  right: 0;
-  width: 100vw;
-  height: calc(100dvh - 120px);
-  padding: 60px max(20px, calc((100vw - 884px) / 2)) 30px;
-  background: linear-gradient(to bottom, #fff 0 215px, #fbf9f4 215px);
+  top: 0;
+  left: auto;
+  width: min(717px, 100vw);
+  height: 100dvh;
+  padding: 35px 30px 30px;
+  background: linear-gradient(to bottom, #fff 0 290px, #fbf9f4 290px);
   overflow: hidden;
 }
 .global-agent-panel > header,
 .global-agent-panel > .context-chip {
-  width: min(884px, 100%);
+  width: 100%;
 }
 .global-agent-panel > .agent-close {
   width: 64px;
 }
 .global-agent-chat {
   flex: 1 1 auto;
-  width: min(884px, 100%);
+  width: 100%;
   min-height: 0;
   margin-top: 36px;
   padding-right: 4px;
@@ -2877,7 +2876,7 @@ mark {
   padding-top: 0;
 }
 .chat-input.global-agent-input {
-  width: min(884px, 100%);
+  width: auto;
   flex-shrink: 0;
   gap: 16px;
   position: relative;
@@ -2949,6 +2948,22 @@ mark {
 }
 .tax-agent-chat {
   margin-top: 35px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 5px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.tax-agent-chat > * {
+  flex-shrink: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.tax-agent-chat .user-message {
+  margin-right: 0;
+  margin-left: auto;
 }
 .tax-agent-form {
   width: 380px;
@@ -2979,9 +2994,6 @@ mark {
   background: #111;
   color: #fff;
 }
-.tax-agent-result {
-  margin-top: 20px;
-}
 .tax-eligibility-panel .ai-message > p:last-child {
   color: #111;
   border-top: 0;
@@ -2989,6 +3001,99 @@ mark {
 }
 .tax-eligibility-panel .chat-input {
   margin-top: auto;
+}
+.tax-document-message > b,
+.tax-document-message > span,
+.tax-document-message > small {
+  display: block;
+}
+.tax-document-message > span {
+  overflow-wrap: anywhere;
+}
+.tax-document-message ul,
+.tax-comparison-result ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #555;
+  font-size: 16px;
+  line-height: 24px;
+}
+.tax-document-prompt form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tax-file-picker {
+  display: block;
+}
+.tax-file-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.tax-file-picker span,
+.tax-document-prompt button {
+  min-height: 44px;
+  border: 1px solid #d0cec4;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  font-size: 16px;
+  line-height: 22px;
+}
+.tax-file-picker span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.tax-document-prompt button {
+  border-color: #111;
+  background: #111;
+  color: #fff;
+}
+.tax-file-bubble {
+  max-width: 72%;
+  overflow-wrap: anywhere;
+}
+.tax-agent-disclaimer {
+  flex: 0 0 auto;
+  margin: 18px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid #d3ccbe;
+  color: #888;
+  font-size: 13px;
+  line-height: 19px;
+}
+.tax-login-prompt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tax-login-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  font-size: 16px;
+  line-height: 24px;
+}
+.tax-login-prompt span {
+  flex: 1 1 240px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .agent-panel > button {
   border: 0;
@@ -3462,8 +3567,8 @@ mark {
     padding: 20px;
   }
   .global-agent-panel {
-    top: 84px;
-    height: calc(100dvh - 84px);
+    top: 0;
+    height: 100dvh;
     padding: 24px 16px 16px;
     background: linear-gradient(to bottom, #fff 0 180px, #fbf9f4 180px);
   }

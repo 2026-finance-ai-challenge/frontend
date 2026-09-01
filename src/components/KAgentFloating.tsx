@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { OPEN_AGENT_EVENT, type KAgentContext } from "../agentEvents";
 import { useProfile } from "../hooks/useRemote";
@@ -54,12 +54,14 @@ export function KAgentFloating() {
 
 function KAgentPanel({ close, requestedContext }: { close: () => void; requestedContext: KAgentContext }) {
   const { locale } = useLocale();
+  const navigate = useNavigate();
   const profile = useProfile();
   const [history, setHistory] = useState(false);
   const [room, setRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState(requestedContext.prompt || "");
   const [generation, setGeneration] = useState<Generation | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [streamingAnswer, setStreamingAnswer] = useState("");
   const [streamedMessageId, setStreamedMessageId] = useState<string | null>(null);
@@ -132,18 +134,34 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
   };
 
   const submitContent = async (content: string) => {
-    if (!content || !profile || generation && ["PENDING", "PROCESSING"].includes(generation.status)) return;
+    if (!content || !profile || submitting || generation && ["PENDING", "PROCESSING"].includes(generation.status)) return;
     setDraft(""); setError(""); setStreamingAnswer(""); setStreamedMessageId(null);
+    const clientMessageId = crypto.randomUUID();
+    const optimisticId = `pending-${clientMessageId}`;
+    const optimistic: Message = {
+      id: optimisticId,
+      role: "USER",
+      content,
+      citations: [],
+      insufficientEvidence: false,
+      refusalReason: null,
+      disclaimer: null,
+    };
+    setMessages((current) => [...current, optimistic]);
+    setSubmitting(true);
     try {
       const target = await ensureRoom();
       const result = await api<{ userMessage: Message; generation: Generation }>(`/api/v1/me/chats/${target.id}/messages`, {
         method: "POST",
-        body: JSON.stringify({ clientMessageId: crypto.randomUUID(), content, selectedSectionId: null, selectedText: null }),
+        body: JSON.stringify({ clientMessageId, content, selectedSectionId: null, selectedText: null }),
       });
-      setMessages((current) => [...current, result.userMessage]);
+      setMessages((current) => current.map((message) => message.id === optimisticId ? result.userMessage : message));
       setGeneration(result.generation);
     } catch (reason) {
+      setMessages((current) => current.filter((message) => message.id !== optimisticId));
       setError(reason instanceof Error ? reason.message : "Your message was not sent.");
+    } finally {
+      setSubmitting(false);
     }
   };
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
@@ -181,17 +199,21 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
       setGeneration(await api<Generation>(`/api/v1/me/chats/${room.id}/messages/${messageId}/regenerate`, { method: "POST", body: JSON.stringify({ requestKey: crypto.randomUUID() }) }));
     } catch (reason) { setError(reason instanceof Error ? reason.message : "The answer could not be regenerated."); }
   };
+  const login = () => {
+    close();
+    navigate(`/login?returnTo=${encodeURIComponent(window.location.pathname)}`);
+  };
 
   if (history) return <AgentHistoryView close={close} onConversation={(roomId) => {
     setHistory(false);
     if (roomId) void api<Room>(`/api/v1/me/chats/${roomId}`).then(setRoom).catch(() => setError("This chat could not be opened."));
   }} />;
-  const generating = generation && ["PENDING", "PROCESSING"].includes(generation.status);
+  const generating = submitting || Boolean(generation && ["PENDING", "PROCESSING"].includes(generation.status));
   return <aside className="agent-panel article-agent-panel global-agent-panel" role="dialog" aria-modal="true" aria-label="K-Agent chat">
     <button className="agent-close" type="button" onClick={close} ref={closeButtonRef}><img src="/assets/close.svg" alt="" /> {locale === "ko" ? "닫기" : "Close"}</button>
-    <header><img className="agent-logo" src="/assets/agent-badge-figma.svg" alt="" /><div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div><AgentOverflowMenu onHistory={() => setHistory(true)} onDelete={room ? () => void deleteConversation() : undefined} /></header>
+    <header><img className="agent-logo" src="/assets/agent-badge-figma.svg" alt="" /><div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div><AgentOverflowMenu onHistory={profile ? () => setHistory(true) : login} onDelete={profile ? (room ? () => void deleteConversation() : undefined) : login} /></header>
     <div className="context-chip"><img src="/assets/agent-context.svg" alt="" /> {room?.context.title || (locale === "ko" ? "한국 시장 도우미" : "Korea market assistant")}</div>
-    {!profile ? <div className="api-state"><b>{locale === "ko" ? "보호된 대화를 시작하려면 로그인하세요" : "Sign in to start a protected chat"}</b><span>{locale === "ko" ? "대화방과 기록은 계정별로 안전하게 저장됩니다." : "Chat rooms and history are stored per account."}</span><Link to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}>{locale === "ko" ? "로그인" : "Log in"}</Link></div> : null}
+    {!profile ? <div className="api-state"><b>{locale === "ko" ? "보호된 대화를 시작하려면 로그인하세요" : "Sign in to start a protected chat"}</b><span>{locale === "ko" ? "대화방과 기록은 계정별로 안전하게 저장됩니다." : "Chat rooms and history are stored per account."}</span><Link onClick={close} to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}>{locale === "ko" ? "로그인" : "Log in"}</Link></div> : null}
     <div className="chat global-agent-chat" aria-live="polite">
       {profile && messages.length === 0 ? <>
         <div className="ai-message"><p>{locale === "ko" ? "한국 주식, 뉴스, DART 공시, 외국인 보유 한도 또는 조세조약을 질문하세요." : "Ask about Korean equities, news, DART filings, foreign ownership limits, or treaty tax information."}</p></div>
@@ -203,7 +225,7 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
         </div>
       </> : null}
       {messages.map((message) => message.id === streamedMessageId ? null : message.role === "USER" ? <p className="user-message user-message-enter" key={message.id}>{message.content}</p> : <div className="ai-message ai-message-enter" key={message.id}><p>{message.content}</p>{message.insufficientEvidence ? <small>{message.refusalReason || (locale === "ko" ? "근거가 부족합니다" : "Insufficient evidence")}</small> : null}{message.citations.map((citation) => citation.url ? <a key={citation.id} href={citation.url} target="_blank" rel="noreferrer">{citation.title}</a> : <small key={citation.id}>{citation.title}</small>)}{message.disclaimer ? <small>{message.disclaimer}</small> : null}<button type="button" className="agent-message-action" onClick={() => void regenerateMessage(message.id)} disabled={Boolean(generating)}>{locale === "ko" ? "다시 생성" : "Regenerate"}</button></div>)}
-      {generating ? <div className="agent-thinking" role="status"><span className="agent-thinking-label">{locale === "ko" ? "K-Agent가 서버 근거를 확인하는 중" : "K-Agent is checking server sources"}</span><i /><i /><i /><button type="button" onClick={() => void stopGeneration()}>{locale === "ko" ? "중지" : "Stop"}</button></div> : null}
+      {generating ? <div className="agent-thinking" role="status"><span className="sr-only">{locale === "ko" ? "K-Agent가 답변을 작성하는 중" : "K-Agent is typing"}</span><i /><i /><i />{generation ? <button type="button" onClick={() => void stopGeneration()}>{locale === "ko" ? "중지" : "Stop"}</button> : null}</div> : null}
       {streamedMessageId ? <div className="ai-message ai-message-enter"><p className="typewriter-answer">{streamingAnswer}<span className="typing-cursor" aria-hidden="true" /></p></div> : null}
       {generation?.status === "FAILED" ? <div className="api-state api-error"><span>{generation.errorCode || (locale === "ko" ? "AI 답변 생성에 실패했습니다." : "AI generation failed.")}</span><button type="button" onClick={() => void retryGeneration()}>{locale === "ko" ? "다시 시도" : "Retry"}</button></div> : null}
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
