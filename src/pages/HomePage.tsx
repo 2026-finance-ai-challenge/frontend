@@ -12,6 +12,7 @@ import type { Filing, ForeignLimitMonitor, NewsArticle, SupportedCountry } from 
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
+import { FitText } from "../components/FitText";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { hasVerifiedEnglishTitle, verifiedEnglishText } from "../utils/english";
 import { adaptiveTextClass } from "../utils/text";
@@ -258,7 +259,7 @@ function FilingRow({ filing }: { filing: PublishedFiling }) {
       />
       <span>{formatDate(filing.detectedAt)}</span>
       <span>
-        <b className={adaptiveTextClass(issuer, "filing-issuer", 19, 32)}>{issuer}</b>
+        <FitText className="filing-issuer" value={issuer} />
         <small>{filing.stockCode} · {filing.market}</small>
       </span>
       <strong className={adaptiveTextClass(title, "filing-title")}>{title}</strong>

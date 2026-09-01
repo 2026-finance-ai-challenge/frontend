@@ -674,6 +674,22 @@ a {
   max-width: 100%;
   white-space: nowrap;
   line-height: 20px;
+  border: 0;
+}
+.intelligence-badges .sentiment-badge {
+  gap: 8px;
+}
+.intelligence-badges .sentiment-badge-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 10px;
+  object-fit: fill;
+}
+.intelligence-badges .is-positive .sentiment-badge-icon {
+  transform: scaleY(-1);
+}
+.intelligence-badges .is-neutral .sentiment-badge-icon {
+  height: 2px;
 }
 .intelligence-badges .is-negative,
 .intelligence-badges .is-critical,
@@ -2815,10 +2831,25 @@ mark {
   flex-shrink: 0;
 }
 .global-agent-panel {
+  top: 120px;
+  left: 0;
+  right: 0;
+  width: 100vw;
+  height: calc(100dvh - 120px);
+  padding: 60px max(20px, calc((100vw - 884px) / 2)) 30px;
+  background: linear-gradient(to bottom, #fff 0 215px, #fbf9f4 215px);
   overflow: hidden;
+}
+.global-agent-panel > header,
+.global-agent-panel > .context-chip {
+  width: min(884px, 100%);
+}
+.global-agent-panel > .agent-close {
+  width: 64px;
 }
 .global-agent-chat {
   flex: 1 1 auto;
+  width: min(884px, 100%);
   min-height: 0;
   margin-top: 36px;
   padding-right: 4px;
@@ -2827,7 +2858,18 @@ mark {
 .global-agent-chat .ai-message,
 .global-agent-chat .user-message,
 .global-agent-chat .agent-thinking {
+  max-width: 655px;
   margin-bottom: 22px;
+}
+.global-agent-chat .user-message {
+  margin-left: auto;
+}
+.global-agent-panel > .api-state {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  max-width: 655px;
+  text-align: left;
 }
 .global-agent-chat .ai-message > p:last-child {
   color: #111;
@@ -2835,6 +2877,7 @@ mark {
   padding-top: 0;
 }
 .chat-input.global-agent-input {
+  width: min(884px, 100%);
   flex-shrink: 0;
   gap: 16px;
   position: relative;
@@ -2843,6 +2886,28 @@ mark {
   height: 120px;
   min-height: 120px;
   padding-top: 29px;
+}
+.agent-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 655px;
+  margin: -8px 0 24px;
+}
+.agent-suggestions button {
+  padding: 9px 12px;
+  border: 1px solid #deddd5;
+  border-radius: 8px;
+  background: #fff;
+  color: #555;
+  font-size: 15px;
+  line-height: 21px;
+  text-align: left;
+}
+.agent-suggestions button:hover,
+.agent-suggestions button:focus-visible {
+  border-color: #927c00;
+  color: #927c00;
 }
 .global-agent-input input {
   min-width: 0;
@@ -3304,6 +3369,9 @@ mark {
   .agent-panel {
     width: min(717px, 100%);
   }
+  .agent-panel.global-agent-panel {
+    width: 100%;
+  }
   .article-grid {
     grid-template-columns: 1fr;
   }
@@ -3392,6 +3460,27 @@ mark {
   }
   .agent-panel {
     padding: 20px;
+  }
+  .global-agent-panel {
+    top: 84px;
+    height: calc(100dvh - 84px);
+    padding: 24px 16px 16px;
+    background: linear-gradient(to bottom, #fff 0 180px, #fbf9f4 180px);
+  }
+  .global-agent-panel header {
+    margin: 18px 0;
+  }
+  .global-agent-panel > .api-state {
+    min-height: 132px;
+    padding: 18px;
+  }
+  .global-agent-chat {
+    margin-top: 20px;
+  }
+  .chat-input.global-agent-input {
+    height: 90px;
+    min-height: 90px;
+    padding-top: 15px;
   }
 }
 .disclosure-page,
@@ -3572,9 +3661,10 @@ mark {
   line-height: 28px;
 }
 .disclosure-rows .filing-issuer {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .disclosure-rows .filing-issuer--compact { font-size: 18px; }
 .disclosure-rows .filing-issuer--dense { font-size: 16px; line-height: 23px; }
@@ -3604,27 +3694,23 @@ mark {
 }
 .disclosure-rows .filing-title {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-height: 56px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
   font-size: 20px;
   line-height: 28px;
+  display: flex;
+  align-items: center;
+  overflow-wrap: anywhere;
 }
 .disclosure-rows .filing-title--compact {
   font-size: 18px;
   line-height: 25px;
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 .disclosure-rows .filing-title--dense {
   font-size: 16px;
   line-height: 22px;
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 .disclosure-rows .medium {
   background: #fbedd6 !important;
@@ -3896,8 +3982,19 @@ mark {
   .date-filter {
     flex-wrap: wrap;
   }
+  .checkbox-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .checkbox-row > span,
   .checkbox-row label {
-    width: 45%;
+    width: 100%;
+  }
+  .checkbox-row label {
+    min-width: 0;
+    overflow-wrap: normal;
+    word-break: normal;
   }
   .disclosure-rows section > a {
     grid-template-columns: 75px 8px 1fr;
@@ -5096,6 +5193,11 @@ mark {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.disclosure-rows section > a b.filing-issuer {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
 :is(.search-filings, .disclosure-rows) section > a b {
   color: #000;
   font-size: 22px;
@@ -5116,6 +5218,11 @@ mark {
   line-height: 28px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.disclosure-rows section > a strong.filing-title {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 :is(.search-filings, .disclosure-rows) section > a em {
   overflow: hidden;
