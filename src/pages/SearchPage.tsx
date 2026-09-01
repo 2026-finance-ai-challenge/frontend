@@ -12,6 +12,7 @@ import type { Filing, NewsArticle, Stock, StockDetail } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
 import { useLocale } from "../state/LocaleContext";
+import { verifiedEnglishText } from "../utils/english";
 
 const filterGroups = [
   { title: "Reporting & Governance", items: [["Periodic Reports", "PERIODIC"], ["Audit Reports", "AUDIT"], ["Fair Trade", "FAIR_TRADE"]] },
@@ -128,7 +129,7 @@ export function SearchPage() {
         {liveFilingGroups.map(([day, rows]) => <section key={day}><header><span>{formatDate(day, false)}</span><span>{locale === "ko" ? `공시 ${rows.length}건` : `${rows.length} filings shown`}</span></header>
           {rows.map((filing) => <Link to={`/disclosures/${filing.receiptNumber}`} key={filing.receiptNumber}>
             <span>{formatDate(filing.detectedAt)}</span><i className={filing.correction ? "red" : "neutral"} /><span><b>{stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo })}</b><small>{filing.stockCode} · {filing.market}</small></span>
-            <strong>{locale === "ko" ? filing.titleKo : filing.titleEn || filing.titleKo}</strong><span className="filing-row-badges"><IntelligenceBadges sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
+            <strong>{locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "English title is being prepared…"}</strong><span className="filing-row-badges"><IntelligenceBadges sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
           </Link>)}
         </section>)}
       </div>}</RemoteState>
@@ -141,7 +142,7 @@ export function SearchPage() {
           <span className={item.sentiment === "NEGATIVE" ? "negative" : item.sentiment === "POSITIVE" ? "positive" : "neutral"}><img src={item.sentiment === "NEGATIVE" ? "/assets/trend-down.svg" : item.sentiment === "POSITIVE" ? "/assets/trend-up.svg" : "/assets/trend-neutral.svg"} alt="" />{item.sentiment || "Analysis pending"}</span>
           <span className={item.importance === "MEDIUM" ? "medium" : item.importance === "HIGH" || item.importance === "CRITICAL" ? "priority" : ""}>{item.importance ? `${item.importance} priority` : "Analysis pending"}</span>
           {item.eventType ? <span>{item.eventType}</span> : null}
-        </div><h3>{locale === "ko" ? item.originalTitle : item.englishTitle || item.originalTitle}</h3><p>{item.publisher} · {formatDate(item.publishedAt)} · {locale === "ko" ? "한글 원문" : "Auto-translated title"}</p></div>
+        </div><h3>{locale === "ko" ? item.originalTitle : verifiedEnglishText(item.englishTitle) || "English title is being prepared…"}</h3><p>{item.publisher} · {formatDate(item.publishedAt)} · {locale === "ko" ? "한글 원문" : "Auto-translated title"}</p></div>
       </Link>)}</>}</RemoteState>
       <ViewMoreButton resource="news" hasMore={Boolean(newsState.data?.nextCursor)} loading={newsState.loadingMore} error={newsState.loadMoreError} onClick={() => void newsState.loadMore()} />
     </section></main>

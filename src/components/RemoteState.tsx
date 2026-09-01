@@ -42,17 +42,21 @@ export function formatNumber(
   options?: Intl.NumberFormatOptions,
 ) {
   return value === null || value === undefined
-    ? document.documentElement.lang === "ko" ? "정보 없음" : "Unavailable"
-    : new Intl.NumberFormat(document.documentElement.lang === "ko" ? "ko-KR" : "en-US", options).format(value);
+    ? activeLocale() === "ko-KR" ? "정보 없음" : "Unavailable"
+    : new Intl.NumberFormat(activeLocale(), options).format(value);
 }
 
 export function formatDate(value: string | null | undefined, time = true) {
-  if (!value) return document.documentElement.lang === "ko" ? "정보 없음" : "Not available";
+  if (!value) return activeLocale() === "ko-KR" ? "정보 없음" : "Not available";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.valueOf())) return value;
-  return new Intl.DateTimeFormat(document.documentElement.lang === "ko" ? "ko-KR" : "en-US", {
+  return new Intl.DateTimeFormat(activeLocale(), {
     month: "short",
     day: "numeric",
     ...(time ? { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" } : {}),
   }).format(parsed);
+}
+
+function activeLocale() {
+  return localStorage.getItem("kart-locale") === "ko" ? "ko-KR" : "en-US";
 }
