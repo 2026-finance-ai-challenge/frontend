@@ -128,6 +128,13 @@ export type StockDetail = Stock & {
   }
 }
 
+export type ForeignLimitMonitor = {
+  stock: Stock
+  policy: { warningThreshold: number }
+  warning: boolean
+  prediction: StockDetail['foreignLimitPrediction']
+}
+
 export type NewsArticle = {
   id: string
   clusterId: string | null

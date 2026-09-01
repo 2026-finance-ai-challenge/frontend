@@ -14,6 +14,7 @@ import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
 import { isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
+import { adaptiveTextClass } from "../utils/text";
 
 type FilingInsight = {
   sufficientEvidence: boolean;
@@ -62,7 +63,10 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
             <span>{formatDate(day, false)}</span>
             <span>{locale === "ko" ? `공시 ${rows.length}건` : `${rows.length} filings`}</span>
           </header>
-          {rows.map((filing) => (
+          {rows.map((filing) => {
+            const title = locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "English title is being prepared…";
+            const issuer = stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo });
+            return (
               <Link
                 to={`/disclosures/${filing.receiptNumber}`}
                 state={{ returnTo }}
@@ -72,13 +76,14 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
                 <span>{formatDate(filing.detectedAt)}</span>
                 <i className={filing.correction ? "red" : "neutral"} />
                 <span>
-                  <b>{stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo })}</b>
+                  <b className={adaptiveTextClass(issuer, "filing-issuer", 19, 32)}>{issuer}</b>
                   <small>{filing.stockCode} · {filing.market}</small>
                 </span>
-                <strong>{locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "English title is being prepared…"}</strong>
-                <span className="filing-row-badges"><IntelligenceBadges sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
+                <strong className={adaptiveTextClass(title, "filing-title")}>{title}</strong>
+                <span className="filing-row-badges"><IntelligenceBadges variant="filing" sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
               </Link>
-          ))}
+            );
+          })}
         </section>
       ))}
     </div><ViewMoreButton resource="filings" hasMore={Boolean(state.data?.nextCursor)} loading={state.loadingMore} error={state.loadMoreError} onClick={() => void state.loadMore()} /></>}
