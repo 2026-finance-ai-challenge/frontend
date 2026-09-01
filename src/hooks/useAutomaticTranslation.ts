@@ -21,7 +21,7 @@ export function useAutomaticTranslation(path: string, enabled = true) {
   }, [path]);
 
   useEffect(() => {
-    if (!enabled || !state.data || (state.data.status !== "NOT_REQUESTED" && state.data.status !== "FAILED")) return;
+    if (!enabled || !state.data || state.data.status !== "NOT_REQUESTED") return;
     if (requestedPath.current === path) return;
     requestedPath.current = path;
     setRequestError(null);
