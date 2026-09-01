@@ -621,7 +621,7 @@ a {
 }
 .intelligence-badges .signal-badge {
   max-width: 100%;
-  white-space: normal;
+  white-space: nowrap;
   line-height: 20px;
 }
 .intelligence-badges .is-negative,
@@ -637,6 +637,19 @@ a {
 .intelligence-badges .is-medium {
   background: #fbedd6;
   color: #784b00;
+}
+.intelligence-badges .is-category {
+  background: #ebeafb;
+  color: #3f3eae;
+}
+.intelligence-badges .is-low {
+  background: #ecf6e8;
+  color: #4b7b36;
+}
+.intelligence-badges .is-neutral,
+.intelligence-badges .is-pending {
+  background: #f5f5f7;
+  color: #555;
 }
 .tags span,
 .filing-row > span:nth-last-child(-n + 2),
@@ -2351,7 +2364,7 @@ blockquote > b {
   margin-top: 30px;
   position: relative;
 }
-.article-body > p {
+.article-copy > p {
   font-size: 18px;
   line-height: 32px;
   color: #555;
@@ -2413,13 +2426,12 @@ mark {
 }
 .selection-popup {
   position: absolute;
-  z-index: 2;
-  top: calc(100% + 14px);
-  left: 10px;
+  z-index: 20;
   display: inline-flex;
   align-items: center;
   gap: 16px;
   white-space: nowrap;
+  max-width: calc(100% - 16px);
   background: #000;
   color: #fff;
   border: 0;
@@ -2427,30 +2439,29 @@ mark {
   padding: 10px;
   font-size: 18px;
   line-height: 25px;
+  transform: translateX(-50%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
-.article-selection-action button {
-  min-height: 34px;
+.selection-assistant button {
+  height: 34px;
   border: 0;
   border-radius: 20px;
-  padding: 5px 14px;
-}
-.article-selection-action button:last-child {
+  padding: 0 16px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
   background: linear-gradient(158deg, #e8e6f3 4%, #fce5fe 53%, #cedef2 96%);
   color: #3f3eae;
-}
-.article-selection-action button:last-child img {
-  width: 20px;
-  height: 24px;
+  font: inherit;
+  cursor: pointer;
 }
 .selection-popup > img {
   position: absolute;
   top: -14px;
-  left: 20px;
+  left: 50%;
   width: 20px;
   height: 14px;
+  transform: translateX(-50%);
 }
 .selection-popup b {
   height: 34px;
@@ -3220,7 +3231,7 @@ mark {
 }
 .disclosure-rows section > a {
   display: grid;
-  grid-template-columns: 110px 12px 190px minmax(240px, 1fr) minmax(250px, auto);
+  grid-template-columns: 110px 12px 190px minmax(180px, 1fr) minmax(330px, auto);
   gap: 14px;
   align-items: center;
   min-height: 97px;
@@ -3265,12 +3276,16 @@ mark {
   background: #f5f5f7;
 }
 .disclosure-rows .filing-row-badges {
+  width: 100%;
+  max-width: none !important;
   padding: 0 !important;
   background: transparent !important;
 }
 .disclosure-rows .filing-row-badges .tags {
   margin: 0;
   justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .disclosure-rows .medium {
   background: #fbedd6 !important;
@@ -3408,6 +3423,19 @@ mark {
   border-radius: 12px;
   overflow: hidden;
 }
+.selection-surface {
+  position: relative;
+  min-width: 0;
+}
+.article-copy,
+.disclosure-copy {
+  padding-top: 1px;
+}
+.article-copy ::selection,
+.disclosure-copy ::selection {
+  background: #927c00;
+  color: #fff;
+}
 .translation h2 {
   display: flex;
   justify-content: space-between;
@@ -3511,8 +3539,9 @@ mark {
   .disclosure-rows section > a {
     grid-template-columns: 100px 10px 160px 1fr;
   }
-  .disclosure-rows section > a > *:nth-child(n + 5) {
-    display: none;
+  .disclosure-rows section > a > .filing-row-badges {
+    display: block;
+    grid-column: 3 / -1;
   }
   .filing-title {
     display: block;
@@ -3534,8 +3563,17 @@ mark {
   .disclosure-rows section > a {
     grid-template-columns: 75px 8px 1fr;
   }
-  .disclosure-rows section > a > *:nth-child(n + 4) {
-    display: none;
+  .disclosure-rows section > a > strong,
+  .disclosure-rows section > a > .filing-row-badges {
+    display: block;
+    grid-column: 1 / -1;
+  }
+  .disclosure-rows section > a > strong {
+    white-space: normal;
+  }
+  .disclosure-rows .filing-row-badges .tags {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
   .filing-meta {
     grid-template-columns: 1fr;
@@ -4467,7 +4505,6 @@ mark {
 .disclosure-table-scroll th { width: 28%; background: #f3f2ee; font-weight: 600; }
 .translation-status-error,
 .translation-source-notice { display: block; margin-top: 12px; color: #8b2d26; line-height: 1.5; }
-.article-selection-action { position: sticky; bottom: 24px; z-index: 4; width: min(540px, 100%); margin: 20px auto; }
 .dart-original-html {
   max-width: 100%;
   color: #333;
@@ -4499,7 +4536,8 @@ mark {
   .page-shell { width: min(100% - 28px, 1340px); }
   .tags { gap: 6px; }
   .tags span { font-size: 14px; padding: 5px 7px; }
-  .article-selection-action { white-space: normal; flex-wrap: wrap; }
+  .selection-popup { gap: 10px; white-space: normal; font-size: 15px; line-height: 20px; }
+  .selection-assistant button { flex: 0 0 auto; }
   .agent-launcher { right: 4px; bottom: 48px; transform: scale(.78); transform-origin: bottom right; }
 }
 .search-page {
@@ -4699,6 +4737,10 @@ mark {
   font-size: 18px;
   line-height: 25px;
 }
+.disclosure-rows section > a {
+  grid-template-columns: 10.78% 3.9% 18.67% minmax(180px, 1fr) minmax(330px, auto);
+  height: auto;
+}
 :is(.search-filings, .disclosure-rows) section > a > * {
   min-width: 0;
 }
@@ -4888,8 +4930,16 @@ mark {
     grid-template-columns: 100px 10px 160px minmax(0, 1fr);
     padding: 0 20px;
   }
-  :is(.search-filings, .disclosure-rows) section > a > *:nth-child(n + 5) {
+  .search-filings section > a > *:nth-child(n + 5) {
     display: none;
+  }
+  .disclosure-rows section > a {
+    min-height: 118px;
+    padding-block: 12px;
+  }
+  .disclosure-rows section > a > .filing-row-badges {
+    display: block;
+    grid-column: 3 / -1;
   }
 }
 
@@ -4903,8 +4953,29 @@ mark {
     padding: 0 14px;
     font-size: 15px;
   }
-  :is(.search-filings, .disclosure-rows) section > a > *:nth-child(n + 4) {
+  .search-filings section > a > *:nth-child(n + 4) {
     display: none;
+  }
+  .disclosure-rows section > a {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    min-height: 0;
+    padding-block: 12px;
+  }
+  .disclosure-rows section > a > i {
+    display: none;
+  }
+  .disclosure-rows section > a > span:first-child,
+  .disclosure-rows section > a > span:nth-child(3) {
+    grid-column: 1;
+  }
+  .disclosure-rows section > a > strong,
+  .disclosure-rows section > a > .filing-row-badges {
+    display: block;
+    grid-column: 1 / -1;
+  }
+  .disclosure-rows section > a > strong {
+    white-space: normal;
   }
   :is(.search-filings, .disclosure-rows) section > a b {
     font-size: 18px;
