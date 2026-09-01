@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { StockNewsFeed } from "../components/StockNewsFeed";
@@ -12,17 +12,8 @@ import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import type { NewsArticle, StockDetail } from "../types";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
-
-type TermExplanation = {
-  selectedText: string;
-  normalizedTerm: string;
-  definition: string;
-  contextualMeaning: string;
-  confidence: number;
-  reviewRequired: boolean;
-  sufficientEvidence: boolean;
-  refusalReason: string | null;
-};
+import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
+import { isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
 
 function StockNewsHeader({ stockCode }: { stockCode: string }) {
   const { locale, stockName } = useLocale();
@@ -118,12 +109,14 @@ export function NewsDetailPage() {
   const profile = useProfile();
   const articleState = useRemote((signal) => api<NewsArticle>(`/api/v1/news/${newsId}`, { signal }), [newsId]);
   const translationState = useAutomaticTranslation(`/api/v1/news/${newsId}/translation`, Boolean(newsId) && locale === "en");
-  const [selectedText, setSelectedText] = useState("");
-  const [termExplanation, setTermExplanation] = useState<TermExplanation | null>(null);
+  const selectionAssistant = useSelectionAssistant<HTMLDivElement>();
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ?? "/news";
   const article = articleState.data;
-  const translation = translationState.data?.status === "READY" ? translationState.data.result : null;
+  const translation = translationState.data?.status === "READY" && isVerifiedEnglish(translationState.data.result)
+    ? translationState.data.result
+    : null;
+  const englishTitle = verifiedEnglishText(article?.englishTitle);
   useEffect(() => {
     if (!profile || !newsId) return;
     void api("/api/v1/me/recently-viewed", { method: "POST", body: JSON.stringify({ itemType: "NEWS", referenceId: newsId, stockCode: article?.relatedStocks[0]?.stockCode || null }) }).catch(() => undefined);
@@ -144,8 +137,8 @@ export function NewsDetailPage() {
           <section className="article-hero">
             <div>
               <IntelligenceBadges sentiment={article?.sentiment} importance={article?.importance} eventType={article?.eventType} />
-              <h1 className={((locale === "ko" ? article?.originalTitle : article?.englishTitle || article?.originalTitle) || "").length > 70 ? "is-long-title" : ""}>
-                {locale === "ko" ? article?.originalTitle || "뉴스를 불러오는 중…" : article?.englishTitle || article?.originalTitle || "Loading article…"}
+              <h1 className={((locale === "ko" ? article?.originalTitle : englishTitle) || "").length > 70 ? "is-long-title" : ""}>
+                {locale === "ko" ? article?.originalTitle || "뉴스를 불러오는 중…" : englishTitle || (article ? "English title is being prepared…" : "Loading article…")}
               </h1>
               <p>{article?.publisher || "—"} · {formatDate(article?.publishedAt)} · {locale === "ko" ? "한글 원문" : translation ? "Auto-translated" : translationPending ? "Translation loading" : "Translation unavailable"}</p>
             </div>
@@ -158,7 +151,7 @@ export function NewsDetailPage() {
                   {t("aiSummary")}{" "}
                   <img src="/assets/agent-badge-figma.svg" alt="AI" />
                 </h2>
-                {(translation ? [[t("what"), translation.what], [t("why"), translation.why], [t("impact"), translation.impact]] : [[t("what"), article?.what], [t("why"), article?.why], [t("impact"), article?.impact]]).map((row) => (
+                {(translation ? [[t("what"), translation.what], [t("why"), translation.why], [t("impact"), translation.impact]] : [[t("what"), locale === "ko" ? article?.what : verifiedEnglishText(article?.what)], [t("why"), locale === "ko" ? article?.why : verifiedEnglishText(article?.why)], [t("impact"), locale === "ko" ? article?.impact : verifiedEnglishText(article?.impact)]]).map((row) => (
                   <p key={row[0]}>
                     <b>{row[0]}</b>
                     <span>{row[1] || (translationPending ? t("translationLoading") : locale === "ko" ? "근거 기반 요약을 준비하지 못했습니다." : "Grounded insight is unavailable for this source.")}</span>
@@ -166,35 +159,37 @@ export function NewsDetailPage() {
                 ))}
                 {translationError ? <small className="translation-status-error">{translationError.message}</small> : null}
               </section>
-              <article className="article-body" onMouseUp={() => {
-                const text = window.getSelection()?.toString().trim() || "";
-                if (text.length >= 2 && text.length <= 500) setSelectedText(text);
-              }}>
+              <article className="article-body">
                 <button
                   className="selection-hint"
-                  onClick={() => setSelectedText("")}
+                  onClick={selectionAssistant.clearSelection}
                 >
                   <img src="/assets/selection-info-figma.svg" alt="" /> {locale === "ko" ? "궁금한 문장을 드래그해 AI에게 물어보세요." : "Drag over any highlighted term to look it up."}
                 </button>
-                <button type="button" className="article-share" aria-label={locale === "ko" ? "뉴스 공유" : "Share article"} onClick={() => void shareArticle((locale === "ko" ? article?.originalTitle : article?.englishTitle) || "KART news")}>
+                <button type="button" className="article-share" aria-label={locale === "ko" ? "뉴스 공유" : "Share article"} onClick={() => void shareArticle((locale === "ko" ? article?.originalTitle : englishTitle) || "KART news")}>
                   <img src="/assets/share.svg" alt="" />
                 </button>
-                <RemoteState {...articleState}>
-                  {(value) => locale === "ko" && value.originalBody
-                    ? value.originalBody.split(/\n{2,}/).filter(Boolean).map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)
-                    : translation?.translatedParagraphs?.length
-                    ? <>{translation.translatedParagraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
-                    : translationPending
-                      ? <div className="api-state api-loading" role="status">{locale === "ko" ? "원문과 무엇·이유·영향 요약을 준비하는 중…" : "Translating the source and preparing What / Why / Impact…"}</div>
-                      : <div className="api-state api-error">{locale === "ko" ? "한글 원문을 일시적으로 불러올 수 없습니다." : "The verified English translation is temporarily unavailable."}</div>}
-                </RemoteState>
-                {selectedText ? <div className="selection-popup article-selection-action">
-                  <img src="/assets/selection-arrow-figma.svg" alt="" />
-                  <span>{locale === "ko" ? "이 내용이 궁금한가요?" : "Want to know what this means?"}</span>
-                  <button type="button" onClick={() => void api<TermExplanation>(`/api/v1/news/${newsId}/term-explanations`, { method: "POST", body: JSON.stringify({ selectedText }) }).then(setTermExplanation)}>{locale === "ko" ? "뜻 보기" : "Click"}</button>
-                  <button type="button" onClick={() => openKAgent({ contextType: "NEWS", referenceId: newsId, prompt: locale === "ko" ? `이 기사에서 “${selectedText.slice(0, 500)}”의 뜻을 한국어로 설명해줘.` : `Explain “${selectedText.slice(0, 500)}” in this article.` })}><img src="/assets/agent-badge-figma.svg" alt="AI" /> K-Agent</button>
-                </div> : null}
-                {termExplanation ? <blockquote><b>{termExplanation.normalizedTerm}</b><p>{termExplanation.sufficientEvidence ? termExplanation.definition : termExplanation.refusalReason}</p><p>{termExplanation.contextualMeaning}</p><small>{Math.round(termExplanation.confidence * 100)}% {locale === "ko" ? "신뢰도" : "confidence"}{termExplanation.reviewRequired ? (locale === "ko" ? " · 검토 권장" : " · Review recommended") : ""}</small></blockquote> : null}
+                <div
+                  className="article-copy selection-surface"
+                  ref={selectionAssistant.containerRef}
+                  onMouseUp={selectionAssistant.captureSelection}
+                >
+                  <RemoteState {...articleState}>
+                    {(value) => locale === "ko" && value.originalBody
+                      ? value.originalBody.split(/\n{2,}/).filter(Boolean).map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)
+                      : translation?.translatedParagraphs?.length
+                      ? <>{translation.translatedParagraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
+                      : translationPending
+                        ? <div className="api-state api-loading" role="status">{locale === "ko" ? "원문과 무엇·이유·영향 요약을 준비하는 중…" : "Translating the source and preparing What / Why / Impact…"}</div>
+                        : <div className="api-state api-error">{locale === "ko" ? "한글 원문을 일시적으로 불러올 수 없습니다." : "The verified English translation is temporarily unavailable."}</div>}
+                  </RemoteState>
+                  <SelectionAssistant
+                    selection={selectionAssistant.selection}
+                    prompt={locale === "ko" ? "이 내용이 궁금한가요?" : "Want to know what this means?"}
+                    actionLabel={locale === "ko" ? "질문하기" : "Click"}
+                    onAsk={(selectedText) => openKAgent({ contextType: "NEWS", referenceId: newsId, prompt: locale === "ko" ? `이 기사에서 “${selectedText}”의 뜻과 투자 맥락을 한국어로 설명해줘.` : `Explain “${selectedText}” and its investment context in this article.` })}
+                  />
+                </div>
                 <div className="article-tags">
                   {article?.relatedStocks.map((stock) => <span key={stock.stockCode}>{stock.stockCode}</span>)}
                 </div>

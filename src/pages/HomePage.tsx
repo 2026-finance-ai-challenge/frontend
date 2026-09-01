@@ -13,6 +13,7 @@ import type { Filing, NewsArticle, Stock, StockDetail, SupportedCountry } from "
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
+import { verifiedEnglishText } from "../utils/english";
 
 const quickActions = [
   ["/assets/news.svg", "Today’s news", "/news"],
@@ -360,7 +361,7 @@ function FilingRow({ filing }: { filing: PublishedFiling }) {
         <b>{stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo })}</b>
         <small>{filing.stockCode} · {filing.market}</small>
       </span>
-      <strong>{locale === "ko" ? filing.titleKo : filing.titleEn || filing.titleKo}</strong>
+      <strong>{locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "English title is being prepared…"}</strong>
       <span className="filing-row-badges"><IntelligenceBadges sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
     </Link>
   );
@@ -372,7 +373,7 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
   const insight = translation.data?.status === "READY" ? translation.data.result : null;
   return <Link className="news-card" to={`/news/${article.id}`}>
     <IntelligenceBadges sentiment={article.sentiment} importance={article.importance} eventType={article.eventType} />
-    <h3>{locale === "ko" ? article.originalTitle : article.englishTitle || article.originalTitle}</h3>
+    <h3>{locale === "ko" ? article.originalTitle : verifiedEnglishText(article.englishTitle) || "English title is being prepared…"}</h3>
     <p className="meta">{formatDate(article.publishedAt)} · {article.publisher}</p>
     <NewsThumbnail src={article.thumbnailUrl} />
     <div className="insight">

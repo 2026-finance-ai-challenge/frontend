@@ -8,6 +8,7 @@ import { useCursorPage } from "../hooks/useCursorPage";
 import type { NewsArticle } from "../types";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "./IntelligenceBadges";
+import { verifiedEnglishText } from "../utils/english";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -93,7 +94,7 @@ export function StockNewsFeed({ stockCode: stockCodeOverride }: { stockCode?: st
             <NewsThumbnail src={item.thumbnailUrl} />
             <div>
               <IntelligenceBadges sentiment={item.sentiment} importance={item.importance} eventType={item.eventType} />
-              <h2>{locale === "ko" ? item.originalTitle : item.englishTitle || item.originalTitle}</h2>
+              <h2>{locale === "ko" ? item.originalTitle : verifiedEnglishText(item.englishTitle) || "English title is being prepared…"}</h2>
               <p>{item.publisher} · {formatDate(item.publishedAt)} · {locale === "ko" ? "한글 원문" : item.englishTitle ? "Auto-translated title" : "Translation preparing"}</p>
             </div>
           </Link>
