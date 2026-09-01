@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Footer, Header, MarketBar } from "../components/Layout";
 import { TaxEligibilityPanel } from "../components/TaxEligibilityPanel";
@@ -369,9 +369,25 @@ function FilingRow({ filing }: { filing: PublishedFiling }) {
 
 function HomeNewsCard({ article }: { article: NewsArticle }) {
   const { locale, t } = useLocale();
-  const translation = useAutomaticTranslation(`/api/v1/news/${article.id}/translation`, locale === "en");
+  const [hovered, setHovered] = useState(false);
+  const [insightRequested, setInsightRequested] = useState(false);
+  useEffect(() => {
+    if (!hovered || insightRequested) return;
+    const timer = window.setTimeout(() => setInsightRequested(true), 300);
+    return () => window.clearTimeout(timer);
+  }, [hovered, insightRequested]);
+  const translation = useAutomaticTranslation(
+    `/api/v1/news/${article.id}/translation`,
+    locale === "en" && insightRequested,
+  );
   const insight = translation.data?.status === "READY" ? translation.data.result : null;
-  return <Link className="news-card" to={`/news/${article.id}`}>
+  return <Link
+    className="news-card"
+    to={`/news/${article.id}`}
+    onPointerEnter={() => setHovered(true)}
+    onPointerLeave={() => setHovered(false)}
+    onFocus={() => setInsightRequested(true)}
+  >
     <IntelligenceBadges sentiment={article.sentiment} importance={article.importance} eventType={article.eventType} />
     <h3>{locale === "ko" ? article.originalTitle : verifiedEnglishText(article.englishTitle) || "English title is being prepared…"}</h3>
     <p className="meta">{formatDate(article.publishedAt)} · {article.publisher}</p>
