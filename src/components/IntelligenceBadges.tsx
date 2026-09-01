@@ -1,9 +1,10 @@
 import { useLocale } from "../state/LocaleContext";
 
-export function IntelligenceBadges({ sentiment, importance, eventType }: {
+export function IntelligenceBadges({ sentiment, importance, eventType, variant = "news" }: {
   sentiment?: string | null;
   importance?: string | null;
   eventType?: string | null;
+  variant?: "news" | "filing";
 }) {
   const { locale } = useLocale();
   const normalized = (sentiment || "NEUTRAL").toUpperCase();
@@ -13,13 +14,14 @@ export function IntelligenceBadges({ sentiment, importance, eventType }: {
   const importanceLabel = importance
     ? locale === "ko" ? `${importanceLabelKo(importance)} 중요도` : `${importance} priority`
     : locale === "ko" ? "분석 중" : "Analysis pending";
-  return <div className="tags intelligence-badges">
-    <span className={`signal-badge is-${normalized.toLowerCase()}`}>
+  const sentimentBadge = <span className={`signal-badge is-${normalized.toLowerCase()}`}>
       <img src={normalized === "NEGATIVE" ? "/assets/trend-down.svg" : normalized === "POSITIVE" ? "/assets/trend-up.svg" : "/assets/trend-neutral.svg"} alt="" />
       {sentimentLabel}
-    </span>
-    <span className={`signal-badge is-${(importance || "pending").toLowerCase()}`}>{importanceLabel}</span>
-    {eventType ? <span className="signal-badge is-category">{eventType.replaceAll("_", " ")}</span> : null}
+    </span>;
+  const importanceBadge = <span className={`signal-badge is-${(importance || "pending").toLowerCase()}`}>{importanceLabel}</span>;
+  const categoryBadge = eventType ? <span className={`signal-badge ${variant === "filing" ? "is-filing-category" : "is-category"}`}>{eventType.replaceAll("_", " ")}</span> : null;
+  return <div className={`tags intelligence-badges is-${variant}`}>
+    {variant === "filing" ? <>{categoryBadge}{importanceBadge}{sentimentBadge}</> : <>{sentimentBadge}{importanceBadge}{categoryBadge}</>}
   </div>;
 }
 

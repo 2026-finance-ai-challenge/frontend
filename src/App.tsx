@@ -8,6 +8,7 @@ import { MyPage } from './pages/MyPage'
 import { LoginPage, SignupPage } from './pages/AuthPage'
 import { SearchPage } from './pages/SearchPage'
 import { LegalPage } from './pages/LegalPage'
+import { ForeignLimitsPage } from './pages/ForeignLimitsPage'
 import { KAgentFloating } from './components/KAgentFloating'
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/news/:newsId" element={<NewsDetailPage />} />
         <Route path="/disclosures" element={<DisclosurePage />} />
         <Route path="/disclosures/:disclosureId" element={<DisclosureDetailPage />} />
+        <Route path="/foreign-limits" element={<ForeignLimitsPage />} />
         <Route path="/tax" element={<TaxPage />} />
         <Route path="/my" element={<MyPage />} />
         <Route path="/signup" element={<SignupPage />} />

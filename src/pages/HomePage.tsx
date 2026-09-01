@@ -2,54 +2,31 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Footer, Header, MarketBar } from "../components/Layout";
 import { TaxEligibilityPanel } from "../components/TaxEligibilityPanel";
+import { ForeignOwnershipCard, ownershipExhaustion } from "../components/ForeignOwnershipCard";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
-import { ViewMoreButton } from "../components/ViewMoreButton";
-import { NewsThumbnail } from "../components/NewsThumbnail";
 import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
 import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
-import type { Filing, NewsArticle, Stock, StockDetail, SupportedCountry } from "../types";
+import type { Filing, ForeignLimitMonitor, NewsArticle, SupportedCountry } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
 import { verifiedEnglishText } from "../utils/english";
+import { adaptiveTextClass } from "../utils/text";
 
 const quickActions = [
   ["/assets/news.svg", "Today’s news", "/news"],
   ["/assets/filing.svg", "Dart filings", "/disclosures"],
-  ["/assets/ownership.svg", "Foreigner ownership limits", "#foreign"],
+  ["/assets/ownership.svg", "Foreigner ownership limits", "/foreign-limits"],
   ["/assets/tax.svg", "Check my tax rate", "/tax"],
 ];
 
-type ForeignMonitor = {
-  stock: Stock;
-  policy: { warningThreshold: number };
-  warning: boolean;
-  prediction: StockDetail["foreignLimitPrediction"];
-};
 type TaxEligibility = { countryCode: string; countryName: string; domesticDefaultRate: number; treatyDividendRate: number | null; treatyDataAvailable: boolean };
 
-const ownershipLabels = {
-  danger: "Near reached",
-  warning: "Near cap",
-  safe: "Open",
-  unavailable: "Data unavailable",
-};
-
-function ownershipTone(item: ForeignMonitor): keyof typeof ownershipLabels {
-  const ownership = item.stock.foreignOwnership;
-  if (ownership?.status !== "AVAILABLE" || ownership.limitExhaustionRate == null || ownership.ownershipRate == null) {
-    return "unavailable";
-  }
-  if (!item.warning) return "safe";
-  return ownership.limitExhaustionRate >= 100 ? "danger" : "warning";
-}
-
 export function HomePage() {
-  const { locale, stockName } = useLocale();
+  const { locale } = useLocale();
   const [taxAgentOpen, setTaxAgentOpen] = useState(false);
-  const [ownershipStart, setOwnershipStart] = useState(0);
   const [newsStart, setNewsStart] = useState(0);
   const newsState = useCursorPage(
     (cursor, signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({ sort: "IMPORTANCE", cursor, limit: 20 })}`, { signal }),
@@ -62,7 +39,7 @@ export function HomePage() {
     (item) => item.receiptNumber,
   );
   const ownershipState = useRemote(
-    (signal) => api<ForeignMonitor[]>("/api/v1/market/foreign-limits", { signal }),
+    (signal) => api<ForeignLimitMonitor[]>("/api/v1/market/foreign-limits", { signal }),
     [],
   );
   const taxRatesState = useRemote(async (signal) => {
@@ -80,14 +57,10 @@ export function HomePage() {
     setTaxAgentOpen(false);
     window.requestAnimationFrame(() => eligibilityButtonRef.current?.focus());
   };
-  const ownershipItems = ownershipState.data ?? [];
+  const ownershipItems = [...(ownershipState.data ?? [])].sort((a, b) => ownershipExhaustion(b) - ownershipExhaustion(a));
   const newsItems = newsState.data?.items ?? [];
   const visibleNews = newsItems.slice(newsStart, newsStart + 2);
-  const visibleOwnership = ownershipItems.length
-    ? Array.from({ length: Math.min(4, ownershipItems.length) }, (_, index) =>
-        ownershipItems[(index + ownershipStart) % ownershipItems.length],
-      )
-    : [];
+  const visibleOwnership = ownershipItems.slice(0, 3);
   const filingGroups = useMemo(() => {
 		const groups = new Map<string, PublishedFiling[]>();
     for (const filing of (filingsState.data?.items ?? []).filter(isPublishedFiling)) {
@@ -137,10 +110,10 @@ export function HomePage() {
             </div>
             <div className="slider-controls">
               <button type="button" aria-label={locale === "ko" ? "이전 뉴스" : "Previous story"} disabled={newsStart === 0} onClick={() => setNewsStart((current) => Math.max(0, current - 1))}>
-                <img src="/assets/carousel-prev.svg" alt="" />
+                <img className={newsStart === 0 ? "" : "is-reversed"} src={newsStart === 0 ? "/assets/carousel-prev.svg" : "/assets/carousel-next.svg"} alt="" />
               </button>
               <button type="button" aria-label={locale === "ko" ? "다음 뉴스" : "Next story"} disabled={newsStart + 2 >= newsItems.length} onClick={() => setNewsStart((current) => current + 1)}>
-                <img src="/assets/carousel-next.svg" alt="" />
+                <img className={newsStart + 2 >= newsItems.length ? "is-reversed" : ""} src={newsStart + 2 >= newsItems.length ? "/assets/carousel-prev.svg" : "/assets/carousel-next.svg"} alt="" />
               </button>
             </div>
           </div>
@@ -149,7 +122,9 @@ export function HomePage() {
               {visibleNews.map((article) => <HomeNewsCard article={article} key={article.id} />)}
             </div>}
           </RemoteState>
-          <ViewMoreButton resource="news" hasMore={Boolean(newsState.data?.nextCursor)} loading={newsState.loadingMore} error={newsState.loadMoreError} onClick={() => void newsState.loadMore()} />
+          <Link className="section-view-link" to="/news">
+            {locale === "ko" ? "뉴스 전체 보기" : "View more news"}<img src="/assets/chevron-right-gold.svg" alt="" />
+          </Link>
         </section>
 
         <section className="section-block filing-section">
@@ -166,7 +141,9 @@ export function HomePage() {
                 {items.map((filing) => <FilingRow filing={filing} key={filing.receiptNumber} />)}
               </div>)}</>}
             </RemoteState>
-            <ViewMoreButton resource="filings" hasMore={Boolean(filingsState.data?.nextCursor)} loading={filingsState.loadingMore} error={filingsState.loadMoreError} className="view-all" onClick={() => void filingsState.loadMore()} />
+            <Link className="view-all" to="/disclosures">
+              {locale === "ko" ? "전체 공시 보기" : "View all filings"}<img src="/assets/chevron-right-gold.svg" alt="" />
+            </Link>
           </div>
         </section>
 
@@ -175,97 +152,17 @@ export function HomePage() {
             <div>
               <h2>{locale === "ko" ? "외국인 보유 한도" : "Foreign ownership limit gauge"}</h2>
               <p>{locale === "ko" ? <>아래 종목은 외국인 보유 법정 한도가 적용됩니다.<br />현재 사용률과 주문 제한까지 남은 여유를 확인하세요.</> : <>The monitored Korean stocks below carry a statutory cap on foreign ownership.<br />Filter by status, then read how much headroom is left before orders start getting rejected.</>}</p>
-              <div className="status-copy">
-                <span>
-                  <b className="danger-text">{ownershipItems.filter((item) => ownershipTone(item) === "danger").length}</b> <u>{locale === "ko" ? "한도 도달" : "At the cap"}</u>&nbsp; {locale === "ko" ? "현재 매수 주문 제한" : "Buy orders rejected right now."}
-                </span>
-                <span>
-                  <b className="warning-text">{ownershipItems.filter((item) => ownershipTone(item) === "warning").length}</b> <u>{locale === "ko" ? "한도 근접" : "Near the cap"}</u>&nbsp; {locale === "ko" ? "한도의 90% 이상 사용" : "90% or more of the quota used."}
-                </span>
-                <span>
-                  <b className="safe-text">{ownershipItems.filter((item) => ownershipTone(item) === "safe").length}</b> <u>{locale === "ko" ? "여유" : "Open"}</u>&nbsp; {locale === "ko" ? "한도 내 매수 가능" : "Room to buy without restriction."}
-                </span>
+              <div className="ownership-support-copy">
+                <b>{ownershipState.data ? ownershipItems.length : "—"}</b><span>/ 33 {locale === "ko" ? "법정 한도 종목 지원 중" : "statutory-limit stocks supported"}</span>
               </div>
             </div>
-            <div className="slider-controls ownership-controls">
-              <button
-                type="button"
-                aria-label={locale === "ko" ? "이전 외국인 보유 카드" : "Previous ownership card"}
-                disabled={ownershipStart === 0 || ownershipItems.length === 0}
-                onClick={() =>
-                  setOwnershipStart((current) =>
-                    current === 0 ? ownershipItems.length - 1 : current - 1,
-                  )
-                }
-              >
-                <img
-                  className={ownershipStart === 0 ? "" : "is-reversed"}
-                  src={
-                    ownershipStart === 0
-                      ? "/assets/carousel-prev.svg"
-                      : "/assets/carousel-next.svg"
-                  }
-                  alt=""
-                />
-              </button>
-              <button
-                type="button"
-                aria-label={locale === "ko" ? "다음 외국인 보유 카드" : "Next ownership card"}
-                onClick={() =>
-                  setOwnershipStart(
-                    (current) => ownershipItems.length ? (current + 1) % ownershipItems.length : 0,
-                  )
-                }
-              >
-                <img src="/assets/carousel-next.svg" alt="" />
-              </button>
-            </div>
+            <Link className="icon-link" to="/foreign-limits">
+              {locale === "ko" ? "전체 게이지 보기" : "View all gauge"}<img src="/assets/chevron-right-gold.svg" alt="" />
+            </Link>
           </div>
           <RemoteState {...ownershipState} empty={(value) => !value.length}>
             {() => <div className="ownership-grid">
-            {visibleOwnership.map((item) => {
-              const used = item.prediction?.baseRate ?? item.stock.foreignOwnership?.ownershipRate ?? null;
-              const cap = item.stock.foreignOwnership?.foreignLimitQuantity && item.stock.foreignOwnership?.totalListedQuantity
-                ? item.stock.foreignOwnership.foreignLimitQuantity / item.stock.foreignOwnership.totalListedQuantity * 100
-                : null;
-              const tone = ownershipTone(item);
-              const remaining = cap !== null && used !== null ? Math.max(cap - used, 0) : null;
-              const exhaustion = cap !== null && used !== null && cap > 0 ? used / cap * 100 : null;
-              const width = `${exhaustion == null ? 0 : Math.min(exhaustion, 100)}%`;
-
-              return (
-                <Link
-                  className="ownership-card"
-                  key={item.stock.stockCode}
-                  to={`/stocks/${item.stock.stockCode}`}
-                >
-                  <div className="card-title">
-                    <span className={tone}>
-                      {tone === "danger" ? (
-                        <img src="/assets/status-warning.svg" alt="" />
-                      ) : null}
-                      {locale === "ko" ? ({ danger: "한도 도달", warning: "한도 근접", safe: "여유", unavailable: "데이터 없음" } as const)[tone] : ownershipLabels[tone]}
-                    </span>
-                    <div>
-                      <h3>{stockName(item.stock)}</h3>
-                      <p>{item.stock.stockCode} · {item.stock.sector || item.stock.market}</p>
-                    </div>
-                  </div>
-                  <strong className={tone}>
-                    {remaining === null ? locale === "ko" ? "정보 없음" : "Unavailable" : remaining.toFixed(2)}
-                    <small>{remaining === null ? locale === "ko" ? "확인된 보유 현황 없음" : "No verified ownership snapshot" : locale === "ko" ? "% 잔여" : "% remaining"}</small>
-                  </strong>
-                  <div className={`gauge gauge-${tone}`}>
-                    <span className={tone} style={{ width }} />
-                    <i style={{ left: width }} />
-                  </div>
-                  <div className="gauge-labels">
-                    <span>{locale === "ko" ? "사용" : "Used"} {used === null ? locale === "ko" ? "정보 없음" : "Unavailable" : `${used.toFixed(2)}%`}</span>
-                    <span>{locale === "ko" ? "한도" : "Cap"} {cap === null ? locale === "ko" ? "정보 없음" : "Unavailable" : `${cap.toFixed(2)}%`}</span>
-                  </div>
-                </Link>
-              );
-            })}
+            {visibleOwnership.map((item) => <ForeignOwnershipCard item={item} key={item.stock.stockCode} />)}
           </div>}
           </RemoteState>
         </section>
@@ -346,6 +243,8 @@ export function HomePage() {
 
 function FilingRow({ filing }: { filing: PublishedFiling }) {
   const { locale, stockName } = useLocale();
+  const title = locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "English title is being prepared…";
+  const issuer = stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo });
   return (
     <Link
       className="filing-row"
@@ -358,11 +257,11 @@ function FilingRow({ filing }: { filing: PublishedFiling }) {
       />
       <span>{formatDate(filing.detectedAt)}</span>
       <span>
-        <b>{stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo })}</b>
+        <b className={adaptiveTextClass(issuer, "filing-issuer", 19, 32)}>{issuer}</b>
         <small>{filing.stockCode} · {filing.market}</small>
       </span>
-      <strong>{locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "English title is being prepared…"}</strong>
-      <span className="filing-row-badges"><IntelligenceBadges sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
+      <strong className={adaptiveTextClass(title, "filing-title")}>{title}</strong>
+      <span className="filing-row-badges"><IntelligenceBadges variant="filing" sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
     </Link>
   );
 }
@@ -381,21 +280,25 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
     locale === "en" && insightRequested,
   );
   const insight = translation.data?.status === "READY" ? translation.data.result : null;
+  const title = locale === "ko" ? article.originalTitle : verifiedEnglishText(article.englishTitle) || "English title is being prepared…";
+  const wrappedTitle = Array.from(title).length > 34;
+  const summary = [
+    [t("what"), insight?.what || article.what || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")],
+    [t("why"), insight?.why || article.why || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")],
+    [t("impact"), insight?.impact || article.impact || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")],
+  ];
   return <Link
-    className="news-card"
+    className={`news-card ${wrappedTitle ? "has-wrapped-title" : ""}`}
     to={`/news/${article.id}`}
     onPointerEnter={() => setHovered(true)}
     onPointerLeave={() => setHovered(false)}
     onFocus={() => setInsightRequested(true)}
   >
     <IntelligenceBadges sentiment={article.sentiment} importance={article.importance} eventType={article.eventType} />
-    <h3>{locale === "ko" ? article.originalTitle : verifiedEnglishText(article.englishTitle) || "English title is being prepared…"}</h3>
+    <h3 className={adaptiveTextClass(title, "news-card-title", 36, 62)}>{title}</h3>
     <p className="meta">{formatDate(article.publishedAt)} · {article.publisher}</p>
-    <NewsThumbnail src={article.thumbnailUrl} />
     <div className="insight">
-      <p><b>{t("what")}</b>{insight?.what || article.what || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")}</p>
-      <p><b>{t("why")}</b>{insight?.why || article.why || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")}</p>
-      <p><b>{t("impact")}</b>{insight?.impact || article.impact || (locale === "ko" ? "요약 준비 중…" : "Preparing verified insight…")}</p>
+      {summary.map(([label, value]) => <p key={label}><b>{label}</b><span>{value}</span></p>)}
     </div>
   </Link>;
 }

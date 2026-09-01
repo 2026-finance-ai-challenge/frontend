@@ -50,6 +50,7 @@ export function Header({
   const [results, setResults] = useState<Stock[]>([]);
   const [searching, setSearching] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationInbox | null>(null);
   const [notificationsError, setNotificationsError] = useState("");
   const [surface, setSurface] = useState<HeaderSurface>(
@@ -58,6 +59,7 @@ export function Header({
   const headerRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const languageRef = useRef<HTMLDivElement>(null);
   const searchTimerRef = useRef<number | undefined>(undefined);
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,7 +68,7 @@ export function Header({
   const primaryNavigation = [
     { label: locale === "ko" ? "AI 뉴스 요약" : "AI News Summary", to: "/news" },
     { label: locale === "ko" ? "DART 공시" : "DART filings", to: "/disclosures" },
-    { label: locale === "ko" ? "외국인 보유 한도" : "Foreigner ownership limits", to: "/#foreign" },
+    { label: locale === "ko" ? "외국인 보유 한도" : "Foreigner ownership limits", to: "/foreign-limits" },
     { label: locale === "ko" ? "내 세율 확인" : "Check my tax rate", to: "/tax" },
     { label: locale === "ko" ? "마이페이지·관심종목" : "My page & Watchlist", to: "/my" },
   ];
@@ -156,6 +158,21 @@ export function Header({
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [menuOpen]);
+  useEffect(() => {
+    if (!languageOpen) return;
+    const close = (event: PointerEvent) => {
+      if (!languageRef.current?.contains(event.target as Node)) setLanguageOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLanguageOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [languageOpen]);
   useEffect(() => {
     if (!location.hash) return;
 
@@ -314,15 +331,33 @@ export function Header({
             {!notificationsError && notifications?.items.length === 0 ? <p className="search-empty">{locale === "ko" ? "새 알림이 없습니다." : "No notifications yet."}</p> : null}
             {notifications?.items.map((item) => <button type="button" className={item.read ? "is-read" : ""} onClick={() => void readNotification(item)} key={item.id}><span><b>{item.title}</b><small>{item.body}</small></span><time>{new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</time></button>)}
           </div> : null}
-          <label className="language" aria-label={locale === "ko" ? "사이트 언어" : "Site language"}>
-            {locale === "en"
-              ? <img src="/assets/flag-us.svg" alt="United States" />
-              : <span className="language-flag" role="img" aria-label="대한민국">🇰🇷</span>}
-            <select value={locale} onChange={(event) => setLocale(event.target.value as "en" | "ko")}>
-              <option value="en">EN</option>
-              <option value="ko">KR</option>
-            </select>
-          </label>
+          <div className="language" ref={languageRef}>
+            <button
+              type="button"
+              className="language-trigger"
+              aria-label={locale === "ko" ? "사이트 언어 선택" : "Choose site language"}
+              aria-haspopup="listbox"
+              aria-expanded={languageOpen}
+              onClick={() => setLanguageOpen((open) => !open)}
+            >
+              <LanguageFlag locale={locale} />
+              <span>{locale === "en" ? "EN" : "KR"}</span>
+              <img className="language-chevron" src="/assets/chevron-down-gold.svg" alt="" />
+            </button>
+            {languageOpen ? <div className="language-menu" role="listbox" aria-label={locale === "ko" ? "사이트 언어" : "Site language"}>
+              {(["en", "ko"] as const).map((option) => <button
+                type="button"
+                role="option"
+                aria-selected={locale === option}
+                className={locale === option ? "is-selected" : ""}
+                onClick={() => { setLocale(option); setLanguageOpen(false); }}
+                key={option}
+              >
+                <LanguageFlag locale={option} />
+                <span>{option === "en" ? "EN" : "KR"}</span>
+              </button>)}
+            </div> : null}
+          </div>
           {profile ? (
             <Link className="profile-link" to="/my" aria-label={locale === "ko" ? "마이페이지 열기" : "Open my page"}>
               <img src="/assets/profile.png" alt="" />
@@ -356,7 +391,6 @@ export function Header({
           <div className="primary-navigation-links">
             {primaryNavigation.map((item) => {
               const active =
-                item.to !== "/#foreign" &&
                 location.pathname.startsWith(item.to);
 
               return (
@@ -399,7 +433,7 @@ export function Footer() {
           <h3>{locale === "ko" ? "서비스" : "Product"}</h3>
           <Link to="/news">{locale === "ko" ? "AI 뉴스 요약" : "AI news summary"}</Link>
           <Link to="/disclosures">{locale === "ko" ? "DART 공시" : "Dart filings"}</Link>
-          <a href="#foreign">{locale === "ko" ? "외국인 보유 한도" : "Foreigner ownership limits"}</a>
+          <Link to="/foreign-limits">{locale === "ko" ? "외국인 보유 한도" : "Foreigner ownership limits"}</Link>
           <Link to="/tax">{locale === "ko" ? "내 세율 확인" : "Check my tax rate"}</Link>
         </div>
       </div>
@@ -410,6 +444,12 @@ export function Footer() {
       </div>
     </footer>
   );
+}
+
+function LanguageFlag({ locale }: { locale: "en" | "ko" }) {
+  return locale === "en"
+    ? <img className="language-flag-image" src="/assets/flag-us.svg" alt="United States" />
+    : <span className="language-flag" role="img" aria-label="대한민국">🇰🇷</span>;
 }
 
 export function BackLink({ to }: { to: string }) {
