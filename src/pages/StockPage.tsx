@@ -221,7 +221,7 @@ export function StockPage() {
                   </div>
                   <div>
                     <span>{locale === "ko" ? "법정 한도" : "Legal limit"}</span>
-                    <strong>{detailState.data?.foreignOwnership.foreignLimitQuantity && detailState.data?.foreignOwnership.totalListedQuantity ? `${(detailState.data.foreignOwnership.foreignLimitQuantity / detailState.data.foreignOwnership.totalListedQuantity * 100).toFixed(2)}%` : (locale === "ko" ? "해당 없음" : "Not applicable")}</strong>
+                    <strong>{detailState.data?.subjectToForeignAcquisitionLimit && detailState.data.foreignOwnership.foreignLimitQuantity && detailState.data.foreignOwnership.totalListedQuantity ? `${(detailState.data.foreignOwnership.foreignLimitQuantity / detailState.data.foreignOwnership.totalListedQuantity * 100).toFixed(2)}%` : (locale === "ko" ? "해당 없음" : "Not applicable")}</strong>
                   </div>
                 </div>
                 {detailState.data?.subjectToForeignAcquisitionLimit && activePrediction ? <div className="prediction">
