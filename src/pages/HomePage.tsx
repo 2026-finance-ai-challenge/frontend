@@ -14,8 +14,10 @@ import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
 import { FitText } from "../components/FitText";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
+import { NewsThumbnail } from "../components/NewsThumbnail";
 import { hasVerifiedEnglishTitle, verifiedEnglishText } from "../utils/english";
 import { adaptiveTextClass } from "../utils/text";
+import { hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
 
 const quickActions = [
   ["/assets/news.svg", "Today’s news", "/news"],
@@ -139,7 +141,7 @@ export function HomePage() {
           <div className="filing-table">
             <RemoteState {...filingsState} empty={(value) => !value.items.length}>
               {() => <>{filingGroups.map(([day, items]) => <div key={day}>
-                <div className="table-day"><span>{formatDate(day, false)}</span><span>{items.length}{locale === "ko" ? "건" : " filings"}</span></div>
+                <div className="table-day"><span>{formatDate(day, false)}</span><span>{items[0]?.filedDateTotal ?? items.length}{locale === "ko" ? "건" : " filings"}</span></div>
                 {items.map((filing) => <FilingRow filing={filing} key={filing.receiptNumber} />)}
               </div>)}</>}
             </RemoteState>
@@ -278,16 +280,21 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
     return () => window.clearTimeout(timer);
   }, [hovered, insightRequested]);
   const translation = useAutomaticTranslation(
-    `/api/v1/news/${article.id}/translation`,
+    `/api/v1/news/${article.id}/translation?locale=${locale}`,
     insightRequested,
   );
-  const insight = translation.data?.status === "READY" ? translation.data.result : null;
+  const insight = translation.data?.status === "READY" && translation.data.targetLocale === locale
+    ? translation.data.result
+    : null;
   const title = locale === "ko" ? article.originalTitle : verifiedEnglishText(article.englishTitle) || "";
   const wrappedTitle = Array.from(title).length > 34;
+  const cachedInsight = localizedNewsInsight(article, locale);
+  const readyInsight = insight && hasCompleteNewsInsight(insight) ? insight : cachedInsight;
+  const summaryReady = hasCompleteNewsInsight(readyInsight);
   const summary: Array<[string, string | null | undefined]> = [
-    [t("what"), insight?.what || article.what],
-    [t("why"), insight?.why || article.why],
-    [t("impact"), insight?.impact || article.impact],
+    [t("what"), readyInsight.what],
+    [t("why"), readyInsight.why],
+    [t("impact"), readyInsight.impact],
   ];
   return <Link
     className={`news-card ${wrappedTitle ? "has-wrapped-title" : ""}`}
@@ -296,11 +303,22 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
     onPointerLeave={() => setHovered(false)}
     onFocus={() => setInsightRequested(true)}
   >
-    <IntelligenceBadges sentiment={article.sentiment} importance={article.importance} eventType={article.eventType} />
-    <h3 className={adaptiveTextClass(title, "news-card-title", 36, 62)}>{title}</h3>
-    <p className="meta">{article.publisher} · {formatDate(article.publishedAt)} · {locale === "ko" ? "한글 원문" : "Auto-translated"}</p>
+    <div className="news-card-content">
+      <IntelligenceBadges sentiment={article.sentiment} importance={article.importance} eventType={article.eventType} />
+      <h3 className={adaptiveTextClass(title, "news-card-title", 36, 62)}>{title}</h3>
+      <p className="meta">{article.publisher} · {formatDate(article.publishedAt)} · {locale === "ko" ? "한글 원문" : "Auto-translated"}</p>
+    </div>
+    <NewsThumbnail className="news-card-thumbnail" src={article.thumbnailUrl} />
     <div className="insight">
-      {summary.map(([label, value]) => <p key={label}><b>{label}</b>{value ? <span>{value}</span> : <LoadingSkeleton className="insight-loading" />}</p>)}
+      {!summaryReady && !hovered ? (
+        <p className="insight-hover-prompt">
+          {locale === "ko" ? "마우스를 올려 What / Why / Impact 요약 보기" : "Hover to view the What / Why / Impact summary"}
+        </p>
+      ) : summaryReady ? (
+        summary.map(([label, value]) => <p key={label}><b>{label}</b><span>{value}</span></p>)
+      ) : (
+        summary.map(([label]) => <p key={label}><b>{label}</b><LoadingSkeleton className="insight-loading" /></p>)
+      )}
     </div>
   </Link>;
 }

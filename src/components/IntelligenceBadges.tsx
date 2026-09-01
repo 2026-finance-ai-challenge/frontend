@@ -40,6 +40,7 @@ function eventTypeLabel(value: string, locale: "en" | "ko") {
     return ({
       FOREIGN_SELLING: "외국인 매도", LISTING: "상장", EARNINGS: "실적", DIVIDEND: "배당",
       CAPITAL_RAISE: "자본 조달", GOVERNANCE: "지배구조", REGULATION: "규제", M_AND_A: "인수합병",
+      RISK: "위험", CONTRACT: "계약", INVESTMENT: "투자", PRODUCT: "제품", MARKET: "시장",
     } as Record<string, string>)[normalized] || value.replaceAll("_", " ");
   }
   return value.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());

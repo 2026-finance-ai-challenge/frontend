@@ -143,9 +143,12 @@ export type NewsArticle = {
   originalBody: string | null
   englishTitle: string | null
   englishBody: string | null
-  what: string | null
-  why: string | null
-  impact: string | null
+  whatEn: string | null
+  whyEn: string | null
+  impactEn: string | null
+  whatKo: string | null
+  whyKo: string | null
+  impactKo: string | null
   eventType: string | null
   sentiment: string | null
   importance: string | null
@@ -168,7 +171,7 @@ export type NewsArticle = {
 export type TranslationResult = {
   jobId: string | null
   sourceHash: string
-  targetLocale: 'en'
+  targetLocale: 'en' | 'ko'
   translationVersion: string
   status: 'NOT_REQUESTED' | 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED'
   result: {
@@ -201,6 +204,7 @@ export type Filing = {
   importance?: string
   marketImpact?: string
   filedDate: string
+  filedDateTotal: number
   detectedAt: string
   correction: boolean
   documentStatus: string

@@ -234,11 +234,11 @@ export function DisclosureDetailPage() {
             <div className="filing-title">
               <div>
                 <div className="entity-chips">
-                  <span>
+                  <Link to={filing?.stockCode ? `/stocks/${filing.stockCode}` : "#"}>
                     <img src="/assets/company.svg" alt="" />
                     {filing ? stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo }) : locale === "ko" ? "공시를 불러오는 중…" : "Loading filing…"}
-                  </span>
-                  <span>{filing?.stockCode || "—"}</span>
+                  </Link>
+                  <Link to={filing?.stockCode ? `/stocks/${filing.stockCode}` : "#"}>{filing?.stockCode || "—"}</Link>
                   <span>{filing?.market || "—"}</span>
                 </div>
                 <h1 className={((locale === "ko" ? filing?.titleKo : englishTitle) || "").length > 70 ? "is-long-title" : ""}>
