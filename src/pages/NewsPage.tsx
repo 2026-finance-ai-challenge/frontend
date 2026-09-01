@@ -15,6 +15,7 @@ import { IntelligenceBadges } from "../components/IntelligenceBadges";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
 import { isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
+import { hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
 
 function StockNewsHeader({ stockCode }: { stockCode: string }) {
   const { locale, stockName } = useLocale();
@@ -109,14 +110,19 @@ export function NewsDetailPage() {
   const { newsId = "" } = useParams();
   const profile = useProfile();
   const articleState = useRemote((signal) => api<NewsArticle>(`/api/v1/news/${newsId}`, { signal }), [newsId]);
-  const translationState = useAutomaticTranslation(`/api/v1/news/${newsId}/translation`, Boolean(newsId));
+  const translationState = useAutomaticTranslation(`/api/v1/news/${newsId}/translation?locale=${locale}`, Boolean(newsId));
   const selectionAssistant = useSelectionAssistant<HTMLDivElement>();
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ?? "/news";
   const article = articleState.data;
-  const translation = translationState.data?.status === "READY" && isVerifiedEnglish(translationState.data.result)
+  const readyResult = translationState.data?.status === "READY" && translationState.data.targetLocale === locale
     ? translationState.data.result
     : null;
+  const translation = locale === "en"
+    ? readyResult && isVerifiedEnglish(readyResult) ? readyResult : null
+    : readyResult && hasCompleteNewsInsight(readyResult) ? readyResult : null;
+  const cachedInsight = article ? localizedNewsInsight(article, locale) : { what: null, why: null, impact: null };
+  const summaryInsight = translation && hasCompleteNewsInsight(translation) ? translation : cachedInsight;
   const englishTitle = verifiedEnglishText(article?.englishTitle);
   useEffect(() => {
     if (!profile || !newsId) return;
@@ -152,7 +158,7 @@ export function NewsDetailPage() {
                   {t("aiSummary")}{" "}
                   <img src="/assets/agent-badge-figma.svg" alt="AI" />
                 </h2>
-                {(translation ? [[t("what"), translation.what], [t("why"), translation.why], [t("impact"), translation.impact]] : [[t("what"), locale === "ko" ? article?.what : verifiedEnglishText(article?.what)], [t("why"), locale === "ko" ? article?.why : verifiedEnglishText(article?.why)], [t("impact"), locale === "ko" ? article?.impact : verifiedEnglishText(article?.impact)]]).map((row) => (
+                {[[t("what"), summaryInsight.what], [t("why"), summaryInsight.why], [t("impact"), summaryInsight.impact]].map((row) => (
                   <p key={row[0]}>
                     <b>{row[0]}</b>
                     {row[1] ? <span>{row[1]}</span> : translationPending ? <LoadingSkeleton className="insight-loading" /> : <span>{locale === "ko" ? "근거 기반 요약을 준비하지 못했습니다." : "Grounded insight could not be generated for this source."}</span>}

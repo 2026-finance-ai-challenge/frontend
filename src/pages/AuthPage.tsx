@@ -158,7 +158,15 @@ export function SignupPage() {
                 onChange={(event) => setNationality(event.target.value)}
               >
                 <option value="">{locale === "ko" ? "국적 선택" : "Select your nationality"}</option>
-                {(countries.data || []).map((country) => <option value={country.countryCode} key={country.countryCode}>{country.countryName}</option>)}
+                {(countries.data || []).map((country) => (
+                  <option
+                    value={country.countryCode}
+                    disabled={country.countryCode !== "US"}
+                    key={country.countryCode}
+                  >
+                    {country.countryName}{country.countryCode === "US" ? "" : locale === "ko" ? " · 준비 중" : " · Coming soon"}
+                  </option>
+                ))}
               </select>
               {countries.loading ? <small>{locale === "ko" ? "지원 국가 불러오는 중…" : "Loading supported countries…"}</small> : null}
               {countries.error ? <FormError>{countries.error.message}</FormError> : null}
