@@ -3,6 +3,8 @@ import { ForeignOwnershipCard, ownershipExhaustion, ownershipTone } from "../com
 import { RemoteState } from "../components/RemoteState";
 import { api } from "../api";
 import { useRemote } from "../hooks/useRemote";
+import { useRegularMarketDay } from "../hooks/useRegularMarketDay";
+import { useMarketRefresh } from "../hooks/useMarketRefresh";
 import { useLocale } from "../state/LocaleContext";
 import type { ForeignLimitMonitor } from "../types";
 
@@ -10,10 +12,12 @@ const STATUTORY_LIMIT_STOCK_COUNT = 33;
 
 export function ForeignLimitsPage() {
   const { locale } = useLocale();
+  const regularDay = useRegularMarketDay();
   const state = useRemote(
     (signal) => api<ForeignLimitMonitor[]>("/api/v1/market/foreign-limits", { signal }),
-    [],
+    [regularDay],
   );
+  useMarketRefresh(regularDay, state.loading, state.retry);
   const items = [...(state.data ?? [])].sort((a, b) => ownershipExhaustion(b) - ownershipExhaustion(a));
 
   return (
@@ -36,7 +40,7 @@ export function ForeignLimitsPage() {
           <span><b className="safe-text">{items.filter((item) => ownershipTone(item) === "safe").length}</b>{locale === "ko" ? "여유" : "Open"}</span>
         </div>
         <RemoteState {...state} empty={(value) => !value.length}>
-          {() => <div className="foreign-limit-index-grid">{items.map((item) => <ForeignOwnershipCard item={item} key={item.stock.stockCode} />)}</div>}
+          {() => <div className="foreign-limit-index-grid">{items.map((item) => <ForeignOwnershipCard item={item} regularDay={regularDay} key={item.stock.stockCode} />)}</div>}
         </RemoteState>
       </main>
       <Footer />

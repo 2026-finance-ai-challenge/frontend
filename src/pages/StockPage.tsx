@@ -10,6 +10,10 @@ import { useProfile, useRemote } from "../hooks/useRemote";
 import type { GlobalPeer, StockDetail } from "../types";
 import { useLocale } from "../state/LocaleContext";
 import { buildStockChartAxis } from "../components/stockChartAxis";
+import { ownershipPrediction } from "../components/ownershipPredictionModel";
+import { OwnershipPredictionLegend, OwnershipPredictionOverlay } from "../components/OwnershipPrediction";
+import { useRegularMarketDay } from "../hooks/useRegularMarketDay";
+import { useMarketRefresh } from "../hooks/useMarketRefresh";
 
 type StockAlert = "vi" | "price-limit";
 type ChartMode = "candles" | "line";
@@ -43,8 +47,10 @@ export function StockPage() {
   const [params] = useSearchParams();
   const { stockCode = "" } = useParams();
   const profile = useProfile();
+  const regularDay = useRegularMarketDay();
   const [period, setPeriod] = useState(params.get("period") || "1D");
-  const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile]);
+  const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile, regularDay]);
+  useMarketRefresh(detailState.data?.subjectToForeignAcquisitionLimit ? regularDay : null, detailState.loading, detailState.retry);
   const historyState = useRemote((signal) => api<{ status: string; intervalMinutes: number; items: ChartBar[] }>(`/api/v1/market/stocks/${stockCode}/chart?period=${period}`, { signal }), [stockCode, period]);
   const peersState = useRemote((signal) => api<GlobalPeer>(`/api/v1/market/stocks/${stockCode}/global-peers`, { signal }), [stockCode]);
   const [insights, setInsights] = useState(params.get("insights") === "1");
@@ -104,8 +110,13 @@ export function StockPage() {
   const quoteStatus = liveQuote?.status ?? detailState.data?.quote.status;
   const quoteAsOf = liveQuote?.asOf ?? detailState.data?.quote.asOf;
   const ownershipExhaustion = detailState.data?.foreignOwnership.limitExhaustionRate;
-  const activePrediction = detailState.data?.foreignLimitPrediction.status === "AVAILABLE"
-    && detailState.data.quote.marketSession === "REGULAR";
+  const activePrediction = ownershipPrediction({
+    subjectToLimit: detailState.data?.subjectToForeignAcquisitionLimit === true,
+    ownership: detailState.data?.foreignOwnership,
+    prediction: detailState.data?.foreignLimitPrediction,
+    quote: detailState.data?.quote,
+    regularDay,
+  });
   return (
     <div className={`stock-page ${insights ? "panel-open" : ""}`}>
       <div className="stock-main">
@@ -260,6 +271,7 @@ export function StockPage() {
                     : (locale === "ko" ? "최신 확인 보유율" : "Latest verified ownership")}</p>
                 <div className="ownership-line">
                   <span className={ownershipExhaustion == null ? "unavailable" : ""} style={{ width: `${ownershipExhaustion == null ? 0 : Math.min(ownershipExhaustion, 100)}%` }} />
+                  {activePrediction ? <OwnershipPredictionOverlay prediction={activePrediction} /> : null}
                 </div>
                 <div className="ownership-values">
                   <div>
@@ -271,7 +283,8 @@ export function StockPage() {
                     <strong>{detailState.data?.subjectToForeignAcquisitionLimit && detailState.data.foreignOwnership.foreignLimitQuantity && detailState.data.foreignOwnership.totalListedQuantity ? `${(detailState.data.foreignOwnership.foreignLimitQuantity / detailState.data.foreignOwnership.totalListedQuantity * 100).toFixed(2)}%` : (locale === "ko" ? "해당 없음" : "Not applicable")}</strong>
                   </div>
                 </div>
-                {detailState.data?.subjectToForeignAcquisitionLimit && activePrediction ? <div className="prediction">
+                {activePrediction ? <OwnershipPredictionLegend prediction={activePrediction} /> : null}
+                {activePrediction ? <div className="prediction">
                   <div>
                     <b>{locale === "ko" ? "오늘의 현재 예측" : "Today’s current prediction"}</b>
                     <span>95% CI</span>

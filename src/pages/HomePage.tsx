@@ -8,6 +8,8 @@ import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
 import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
+import { useRegularMarketDay } from "../hooks/useRegularMarketDay";
+import { useMarketRefresh } from "../hooks/useMarketRefresh";
 import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import type { Filing, ForeignLimitMonitor, NewsArticle, SupportedCountry } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
@@ -31,6 +33,7 @@ type TaxEligibility = { countryCode: string; countryName: string; domesticDefaul
 
 export function HomePage() {
   const { locale } = useLocale();
+  const regularDay = useRegularMarketDay();
   const [newsStart, setNewsStart] = useState(0);
   const newsState = useCursorPage(
     (cursor, signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({ sort: "IMPORTANCE", cursor, limit: 20 })}`, { signal }),
@@ -44,8 +47,9 @@ export function HomePage() {
   );
   const ownershipState = useRemote(
     (signal) => api<ForeignLimitMonitor[]>("/api/v1/market/foreign-limits", { signal }),
-    [],
+    [regularDay],
   );
+  useMarketRefresh(regularDay, ownershipState.loading, ownershipState.retry);
   const taxRatesState = useRemote(async (signal) => {
     const supported = await api<SupportedCountry[]>("/api/v1/tax/countries", { signal });
     const country = supported.find((item) => item.countryCode === "US");
@@ -161,7 +165,7 @@ export function HomePage() {
           </div>
           <RemoteState {...ownershipState} empty={(value) => !value.length}>
             {() => <div className="ownership-grid">
-            {visibleOwnership.map((item) => <ForeignOwnershipCard item={item} key={item.stock.stockCode} />)}
+            {visibleOwnership.map((item) => <ForeignOwnershipCard item={item} regularDay={regularDay} key={item.stock.stockCode} />)}
           </div>}
           </RemoteState>
         </section>
