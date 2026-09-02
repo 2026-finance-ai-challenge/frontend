@@ -90,8 +90,8 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
     if (!profile) return;
     const controller = new AbortController();
     api<Room[]>("/api/v1/me/chats", { signal: controller.signal })
-      .then((rooms) => setRoom(rooms.find((candidate) => candidate.context.type === requestedContext.contextType && (requestedContext.referenceId == null || candidate.context.referenceId === requestedContext.referenceId)) || null))
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Chat rooms could not be loaded."));
+      .then((rooms) => { if (!controller.signal.aborted) setRoom(rooms.find((candidate) => candidate.context.type === requestedContext.contextType && (requestedContext.referenceId == null || candidate.context.referenceId === requestedContext.referenceId)) || null); })
+      .catch((reason: unknown) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Chat rooms could not be loaded."); });
     return () => controller.abort();
   }, [profile, requestedContext.contextType, requestedContext.referenceId]);
 
@@ -99,41 +99,61 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
     if (!room) { setMessages([]); return; }
     const controller = new AbortController();
     api<Message[]>(`/api/v1/me/chats/${room.id}/messages`, { signal: controller.signal })
-      .then(setMessages)
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Messages could not be loaded."));
+      .then((loaded) => { if (!controller.signal.aborted) setMessages((current) => [...loaded, ...current.filter((message) => message.id.startsWith("pending-"))]); })
+      .catch((reason: unknown) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Messages could not be loaded."); });
     return () => controller.abort();
   }, [room]);
 
+  const generationId = generation?.id;
+  const pendingGeneration = Boolean(generation && ["PENDING", "PROCESSING"].includes(generation.status));
   useEffect(() => {
-    if (!room || !generation || !["PENDING", "PROCESSING"].includes(generation.status)) return;
-    const timer = window.setInterval(() => {
-      void api<Generation>(`/api/v1/me/chats/${room.id}/generations/${generation.id}`)
-        .then(async (current) => {
+    if (!room || !generationId || !pendingGeneration) return;
+    const controller = new AbortController();
+    let timer: number;
+    const poll = async () => {
+      try {
+        const current = await api<Generation>(`/api/v1/me/chats/${room.id}/generations/${generationId}`, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+        if (["PENDING", "PROCESSING"].includes(current.status)) {
           setGeneration(current);
-          if (!["PENDING", "PROCESSING"].includes(current.status)) {
-            const next = await api<Message[]>(`/api/v1/me/chats/${room.id}/messages`);
-            const newest = next.at(-1);
-            setMessages(next);
-            if (newest?.role === "ASSISTANT") {
-              setStreamedMessageId(newest.id);
-              setStreamingAnswer("");
-              const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-              if (reduced) setStreamingAnswer(newest.content);
-              else {
-                let index = 0;
-                const typing = window.setInterval(() => {
-                  index += 1;
-                  setStreamingAnswer(newest.content.slice(0, index));
-                  if (index >= newest.content.length) window.clearInterval(typing);
-                }, 14);
-              }
-            }
-          }
-        })
-        .catch(() => setError("The answer status could not be refreshed."));
-    }, 1200);
+          timer = window.setTimeout(() => void poll(), 1200);
+          return;
+        }
+        const next = await api<Message[]>(`/api/v1/me/chats/${room.id}/messages`, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+        setMessages(next);
+        setGeneration(current);
+        const newest = next.at(-1);
+        if (current.status === "COMPLETED" && newest?.role === "ASSISTANT") {
+          setStreamingAnswer("");
+          setStreamedMessageId(newest.id);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setError("The answer status could not be refreshed.");
+          timer = window.setTimeout(() => void poll(), 3000);
+        }
+      }
+    };
+    timer = window.setTimeout(() => void poll(), 1200);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [generationId, pendingGeneration, room]);
+
+  const animatedContent = messages.find((message) => message.id === streamedMessageId)?.content;
+  useEffect(() => {
+    if (animatedContent == null) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setStreamingAnswer(animatedContent);
+      return;
+    }
+    let index = 0;
+    const timer = window.setInterval(() => {
+      index += 1;
+      setStreamingAnswer(animatedContent.slice(0, index));
+      if (index >= animatedContent.length) window.clearInterval(timer);
+    }, 14);
     return () => window.clearInterval(timer);
-  }, [generation, room]);
+  }, [animatedContent, streamedMessageId]);
 
   const ensureRoom = async () => {
     if (room) return room;
@@ -236,9 +256,8 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
           ).map((suggestion) => <button type="button" key={suggestion} onClick={() => void submitContent(suggestion)}>{suggestion}</button>)}
         </div>
       </> : null}
-      {messages.map((message) => message.id === streamedMessageId ? null : message.role === "USER" ? <p className="user-message user-message-enter" key={message.id}>{message.content}</p> : <div className="ai-message ai-message-enter" key={message.id}><p>{message.content}</p>{message.insufficientEvidence ? <small>{message.refusalReason || (locale === "ko" ? "근거가 부족합니다" : "Insufficient evidence")}</small> : null}{message.citations.map((citation) => citation.url ? <a key={citation.id} href={citation.url} target="_blank" rel="noreferrer">{citation.title}</a> : <small key={citation.id}>{citation.title}</small>)}{message.disclaimer ? <small>{message.disclaimer}</small> : null}<button type="button" className="agent-message-action" onClick={() => void regenerateMessage(message.id)} disabled={Boolean(generating)}>{locale === "ko" ? "다시 생성" : "Regenerate"}</button></div>)}
+      {messages.map((message) => message.role === "USER" ? <p className="user-message user-message-enter" key={message.id}>{message.content}</p> : <div className="ai-message ai-message-enter" key={message.id}><p className={message.id === streamedMessageId ? "typewriter-answer" : undefined}>{message.id === streamedMessageId ? streamingAnswer : message.content}{message.id === streamedMessageId && streamingAnswer.length < message.content.length ? <span className="typing-cursor" aria-hidden="true" /> : null}</p>{message.insufficientEvidence ? <small>{message.refusalReason || (locale === "ko" ? "근거가 부족합니다" : "Insufficient evidence")}</small> : null}{message.citations.map((citation) => citation.url ? <a key={citation.id} href={citation.url} target="_blank" rel="noreferrer">{citation.title}</a> : <small key={citation.id}>{citation.title}</small>)}{message.disclaimer ? <small>{message.disclaimer}</small> : null}<button type="button" className="agent-message-action" onClick={() => void regenerateMessage(message.id)} disabled={Boolean(generating)}>{locale === "ko" ? "다시 생성" : "Regenerate"}</button></div>)}
       {generating ? <div className="agent-thinking" role="status"><span className="sr-only">{locale === "ko" ? "K-Agent가 답변을 작성하는 중" : "K-Agent is typing"}</span><i /><i /><i />{generation ? <button type="button" onClick={() => void stopGeneration()}>{locale === "ko" ? "중지" : "Stop"}</button> : null}</div> : null}
-      {streamedMessageId ? <div className="ai-message ai-message-enter"><p className="typewriter-answer">{streamingAnswer}<span className="typing-cursor" aria-hidden="true" /></p></div> : null}
       {generation?.status === "FAILED" ? <div className="api-state api-error"><span>{generation.errorCode || (locale === "ko" ? "AI 답변 생성에 실패했습니다." : "AI generation failed.")}</span><button type="button" onClick={() => void retryGeneration()}>{locale === "ko" ? "다시 시도" : "Retry"}</button></div> : null}
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
     </div>
