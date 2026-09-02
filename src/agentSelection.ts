@@ -1,4 +1,4 @@
-export type AgentSelection = { sectionId: string; text: string };
+export type AgentSelection = { sectionId?: string | null; text: string };
 
 export function selectionSectionId(start: string | null, end: string | null): string | null {
   return start === end && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(start || "") ? start : null;

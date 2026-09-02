@@ -3,7 +3,7 @@ export type KAgentContext = {
   referenceId?: string | null;
   prompt?: string;
   requestId?: string;
-  selection?: { sectionId: string; text: string };
+  selection?: { sectionId?: string | null; text: string };
 };
 
 export const OPEN_AGENT_EVENT = "kmarket:open-agent";

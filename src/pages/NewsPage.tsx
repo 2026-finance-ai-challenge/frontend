@@ -192,7 +192,7 @@ export function NewsDetailPage() {
                     selection={selectionAssistant.selection}
                     prompt={locale === "ko" ? "이 내용이 궁금한가요?" : "Want to know what this means?"}
                     actionLabel={locale === "ko" ? "질문하기" : "Click"}
-                    onAsk={(selectedText) => openKAgent({ contextType: "NEWS", referenceId: newsId, prompt: locale === "ko" ? `이 기사에서 “${selectedText}”의 뜻과 투자 맥락을 한국어로 설명해줘.` : `Explain “${selectedText}” and its investment context in this article.` })}
+                    onAsk={(selectedText) => openKAgent({ contextType: "NEWS", referenceId: newsId, selection: { text: selectedText }, prompt: locale === "ko" ? `이 기사에서 “${selectedText}”의 뜻과 투자 맥락을 한국어로 설명해줘.` : `Explain “${selectedText}” and its investment context in this article.` })}
                   />
                 </div>
                 <div className="article-tags">
