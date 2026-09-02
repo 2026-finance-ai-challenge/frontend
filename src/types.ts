@@ -176,6 +176,8 @@ export type TranslationResult = {
   status: 'NOT_REQUESTED' | 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED'
   result: {
     translatedParagraphs?: string[]
+    summaryReady?: boolean
+    bodyReady?: boolean
     what?: string
     why?: string
     impact?: string

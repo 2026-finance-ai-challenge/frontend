@@ -1,5 +1,5 @@
 const NON_ENGLISH_SCRIPT = /[ㄱ-ㅎㅏ-ㅣ가-힣\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/;
-const KOREAN_CURRENCY_ROMANIZATION = /\b(?:eok|jo)(?:[ -]?won)?\b|\bman[ -]?won\b/i;
+const KOREAN_CURRENCY_ROMANIZATION = /\b\d[\d,.]*\s*(?:eok|jo)\b|\b(?:eok|jo)[ -]?won\b|\bman[ -]?won\b/i;
 
 export function isVerifiedEnglish(value: unknown): boolean {
   if (typeof value === "string") {

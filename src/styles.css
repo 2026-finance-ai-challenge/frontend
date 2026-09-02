@@ -38,10 +38,19 @@ textarea,
 .api-state, .api-state *,
 .translation-status-error, .translation-status-error *,
 .loading-skeleton, .loading-skeleton *,
+.translation-placeholder, .translation-placeholder *,
 .selection-assistant, .selection-assistant * {
   -webkit-user-select: none !important;
   user-select: none !important;
 }
+.translation-placeholder {
+  color: transparent !important;
+  background: linear-gradient(90deg, #f0f0ed 25%, #fafaf7 50%, #f0f0ed 75%);
+  background-size: 200% 100%;
+  animation: translation-shimmer 1.4s linear infinite;
+}
+@keyframes translation-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .translation-placeholder { animation: none; } }
 h1, h2, h3, h4, p, strong, span, a, button, label {
   overflow-wrap: anywhere;
 }

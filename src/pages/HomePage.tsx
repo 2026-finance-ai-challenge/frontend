@@ -20,7 +20,7 @@ import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { NewsThumbnail } from "../components/NewsThumbnail";
 import { hasVerifiedEnglishTitle, verifiedEnglishText } from "../utils/english";
 import { adaptiveTextClass } from "../utils/text";
-import { hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
+import { generatedNewsInsight, hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
 
 const quickActions = [
   ["/assets/news.svg", "Today’s news", "/news"],
@@ -280,9 +280,7 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
     `/api/v1/news/${article.id}/translation?locale=${locale}`,
     insightRequested,
   );
-  const insight = translation.data?.status === "READY" && translation.data.targetLocale === locale
-    ? translation.data.result
-    : null;
+  const insight = generatedNewsInsight(translation.data, locale);
   const title = locale === "ko" ? article.originalTitle : verifiedEnglishText(article.englishTitle) || "";
   const wrappedTitle = Array.from(title).length > 34;
   const cachedInsight = localizedNewsInsight(article, locale);

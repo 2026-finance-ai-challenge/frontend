@@ -7,7 +7,6 @@ import { RemoteState, formatDate } from "../components/RemoteState";
 import { ViewMoreButton } from "../components/ViewMoreButton";
 import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
-import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import type { Filing, FilingDetail } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
@@ -23,6 +22,9 @@ type FilingInsight = {
   what: string | null;
   why: string | null;
   impact: string | null;
+  whatKo: string | null;
+  whyKo: string | null;
+  impactKo: string | null;
   refusalReason: string | null;
   sourceSectionIds: string[];
   modelId: string | null;
@@ -182,9 +184,15 @@ export function DisclosureDetailPage() {
     why: insightState.data.why,
     impact: insightState.data.impact,
     refusalReason: insightState.data.refusalReason,
-  })) ? insightState.data : null;
+  })) ? {
+    ...insightState.data,
+    what: locale === "ko" ? insightState.data.whatKo : insightState.data.what,
+    why: locale === "ko" ? insightState.data.whyKo : insightState.data.why,
+    impact: locale === "ko" ? insightState.data.impactKo : insightState.data.impact,
+  } : null;
   const [indexRequested, setIndexRequested] = useState(false);
   const [automaticError, setAutomaticError] = useState("");
+  const [translationRevision, setTranslationRevision] = useState(0);
   const selectionAssistant = useSelectionAssistant<HTMLDivElement>();
   const indexRequest = useRef<string | null>(null);
   const insightRequest = useRef<string | null>(null);
@@ -205,6 +213,7 @@ export function DisclosureDetailPage() {
 		if (locale !== "en" || !filing || translationRequest.current === disclosureId) return;
 		translationRequest.current = disclosureId;
 		void api(`/api/v1/disclosures/${disclosureId}/translation`, { method: "POST" })
+			.then(() => setTranslationRevision(value => value + 1))
 			.catch((reason: unknown) => setAutomaticError(
 				reason instanceof Error ? reason.message : "Disclosure translation could not be requested.",
 			));
@@ -325,7 +334,7 @@ export function DisclosureDetailPage() {
               <RemoteState {...detailState}>
                 {(value) => locale === "ko"
                   ? <div className="dart-original-documents selection-content">{value.documents.map((document) => document.originalHtml ? <DartOriginalDocument html={document.originalHtml} key={document.id} /> : <div className="disclosure-structured-body" key={document.id}>{document.sections.map((section) => <OriginalDisclosureSection section={section} key={section.id} />)}</div>)}</div>
-                  : <div className="disclosure-structured-body">{value.documents.flatMap((document) => document.sections).map((section) => <DisclosureSection receiptNumber={disclosureId} section={section} key={section.id} />)}</div>}
+                  : <TranslatedDisclosureDocuments receiptNumber={disclosureId} revision={translationRevision} />}
               </RemoteState>
               <SelectionAssistant
                 selection={selectionAssistant.selection}
@@ -360,37 +369,26 @@ async function sharePage(title: string) {
   await navigator.clipboard.writeText(window.location.href);
 }
 
-function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; section: FilingSection }) {
-  const translation = useAutomaticTranslation(
-		`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`,
-		true,
-		false,
-	);
-  const translated = translation.data?.status === "READY" && isVerifiedEnglish(translation.data.result)
-    ? translation.data.result
-    : null;
-  const pending = (
-    translation.loading
-    || translation.requesting
-    || translation.data?.status === "NOT_REQUESTED"
-    || translation.data?.status === "PENDING"
-    || translation.data?.status === "PROCESSING"
-  );
-  return <section id={`section-${section.id}`} aria-busy={pending}>
-    {translated?.translatedHeading ? <h3 className="selection-content">{translated.translatedHeading}</h3> : null}
-    {translated?.translatedTableData
-      ? <div className="selection-content"><StructuredTable data={translated.translatedTableData} /></div>
-      : translated?.translatedText
-        ? <p className="selection-content">{translated.translatedText}</p>
-        : pending
-          ? <LoadingSkeleton lines={section.tableData ? 5 : 3} className="disclosure-section-skeleton" />
-          : <div className="api-state api-error">Translation generation failed and no cache was stored.</div>}
-    {translation.requestError ? <small className="translation-status-error">{translation.requestError.message}</small> : null}
-  </section>;
-}
-
 function DartOriginalDocument({ html }: { html: string }) {
   return <article className="dart-original-html" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+type DocumentTranslation = { documentId: string; html: string | null; total: number; ready: number; failed: number };
+
+function TranslatedDisclosureDocuments({ receiptNumber, revision }: { receiptNumber: string; revision: number }) {
+  const { locale } = useLocale();
+  const state = useRemote((signal) => api<DocumentTranslation[]>(`/api/v1/disclosures/${receiptNumber}/translation`, { signal }), [receiptNumber, revision]);
+  const pending = state.data?.some(document => document.ready + document.failed < document.total);
+  useEffect(() => {
+    if (!pending || state.loading) return;
+    const timer = window.setTimeout(state.retry, 2_000);
+    return () => window.clearTimeout(timer);
+  }, [pending, state.loading, state.retry]);
+  if (!state.data) return <RemoteState {...state}>{() => null}</RemoteState>;
+  return <div className="dart-original-documents" aria-busy={pending}>{state.data.map(document => <div key={document.documentId}>
+    {document.html ? <DartOriginalDocument html={document.html} /> : <div className="api-state api-error">{locale === "ko" ? "원본 HTML을 복구 중입니다." : "The original HTML is not available yet."}</div>}
+    {document.failed > 0 ? <div className="api-state api-error">{locale === "ko" ? `${document.failed}개 구간 번역에 실패했습니다.` : `${document.failed} sections could not be translated.`}</div> : null}
+  </div>)}</div>;
 }
 
 function OriginalDisclosureSection({ section }: { section: FilingSection }) {

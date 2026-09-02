@@ -15,7 +15,7 @@ import { IntelligenceBadges } from "../components/IntelligenceBadges";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
 import { isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
-import { hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
+import { generatedNewsInsight, hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
 
 function StockNewsHeader({ stockCode }: { stockCode: string }) {
   const { locale, stockName } = useLocale();
@@ -115,9 +115,7 @@ export function NewsDetailPage() {
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ?? "/news";
   const article = articleState.data;
-  const readyResult = translationState.data?.status === "READY" && translationState.data.targetLocale === locale
-    ? translationState.data.result
-    : null;
+  const readyResult = generatedNewsInsight(translationState.data, locale);
   const translation = locale === "en"
     ? readyResult && isVerifiedEnglish(readyResult) ? readyResult : null
     : readyResult && hasCompleteNewsInsight(readyResult) ? readyResult : null;
@@ -188,7 +186,7 @@ export function NewsDetailPage() {
                       ? <>{translation.translatedParagraphs.map((paragraph, index) => <p className="selection-content" key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
                       : translationPending
                         ? <LoadingSkeleton lines={8} className="article-copy-skeleton" />
-                        : <div className="api-state api-error">{locale === "ko" ? "원문을 불러오지 못했습니다." : "Translation generation failed and no cache was stored."}</div>}
+                        : <div className="api-state api-error">{locale === "ko" ? "원문을 불러오지 못했습니다." : "The full article translation could not be completed. Any verified summary above remains available."}</div>}
                   </RemoteState>
                   <SelectionAssistant
                     selection={selectionAssistant.selection}
