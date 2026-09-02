@@ -96,6 +96,10 @@ export function StockPage() {
   }, [liveQuote, period]);
   const quoteChangeRate = liveQuote?.changeRate ?? detailState.data?.quote.changeRate;
   const currentPriceKrw = liveQuote?.currentValue ?? detailState.data?.quote.currentPriceKrw;
+  const changeAmountKrw = liveQuote?.changeAmount ?? detailState.data?.quote.changeAmountKrw;
+  const previousCloseKrw = currentPriceKrw === null || currentPriceKrw === undefined || changeAmountKrw === null || changeAmountKrw === undefined
+    ? null
+    : currentPriceKrw - changeAmountKrw;
   const quoteStatus = liveQuote?.status ?? detailState.data?.quote.status;
   const quoteAsOf = liveQuote?.asOf ?? detailState.data?.quote.asOf;
   const ownershipExhaustion = detailState.data?.foreignOwnership.limitExhaustionRate;
@@ -128,24 +132,29 @@ export function StockPage() {
                 <strong>{formatLocalizedStockPrice(currentPriceKrw, detailState.data?.exchangeRate.krwPerUnit, locale, true)}</strong>
                 <small className="stock-price-secondary">{formatLocalizedStockPrice(currentPriceKrw, detailState.data?.exchangeRate.krwPerUnit, locale, false)}</small>
                 <span className={quoteChangeRate == null ? "" : quoteChangeRate >= 0 ? "is-positive" : ""}>
-                  {formatQuoteChange(liveQuote?.changeAmount ?? detailState.data?.quote.changeAmountKrw, detailState.data?.exchangeRate.krwPerUnit, locale)} {quoteChangeRate == null ? null : <img src={quoteChangeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {quoteChangeRate == null ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${quoteChangeRate >= 0 ? "+" : ""}${quoteChangeRate.toFixed(2)}%`}
+                  {formatQuoteChange(changeAmountKrw, detailState.data?.exchangeRate.krwPerUnit, locale)} {quoteChangeRate == null ? null : <img src={quoteChangeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {quoteChangeRate == null ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${quoteChangeRate >= 0 ? "+" : ""}${quoteChangeRate.toFixed(2)}%`}
                 </span>
               </div>
             </div>
             <div className="stock-metrics">
               {[
-                [locale === "ko" ? "고가" : "High", formatNumber(liveQuote?.highValue ?? detailState.data?.quote.highPriceKrw)],
-                [locale === "ko" ? "저가" : "Low", formatNumber(liveQuote?.lowValue ?? detailState.data?.quote.lowPriceKrw)],
-                [locale === "ko" ? "거래량" : "Volume", formatNumber(liveQuote?.volume ?? detailState.data?.quote.volume, { notation: "compact" })],
-                [locale === "ko" ? "전일 종가" : "Prev close", formatNumber(previousClose(detailState.data))],
-              ].map(
-                ([label, value]) => (
-                  <div key={label}>
-                    <span>{label}</span>
-                    <strong>{value}</strong>
-                  </div>
-                ),
-              )}
+                { label: locale === "ko" ? "고가" : "High", value: liveQuote?.highValue ?? detailState.data?.quote.highPriceKrw, price: true },
+                { label: locale === "ko" ? "저가" : "Low", value: liveQuote?.lowValue ?? detailState.data?.quote.lowPriceKrw, price: true },
+                { label: locale === "ko" ? "거래량" : "Volume", value: liveQuote?.volume ?? detailState.data?.quote.volume, price: false },
+                { label: locale === "ko" ? "전일 종가" : "Prev close", value: previousCloseKrw, price: true },
+              ].map(({ label, value, price }) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <strong>{price
+                    ? formatLocalizedStockPrice(value, detailState.data?.exchangeRate.krwPerUnit, locale, true)
+                    : formatNumber(value, { notation: "compact" })}</strong>
+                  <small>{price
+                    ? formatLocalizedStockPrice(value, detailState.data?.exchangeRate.krwPerUnit, locale, false)
+                    : value === null || value === undefined
+                      ? (locale === "ko" ? "정보 없음" : "Unavailable")
+                      : `${formatNumber(value)} ${locale === "ko" ? "주" : "shares"}`}</small>
+                </div>
+              ))}
             </div>
             <div className="stock-badges">
               {detailState.data?.subjectToForeignAcquisitionLimit ? (
@@ -427,14 +436,6 @@ function formatLocalizedStockPrice(currentPriceKrw: number | null | undefined, e
     currency: useUsd ? "USD" : "KRW",
     maximumFractionDigits: useUsd ? 2 : 0,
   });
-}
-
-function previousClose(stock: StockDetail | null) {
-  const current = stock?.quote.currentPriceKrw;
-  const change = stock?.quote.changeAmountKrw;
-  return current === null || current === undefined || change === null || change === undefined
-    ? null
-    : current - change;
 }
 
 function predictionNote(stock: StockDetail | null, locale: "en" | "ko") {

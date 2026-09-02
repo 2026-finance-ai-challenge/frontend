@@ -1955,11 +1955,17 @@ a {
 .stock-metrics > div {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 4px;
   font-size: 20px;
 }
 .stock-metrics span {
   color: #888;
+  margin-bottom: 10px;
+}
+.stock-metrics small {
+  color: #888;
+  font-size: 13px;
+  line-height: 18px;
 }
 .stock-badges {
   display: flex;
