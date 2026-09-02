@@ -193,7 +193,7 @@ export function DisclosureDetailPage() {
   const [indexRequested, setIndexRequested] = useState(false);
   const [automaticError, setAutomaticError] = useState("");
   const [translationRevision, setTranslationRevision] = useState(0);
-  const selectionAssistant = useSelectionAssistant<HTMLDivElement>();
+  const selectionAssistant = useSelectionAssistant<HTMLDivElement>(true, `${disclosureId}:${locale}`);
   const indexRequest = useRef<string | null>(null);
   const insightRequest = useRef<string | null>(null);
 	const translationRequest = useRef<string | null>(null);
@@ -333,14 +333,17 @@ export function DisclosureDetailPage() {
             >
               <RemoteState {...detailState}>
                 {(value) => locale === "ko"
-                  ? <div className="dart-original-documents selection-content">{value.documents.map((document) => document.originalHtml ? <DartOriginalDocument html={document.originalHtml} key={document.id} /> : <div className="disclosure-structured-body" key={document.id}>{document.sections.map((section) => <OriginalDisclosureSection section={section} key={section.id} />)}</div>)}</div>
+                  ? <div className="dart-original-documents">{value.documents.map((document) => document.originalHtml ? <DartOriginalDocument html={document.originalHtml} key={document.id} /> : <div className="disclosure-structured-body" key={document.id}>{document.sections.map((section) => <OriginalDisclosureSection section={section} key={section.id} />)}</div>)}</div>
                   : <TranslatedDisclosureDocuments receiptNumber={disclosureId} revision={translationRevision} />}
               </RemoteState>
               <SelectionAssistant
                 selection={selectionAssistant.selection}
                 prompt={locale === "ko" ? "이 내용이 궁금한가요?" : "Want to know what this means?"}
                 actionLabel={locale === "ko" ? "질문하기" : "Click"}
-                onAsk={(selectedText) => openKAgent({ contextType: "FILING", referenceId: disclosureId, prompt: locale === "ko" ? `이 공시에서 “${selectedText}”의 뜻과 투자 영향을 한국어로 설명해줘.` : `Explain “${selectedText}” and its investment impact in this filing.` })}
+                onAsk={(selectedText, sectionId) => {
+                  if (!sectionId) return;
+                  openKAgent({ contextType: "FILING", referenceId: disclosureId, selection: { sectionId, text: selectedText }, prompt: locale === "ko" ? `이 공시에서 “${selectedText}”의 뜻과 투자 영향을 한국어로 설명해줘.` : `Explain “${selectedText}” and its investment impact in this filing.` });
+                }}
               />
             </div>
           </section>
@@ -392,7 +395,7 @@ function TranslatedDisclosureDocuments({ receiptNumber, revision }: { receiptNum
 }
 
 function OriginalDisclosureSection({ section }: { section: FilingSection }) {
-  return <section>
+  return <section className="selection-content" data-section-id={section.id}>
     {section.heading ? <h3>{section.heading}</h3> : null}
     {section.kind === "TABLE" ? <StructuredTable data={section.tableData} /> : <p>{section.text}</p>}
   </section>;

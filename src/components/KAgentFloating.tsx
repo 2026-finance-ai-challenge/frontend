@@ -8,6 +8,7 @@ import { useLocale } from "../state/LocaleContext";
 import { TaxEligibilityPanel } from "./TaxEligibilityPanel";
 import { answerWithCitationMarkers, citationHref, citationTitle, filingPath, type AgentCitation } from "../agentCitations";
 import { createSubmissionGate } from "../agentSubmission";
+import { chatSubmissionBody, type AgentSelection } from "../agentSelection";
 
 type Room = {
   id: string;
@@ -167,7 +168,7 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
     return created;
   };
 
-  const submitContent = async (content: string, clientMessageId: string = crypto.randomUUID()) => {
+  const submitContent = async (content: string, clientMessageId: string = crypto.randomUUID(), selection?: AgentSelection) => {
     if (!content || !profile || !roomResolved || submitting || generation && ["PENDING", "PROCESSING"].includes(generation.status)) return;
     if (!submissionGate.current.start(clientMessageId)) return;
     setDraft(""); setError(""); setStreamingAnswer(""); setStreamedMessageId(null);
@@ -187,7 +188,7 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
       const target = await ensureRoom();
       const result = await api<{ userMessage: Message; generation: Generation }>(`/api/v1/me/chats/${target.id}/messages`, {
         method: "POST",
-        body: JSON.stringify({ clientMessageId, content, selectedSectionId: null, selectedText: null }),
+        body: JSON.stringify(chatSubmissionBody(clientMessageId, content, selection)),
       });
       setMessages((current) => current.map((message) => message.id === optimisticId ? result.userMessage : message));
       setGeneration(result.generation);
@@ -201,7 +202,7 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
   };
   useEffect(() => {
     if (profile && roomResolved && requestedContext.prompt?.trim() && requestedContext.requestId) {
-      void submitContent(requestedContext.prompt.trim(), requestedContext.requestId);
+      void submitContent(requestedContext.prompt.trim(), requestedContext.requestId, requestedContext.selection);
     }
   }, [profile, roomResolved, requestedContext.requestId]);
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {

@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { selectionSectionId } from "../agentSelection";
+import { OPEN_AGENT_EVENT } from "../agentEvents";
 
 type TextSelection = {
   text: string;
+  sectionId: string | null;
   left: number;
   top: number;
 };
 
-export function useSelectionAssistant<T extends HTMLElement>() {
+export function useSelectionAssistant<T extends HTMLElement>(requireSection = false, resetKey = "") {
   const containerRef = useRef<T>(null);
   const [selection, setSelection] = useState<TextSelection | null>(null);
+  useEffect(() => { setSelection(null); }, [resetKey]);
 
   const captureSelection = useCallback((event: ReactMouseEvent<T>) => {
     if ((event.target as Element).closest(".selection-assistant")) return;
@@ -24,7 +28,7 @@ export function useSelectionAssistant<T extends HTMLElement>() {
       const startElement = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer as Element : range.startContainer.parentElement;
       const endElement = range.endContainer.nodeType === Node.ELEMENT_NODE ? range.endContainer as Element : range.endContainer.parentElement;
       // 오류·로딩 문구를 선택하거나 가로지른 범위는 AI 질문으로 전달하지 않는다.
-      const crossesStatus = Array.from(container.querySelectorAll(".api-state, .translation-status-error, .loading-skeleton, .selection-assistant"))
+      const crossesStatus = Array.from(container.querySelectorAll(".api-state, .translation-status-error, .loading-skeleton, .translation-placeholder, .selection-assistant"))
         .some((element) => range.intersectsNode(element));
       if (!container.contains(range.commonAncestorContainer)
         || !startElement?.closest(".selection-content") || !endElement?.closest(".selection-content") || crossesStatus) {
@@ -32,7 +36,9 @@ export function useSelectionAssistant<T extends HTMLElement>() {
         return;
       }
       const text = browserSelection.toString().replace(/\s+/g, " ").trim();
-      if (text.length < 2 || text.length > 500) {
+      const sectionId = selectionSectionId(startElement?.closest("[data-section-id]")?.getAttribute("data-section-id") ?? null,
+        endElement?.closest("[data-section-id]")?.getAttribute("data-section-id") ?? null);
+      if (text.length < 2 || text.length > 500 || requireSection && !sectionId) {
         setSelection(null);
         return;
       }
@@ -48,18 +54,24 @@ export function useSelectionAssistant<T extends HTMLElement>() {
       );
       setSelection({
         text,
+        sectionId,
         left,
         top: anchor.bottom - containerRect.top + 14,
       });
     });
-  }, []);
+  }, [requireSection]);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setSelection(null);
     };
+    const closeOnAsk = () => setSelection(null);
     window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
+    window.addEventListener(OPEN_AGENT_EVENT, closeOnAsk);
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener(OPEN_AGENT_EVENT, closeOnAsk);
+    };
   }, []);
 
   return { containerRef, selection, captureSelection, clearSelection: () => setSelection(null) };
@@ -74,7 +86,7 @@ export function SelectionAssistant({
   selection: TextSelection | null;
   prompt: string;
   actionLabel: string;
-  onAsk: (selectedText: string) => void;
+  onAsk: (selectedText: string, sectionId: string | null) => void;
 }) {
   if (!selection) return null;
   return (
@@ -86,7 +98,7 @@ export function SelectionAssistant({
     >
       <img src="/assets/selection-arrow-figma.svg" alt="" />
       <span>{prompt}</span>
-      <button type="button" onClick={() => onAsk(selection.text)}>{actionLabel}</button>
+      <button type="button" onClick={() => onAsk(selection.text, selection.sectionId)}>{actionLabel}</button>
     </div>
   );
 }

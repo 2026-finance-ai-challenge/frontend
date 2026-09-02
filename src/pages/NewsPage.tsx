@@ -111,7 +111,7 @@ export function NewsDetailPage() {
   const profile = useProfile();
   const articleState = useRemote((signal) => api<NewsArticle>(`/api/v1/news/${newsId}`, { signal }), [newsId]);
   const translationState = useAutomaticTranslation(`/api/v1/news/${newsId}/translation?locale=${locale}`, Boolean(newsId));
-  const selectionAssistant = useSelectionAssistant<HTMLDivElement>();
+  const selectionAssistant = useSelectionAssistant<HTMLDivElement>(false, `${newsId}:${locale}`);
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ?? "/news";
   const article = articleState.data;
