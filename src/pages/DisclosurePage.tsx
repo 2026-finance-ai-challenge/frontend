@@ -407,20 +407,13 @@ function StructuredTable({ data }: { data: unknown }) {
     : <td key={cellIndex}>{String(cell ?? "")}</td>)}</tr>)}</tbody></table></div>;
 }
 
-type DisclosureAnswer = { answer: string; refused: boolean; refusalReason: string | null; citations: Array<{ id: string; heading: string | null; excerpt: string | null }> };
-
 function DisclosureQuestionBox({ receiptNumber, ready }: { receiptNumber: string; ready: boolean }) {
   const { locale } = useLocale();
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState<DisclosureAnswer | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const ask = async () => {
+  const ask = () => {
     if (!question.trim()) return;
-    setBusy(true); setError("");
-    try { setAnswer(await api<DisclosureAnswer>(`/api/v1/disclosures/${receiptNumber}/questions`, { method: "POST", body: JSON.stringify({ question: question.trim() }) })); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "The filing question could not be answered."); }
-    finally { setBusy(false); }
+    openKAgent({ contextType: "FILING", referenceId: receiptNumber, prompt: question.trim() });
+    setQuestion("");
   };
-  return <section className="disclosure-question"><h2>{locale === "ko" ? "공시에 대해 질문하기" : "Ask about this filing"}</h2><p>{locale === "ko" ? "현재 공시 버전에서 색인된 원문만 근거로 답합니다." : "Answers are restricted to indexed sections of the current disclosure version."}</p><form onSubmit={(event) => { event.preventDefault(); void ask(); }}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={locale === "ko" ? "무엇이 바뀌었고 투자자에게 어떤 영향이 있나요?" : "What changed and how could it affect investors?"} disabled={!ready || busy} /><button disabled={!ready || !question.trim() || busy}>{busy ? locale === "ko" ? "근거 확인 중…" : "Checking sources…" : locale === "ko" ? "질문" : "Ask"}</button></form>{!ready ? <small>{locale === "ko" ? "근거 기반 질문은 문서 색인이 끝난 뒤 사용할 수 있습니다." : "The document must finish indexing before grounded questions are available."}</small> : null}{error ? <p className="auth-error">{error}</p> : null}{answer ? <blockquote><p>{answer.refused ? answer.refusalReason : answer.answer}</p>{answer.citations.map((citation) => <small key={citation.id}><b>{citation.heading || (locale === "ko" ? "원문 구간" : "Source section")}</b> {citation.excerpt}</small>)}</blockquote> : null}</section>;
+  return <section className="disclosure-question"><h2>{locale === "ko" ? "공시에 대해 질문하기" : "Ask about this filing"}</h2><p>{locale === "ko" ? "현재 공시 버전에서 색인된 원문만 근거로 답합니다." : "Answers are restricted to indexed sections of the current disclosure version."}</p><form onSubmit={(event) => { event.preventDefault(); ask(); }}><input value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={2000} placeholder={locale === "ko" ? "무엇이 바뀌었고 투자자에게 어떤 영향이 있나요?" : "What changed and how could it affect investors?"} disabled={!ready} /><button disabled={!ready || !question.trim()}>{locale === "ko" ? "질문" : "Ask"}</button></form>{!ready ? <small>{locale === "ko" ? "근거 기반 질문은 문서 색인이 끝난 뒤 사용할 수 있습니다." : "The document must finish indexing before grounded questions are available."}</small> : null}</section>;
 }

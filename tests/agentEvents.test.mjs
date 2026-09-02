@@ -27,7 +27,8 @@ test('기존 일반·뉴스·공시 K-Agent 컨텍스트는 그대로 유지한�
   openKAgent();
   openKAgent({ contextType: 'NEWS', referenceId: 'news-id', prompt: 'Explain' });
   openKAgent({ contextType: 'FILING', referenceId: 'filing-id' });
-  assert.deepEqual(events.map(event => event.detail), [
+  assert.match(events[1].detail.requestId, /^[0-9a-f-]{36}$/);
+  assert.deepEqual(events.map(event => { const {requestId, ...context} = event.detail; return context; }), [
     { contextType: 'GENERAL' },
     { contextType: 'NEWS', referenceId: 'news-id', prompt: 'Explain' },
     { contextType: 'FILING', referenceId: 'filing-id' },

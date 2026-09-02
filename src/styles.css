@@ -5524,7 +5524,12 @@ mark {
 .disclosure-question form { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin: 16px 0; }
 .disclosure-question input { min-height: 46px; padding: 0 14px; border: 1px solid #d8d3c3; border-radius: 7px; background: #fff; }
 .disclosure-question blockquote { display: grid; gap: 8px; margin: 18px 0 0; padding: 18px; border-left: 3px solid #a58b00; background: #fff; }
-.agent-message-action { display: block; margin-top: 10px; color: #806d00; font-size: 12px; text-decoration: underline; }
+.agent-citation-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.agent-citation-button { display: flex; flex-direction: column; gap: 5px; min-width: 0; max-width: 100%; padding: 10px 14px; border: 1px solid #ddd5ad; border-radius: 10px; background: #fffdf3; color: #302b17; text-decoration: none; overflow-wrap: anywhere; }
+.agent-citation-button span { font-size: 12px; line-height: 1.4; }
+.agent-citation-button b { font-size: 12px; color: #746000; }
+.agent-citation-button:hover { border-color: #ad9500; background: #fff8d6; }
+.agent-citation-button:focus-visible { outline: 2px solid #ad9500; outline-offset: 3px; }
 .agent-thinking button { margin-left: auto; color: #806d00; font-size: 12px; }
 @media (max-width: 600px) {
   .search-stock-grid {
