@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { StockNewsFeed } from "../components/StockNewsFeed";
 import { WatchlistHeart } from "../components/WatchlistHeart";
 import { StockDisclosureFeed } from "./DisclosurePage";
-import { api } from "../api";
+import { API_BASE, api } from "../api";
 import { RemoteState, formatDate, formatNumber } from "../components/RemoteState";
 import { useProfile, useRemote } from "../hooks/useRemote";
 import type { GlobalPeer, StockDetail } from "../types";
@@ -12,19 +12,30 @@ import { useLocale } from "../state/LocaleContext";
 
 type StockAlert = "vi" | "price-limit";
 type ChartMode = "candles" | "line";
-type DailyPrice = {
-  tradingDate: string;
+type ChartBar = {
+  timestamp: string;
   openPriceKrw: number;
   highPriceKrw: number;
   lowPriceKrw: number;
   closePriceKrw: number;
   volume: number;
-  source: string;
 };
 
-function periodToLimit(period: string) {
-  return ({ "1D": 2, "1W": 7, "1M": 31, "3M": 93, "1Y": 366 } as Record<string, number>)[period] ?? 31;
-}
+type RealtimeMarketEvent = {
+  type: string;
+  stockCode: string | null;
+  currentValue: number;
+  changeAmount: number;
+  changeRate: number;
+  openValue: number;
+  highValue: number;
+  lowValue: number;
+  volume: number;
+  executionVolume: number;
+  asOf: string;
+  status: string;
+  source: string;
+};
 
 export function StockPage() {
   const { locale, t, stockName } = useLocale();
@@ -33,11 +44,12 @@ export function StockPage() {
   const profile = useProfile();
   const [period, setPeriod] = useState(params.get("period") || "1M");
   const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile]);
-  const historyState = useRemote((signal) => api<{ status: string; items: DailyPrice[] }>(`/api/v1/market/stocks/${stockCode}/history?limit=${periodToLimit(period)}`, { signal }), [stockCode, period]);
+  const historyState = useRemote((signal) => api<{ status: string; intervalMinutes: number; items: ChartBar[] }>(`/api/v1/market/stocks/${stockCode}/chart?period=${period}`, { signal }), [stockCode, period]);
   const peersState = useRemote((signal) => api<GlobalPeer>(`/api/v1/market/stocks/${stockCode}/global-peers`, { signal }), [stockCode]);
   const [insights, setInsights] = useState(params.get("insights") === "1");
   const [alert, setAlert] = useState<StockAlert | null>(null);
   const [chartMode, setChartMode] = useState<ChartMode>("line");
+  const [liveQuote, setLiveQuote] = useState<RealtimeMarketEvent | null>(null);
   const chartCardRef = useRef<HTMLElement>(null);
   const initialTab = params.get("tab");
   const [activeTab, setActiveTab] = useState<
@@ -60,7 +72,26 @@ export function StockPage() {
       body: JSON.stringify({ itemType: "STOCK", referenceId: stockCode, stockCode }),
     }).catch(() => undefined);
   }, [profile, stockCode]);
-  const quoteChangeRate = detailState.data?.quote.changeRate;
+  useEffect(() => {
+    setLiveQuote(null);
+    const source = new EventSource(`${API_BASE}/api/v1/market/stream?stockCode=${encodeURIComponent(stockCode)}`);
+    const onMarket = (message: MessageEvent<string>) => {
+      try {
+        const event = JSON.parse(message.data) as RealtimeMarketEvent;
+        if (event.type === "STOCK" && event.stockCode === stockCode) setLiveQuote(event);
+      } catch {
+        // 손상된 단일 이벤트는 다음 정상 틱 수신을 막지 않는다.
+      }
+    };
+    source.addEventListener("market", onMarket as EventListener);
+    return () => source.close();
+  }, [stockCode]);
+  const chartItems = useMemo(
+    () => mergeLiveBar(historyState.data?.items ?? [], liveQuote, period),
+    [historyState.data?.items, liveQuote, period],
+  );
+  const quoteChangeRate = liveQuote?.changeRate ?? detailState.data?.quote.changeRate;
+  const currentPriceKrw = liveQuote?.currentValue ?? detailState.data?.quote.currentPriceKrw;
   const ownershipExhaustion = detailState.data?.foreignOwnership.limitExhaustionRate;
   const activePrediction = detailState.data?.foreignLimitPrediction.status === "AVAILABLE"
     && detailState.data.quote.marketSession === "REGULAR";
@@ -88,18 +119,18 @@ export function StockPage() {
                 </p>
               </div>
               <div className="stock-price">
-                <strong>{formatStockPrice(detailState.data, locale, true)}</strong>
-                <small className="stock-price-secondary">{formatStockPrice(detailState.data, locale, false)}</small>
+                <strong>{formatLocalizedStockPrice(currentPriceKrw, detailState.data?.exchangeRate.krwPerUnit, locale, true)}</strong>
+                <small className="stock-price-secondary">{formatLocalizedStockPrice(currentPriceKrw, detailState.data?.exchangeRate.krwPerUnit, locale, false)}</small>
                 <span className={quoteChangeRate == null ? "" : quoteChangeRate >= 0 ? "is-positive" : ""}>
-                  {signedNumber(detailState.data?.quote.changeAmountKrw, locale)} {quoteChangeRate == null ? null : <img src={quoteChangeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {quoteChangeRate == null ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${quoteChangeRate >= 0 ? "+" : ""}${quoteChangeRate.toFixed(2)}%`}
+                  {formatQuoteChange(liveQuote?.changeAmount ?? detailState.data?.quote.changeAmountKrw, detailState.data?.exchangeRate.krwPerUnit, locale)} {quoteChangeRate == null ? null : <img src={quoteChangeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {quoteChangeRate == null ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${quoteChangeRate >= 0 ? "+" : ""}${quoteChangeRate.toFixed(2)}%`}
                 </span>
               </div>
             </div>
             <div className="stock-metrics">
               {[
-                [locale === "ko" ? "고가" : "High", formatNumber(detailState.data?.quote.highPriceKrw)],
-                [locale === "ko" ? "저가" : "Low", formatNumber(detailState.data?.quote.lowPriceKrw)],
-                [locale === "ko" ? "거래량" : "Volume", formatNumber(detailState.data?.quote.volume, { notation: "compact" })],
+                [locale === "ko" ? "고가" : "High", formatNumber(liveQuote?.highValue ?? detailState.data?.quote.highPriceKrw)],
+                [locale === "ko" ? "저가" : "Low", formatNumber(liveQuote?.lowValue ?? detailState.data?.quote.lowPriceKrw)],
+                [locale === "ko" ? "거래량" : "Volume", formatNumber(liveQuote?.volume ?? detailState.data?.quote.volume, { notation: "compact" })],
                 [locale === "ko" ? "전일 종가" : "Prev close", formatNumber(previousClose(detailState.data))],
               ].map(
                 ([label, value]) => (
@@ -200,8 +231,8 @@ export function StockPage() {
                     </button>
                   </div>
                 </div>
-                <RemoteState {...historyState} empty={(value) => !value.items.length}>
-                  {(value) => <PriceChart items={value.items} mode={chartMode} label={`${detailState.data?.nameEn || stockCode} ${period} ${chartMode} price chart`} />}
+                <RemoteState {...historyState} empty={() => !chartItems.length}>
+                  {() => <PriceChart items={chartItems} mode={chartMode} period={period} locale={locale} label={`${detailState.data?.nameEn || stockCode} ${period} ${chartMode} price chart`} />}
                 </RemoteState>
               </section>
               <aside className="ownership-panel">
@@ -370,14 +401,20 @@ function percentage(value: number | null | undefined, locale: "en" | "ko") {
   return value === null || value === undefined ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${value.toFixed(2)}%`;
 }
 
-function signedNumber(value: number | null | undefined, locale: "en" | "ko" = "en") {
-  if (value === null || value === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
-  return `${value >= 0 ? "+" : ""}${formatNumber(value)}`;
+function formatQuoteChange(krw: number | null | undefined, exchangeRate: number | null | undefined, locale: "en" | "ko") {
+  if (krw === null || krw === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
+  const value = locale === "en" && exchangeRate ? krw / exchangeRate : krw;
+  return `${value >= 0 ? "+" : ""}${formatNumber(value, {
+    style: "currency",
+    currency: locale === "en" ? "USD" : "KRW",
+    maximumFractionDigits: locale === "en" ? 2 : 0,
+  })}`;
 }
 
-function formatStockPrice(stock: StockDetail | null, locale: "en" | "ko", primary: boolean) {
+function formatLocalizedStockPrice(currentPriceKrw: number | null | undefined, exchangeRate: number | null | undefined, locale: "en" | "ko", primary: boolean) {
   const useUsd = primary ? locale === "en" : locale === "ko";
-  const value = useUsd ? stock?.currentPriceUsd : stock?.quote.currentPriceKrw;
+  if (currentPriceKrw === null || currentPriceKrw === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
+  const value = useUsd && exchangeRate ? currentPriceKrw / exchangeRate : currentPriceKrw;
   if (value === null || value === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
   return formatNumber(value, {
     style: "currency",
@@ -408,39 +445,121 @@ function predictionNote(stock: StockDetail | null, locale: "en" | "ko") {
   return locale === "ko" ? `예상 최대치는 법정 한도 ${legalLimit.toFixed(2)}%보다 ${(legalLimit - maximum).toFixed(2)}%p 낮습니다.` : `The estimated maximum is ${(legalLimit - maximum).toFixed(2)} percentage points below the ${legalLimit.toFixed(2)}% statutory limit.`;
 }
 
-function PriceChart({ items, mode, label }: {
-  items: DailyPrice[];
+function mergeLiveBar(items: ChartBar[], event: RealtimeMarketEvent | null, period: string): ChartBar[] {
+  if (!event) return items;
+  const instant = new Date(event.asOf);
+  const koreaOffset = 9 * 60 * 60 * 1000;
+  const koreaClock = new Date(instant.getTime() + koreaOffset);
+  if (period === "1D") koreaClock.setUTCMinutes(Math.floor(koreaClock.getUTCMinutes() / 10) * 10, 0, 0);
+  else if (period === "1W") koreaClock.setUTCMinutes(0, 0, 0);
+  else koreaClock.setUTCHours(15, 30, 0, 0);
+  const bucket = new Date(koreaClock.getTime() - koreaOffset).toISOString();
+  const sameBucket = (item: ChartBar) => period === "1D" || period === "1W"
+    ? item.timestamp === bucket
+    : item.timestamp.slice(0, 10) === bucket.slice(0, 10);
+  const existingIndex = items.findIndex(sameBucket);
+  const current = event.currentValue;
+  const next: ChartBar = existingIndex >= 0 ? {
+    ...items[existingIndex],
+    highPriceKrw: Math.max(items[existingIndex].highPriceKrw, current),
+    lowPriceKrw: Math.min(items[existingIndex].lowPriceKrw, current),
+    closePriceKrw: current,
+    volume: period === "1D" || period === "1W"
+      ? items[existingIndex].volume + event.executionVolume
+      : event.volume,
+  } : {
+    timestamp: bucket,
+    openPriceKrw: current,
+    highPriceKrw: current,
+    lowPriceKrw: current,
+    closePriceKrw: current,
+    volume: period === "1D" || period === "1W" ? event.executionVolume : event.volume,
+  };
+  if (existingIndex < 0) return [...items, next].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  return items.map((item, index) => index === existingIndex ? next : item);
+}
+
+function PriceChart({ items, mode, period, locale, label }: {
+  items: ChartBar[];
   mode: ChartMode;
+  period: string;
+  locale: "en" | "ko";
   label: string;
 }) {
+  const [hovered, setHovered] = useState<number | null>(null);
   const prices = items.flatMap((item) => [item.lowPriceKrw, item.highPriceKrw]);
   const min = Math.min(...prices);
   const max = Math.max(...prices);
   const range = Math.max(max - min, 1);
-  const yFor = (price: number) => 250 - ((price - min) / range) * 220;
+  const maxVolume = Math.max(...items.map((item) => item.volume), 1);
+  const yFor = (price: number) => 238 - ((price - min) / range) * 210;
+  const xFor = (index: number) => items.length === 1 ? 500 : index / (items.length - 1) * 1000;
   const points = items.map((item, index) => {
-    const x = items.length === 1 ? 0 : index / (items.length - 1) * 1000;
+    const x = xFor(index);
     const y = yFor(item.closePriceKrw);
     return `${x},${y}`;
   }).join(" ");
-  return <svg className="live-stock-chart" role="img" aria-label={label} viewBox="0 0 1000 280" preserveAspectRatio="none">
-    <title>{label}</title>
-    {mode === "line"
-      ? <polyline points={points} fill="none" stroke="currentColor" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-      : items.map((item, index) => {
-        const x = items.length === 1 ? 500 : index / (items.length - 1) * 1000;
-        const rising = item.closePriceKrw >= item.openPriceKrw;
-        const bodyTop = Math.min(yFor(item.openPriceKrw), yFor(item.closePriceKrw));
-        const bodyHeight = Math.max(Math.abs(yFor(item.openPriceKrw) - yFor(item.closePriceKrw)), 2);
-        const width = Math.max(3, Math.min(18, 720 / Math.max(items.length, 1)));
-        return <g className={rising ? "candle-up" : "candle-down"} key={item.tradingDate}>
-          <line x1={x} x2={x} y1={yFor(item.highPriceKrw)} y2={yFor(item.lowPriceKrw)} vectorEffect="non-scaling-stroke" />
-          <rect x={x - width / 2} y={bodyTop} width={width} height={bodyHeight} />
-        </g>;
+  const positive = items.at(-1)!.closePriceKrw >= items[0]!.openPriceKrw;
+  const labelIndexes = chartLabelIndexes(items, period);
+  const hoveredItem = hovered === null ? null : items[hovered];
+  return <div className={`stock-chart-wrap ${positive ? "is-positive" : "is-negative"}`} onPointerLeave={() => setHovered(null)}>
+    {hoveredItem ? <div className="stock-chart-tooltip" style={{ left: `${Math.min(82, Math.max(2, xFor(hovered!) / 10))}%` }}>
+      <b>{formatChartDate(hoveredItem.timestamp, period, locale, true)}</b>
+      <span>O {formatNumber(hoveredItem.openPriceKrw)} · H {formatNumber(hoveredItem.highPriceKrw)}</span>
+      <span>L {formatNumber(hoveredItem.lowPriceKrw)} · C {formatNumber(hoveredItem.closePriceKrw)}</span>
+      <span>{locale === "ko" ? "거래량" : "Volume"} {formatNumber(hoveredItem.volume, { notation: "compact" })}</span>
+    </div> : null}
+    <svg className="live-stock-chart" role="img" aria-label={label} viewBox="0 0 1000 360" preserveAspectRatio="none">
+      <title>{label}</title>
+      {[0, 1, 2, 3].map((line) => <line className="chart-grid-line" x1="0" x2="1000" y1={28 + line * 70} y2={28 + line * 70} key={line} />)}
+      {mode === "line"
+        ? <polyline className="period-line" points={points} fill="none" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+        : items.map((item, index) => {
+          const x = xFor(index);
+          const rising = item.closePriceKrw >= item.openPriceKrw;
+          const bodyTop = Math.min(yFor(item.openPriceKrw), yFor(item.closePriceKrw));
+          const bodyHeight = Math.max(Math.abs(yFor(item.openPriceKrw) - yFor(item.closePriceKrw)), 2);
+          const width = Math.max(3, Math.min(18, 720 / Math.max(items.length, 1)));
+          return <g className={rising ? "candle-up" : "candle-down"} key={item.timestamp}>
+            <line x1={x} x2={x} y1={yFor(item.highPriceKrw)} y2={yFor(item.lowPriceKrw)} vectorEffect="non-scaling-stroke" />
+            <rect x={x - width / 2} y={bodyTop} width={width} height={bodyHeight} />
+          </g>;
+        })}
+      {items.map((item, index) => {
+        const x = xFor(index);
+        const barWidth = Math.max(2, Math.min(16, 650 / items.length));
+        const height = item.volume / maxVolume * 62;
+        return <rect className="volume-bar" key={`volume-${item.timestamp}`} x={x - barWidth / 2} y={322 - height} width={barWidth} height={height} />;
       })}
-    <text x="0" y="275">{items[0]?.tradingDate}</text>
-    <text x="1000" y="275" textAnchor="end">{items.at(-1)?.tradingDate}</text>
-  </svg>;
+      {labelIndexes.map((index) => <text x={xFor(index)} y="350" textAnchor={index === 0 ? "start" : index === items.length - 1 ? "end" : "middle"} key={`label-${items[index].timestamp}`}>{formatChartDate(items[index].timestamp, period, locale)}</text>)}
+      {items.map((item, index) => {
+        const width = 1000 / Math.max(items.length, 1);
+        return <rect className="chart-hit-zone" x={Math.max(0, xFor(index) - width / 2)} y="0" width={width} height="325" key={`hit-${item.timestamp}`} onPointerEnter={() => setHovered(index)} />;
+      })}
+    </svg>
+  </div>;
+}
+
+function chartLabelIndexes(items: ChartBar[], period: string) {
+  if (period === "1W") {
+    const seen = new Set<string>();
+    return items.map((item, index) => [item.timestamp.slice(0, 10), index] as const)
+      .filter(([date]) => seen.has(date) ? false : (seen.add(date), true))
+      .map(([, index]) => index);
+  }
+  const zones = period === "1Y" ? 6 : 5;
+  return Array.from(new Set(Array.from({ length: Math.min(zones, items.length) }, (_, index) => Math.round(index * (items.length - 1) / Math.max(1, Math.min(zones, items.length) - 1)))));
+}
+
+function formatChartDate(timestamp: string, period: string, locale: "en" | "ko", detailed = false) {
+  const options: Intl.DateTimeFormatOptions = detailed
+    ? { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }
+    : period === "1D"
+      ? { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false }
+      : period === "1Y"
+        ? { timeZone: "Asia/Seoul", month: "short" }
+        : { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit" };
+  return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", options).format(new Date(timestamp));
 }
 
 async function toggleFullscreen(element: HTMLElement | null) {

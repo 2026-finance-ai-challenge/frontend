@@ -264,7 +264,7 @@ function FilingRow({ filing }: { filing: PublishedFiling }) {
         <FitText className="filing-issuer" value={issuer} />
         <small>{filing.stockCode} · {filing.market}</small>
       </span>
-      <strong className={adaptiveTextClass(title, "filing-title")}>{title}</strong>
+      <strong className={adaptiveTextClass(title, "filing-title")}><span>{title}</span></strong>
       <span className="filing-row-badges"><IntelligenceBadges variant="filing" sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
     </Link>
   );
@@ -297,15 +297,16 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
     [t("impact"), readyInsight.impact],
   ];
   return <Link
-    className={`news-card ${wrappedTitle ? "has-wrapped-title" : ""}`}
+    className={`news-card ${locale === "ko" ? "is-korean" : ""} ${wrappedTitle ? "has-wrapped-title" : ""}`}
     to={`/news/${article.id}`}
     onPointerEnter={() => setHovered(true)}
     onPointerLeave={() => setHovered(false)}
-    onFocus={() => setInsightRequested(true)}
+    onFocus={() => { setHovered(true); setInsightRequested(true); }}
+    onBlur={() => setHovered(false)}
   >
     <div className="news-card-content">
       <IntelligenceBadges sentiment={article.sentiment} importance={article.importance} eventType={article.eventType} />
-      <h3 className={adaptiveTextClass(title, "news-card-title", 36, 62)}>{title}</h3>
+      <h3 className={adaptiveTextClass(title, "news-card-title", locale === "ko" ? 24 : 36, locale === "ko" ? 40 : 62)}>{title}</h3>
       <p className="meta">{article.publisher} · {formatDate(article.publishedAt)} · {locale === "ko" ? "한글 원문" : "Auto-translated"}</p>
     </div>
     <NewsThumbnail className="news-card-thumbnail" src={article.thumbnailUrl} />

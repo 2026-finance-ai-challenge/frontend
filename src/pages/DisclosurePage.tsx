@@ -81,7 +81,7 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
                   <FitText className="filing-issuer" value={issuer} />
                   <small>{filing.stockCode} · {filing.market}</small>
                 </span>
-                <strong className={adaptiveTextClass(title, "filing-title")}>{title}</strong>
+                <strong className={adaptiveTextClass(title, "filing-title")}><span>{title}</span></strong>
                 <span className="filing-row-badges"><IntelligenceBadges variant="filing" sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
               </Link>
             );
@@ -188,6 +188,7 @@ export function DisclosureDetailPage() {
   const selectionAssistant = useSelectionAssistant<HTMLDivElement>();
   const indexRequest = useRef<string | null>(null);
   const insightRequest = useRef<string | null>(null);
+	const translationRequest = useRef<string | null>(null);
   const returnTo =
     (location.state as { returnTo?: string } | null)?.returnTo ??
     "/disclosures";
@@ -195,9 +196,19 @@ export function DisclosureDetailPage() {
   useEffect(() => {
     indexRequest.current = null;
     insightRequest.current = null;
+		translationRequest.current = null;
     setIndexRequested(false);
     setAutomaticError("");
   }, [disclosureId]);
+
+	useEffect(() => {
+		if (locale !== "en" || !filing || translationRequest.current === disclosureId) return;
+		translationRequest.current = disclosureId;
+		void api(`/api/v1/disclosures/${disclosureId}/translation`, { method: "POST" })
+			.catch((reason: unknown) => setAutomaticError(
+				reason instanceof Error ? reason.message : "Disclosure translation could not be requested.",
+			));
+	}, [disclosureId, filing, locale]);
 
   useEffect(() => {
     if (!filing || filing.indexStatus === "READY" || filing.documentStatus !== "READY") return;
@@ -350,7 +361,11 @@ async function sharePage(title: string) {
 }
 
 function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; section: FilingSection }) {
-  const translation = useAutomaticTranslation(`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`);
+  const translation = useAutomaticTranslation(
+		`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`,
+		true,
+		false,
+	);
   const translated = translation.data?.status === "READY" && isVerifiedEnglish(translation.data.result)
     ? translation.data.result
     : null;
