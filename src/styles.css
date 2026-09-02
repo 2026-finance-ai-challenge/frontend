@@ -1955,11 +1955,17 @@ a {
 .stock-metrics > div {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 4px;
   font-size: 20px;
 }
 .stock-metrics span {
   color: #888;
+  margin-bottom: 10px;
+}
+.stock-metrics small {
+  color: #888;
+  font-size: 13px;
+  line-height: 18px;
 }
 .stock-badges {
   display: flex;
@@ -2682,6 +2688,13 @@ a {
   padding: 30px;
   border-radius: 12px;
   box-shadow: 0 0 70px rgba(0, 0, 0, 0.05);
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  transition: outline-color 160ms ease;
+}
+.news-row:hover,
+.news-row:focus-visible {
+  outline-color: var(--gold);
 }
 .news-row > :is(img, .news-thumbnail-empty) {
   width: 220px;
