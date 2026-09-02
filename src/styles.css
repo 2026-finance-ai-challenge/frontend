@@ -24,14 +24,23 @@ body {
   font-weight: 400;
   line-height: 25px;
   letter-spacing: -0.04em;
+  -webkit-user-select: none;
   user-select: none;
 }
 input,
 textarea,
 [contenteditable="true"],
-.selection-surface,
-.selection-surface * {
+.selection-content,
+.selection-content * {
+  -webkit-user-select: text;
   user-select: text;
+}
+.api-state, .api-state *,
+.translation-status-error, .translation-status-error *,
+.loading-skeleton, .loading-skeleton *,
+.selection-assistant, .selection-assistant * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 h1, h2, h3, h4, p, strong, span, a, button, label {
   overflow-wrap: anywhere;
@@ -2188,6 +2197,84 @@ a {
   display: grid;
   grid-template-columns: 1fr 1fr;
   margin-bottom: 30px;
+}
+.ownership-forecast-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ownership-forecast-range {
+  position: absolute;
+  top: -4px;
+  height: calc(100% + 8px);
+  min-width: 1px;
+  outline: 1px solid #9a8300;
+  background: repeating-linear-gradient(135deg, #b9a02099 0 2px, #f4e8a977 2px 4px);
+}
+.ownership-forecast-base {
+  position: absolute;
+  top: -12px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid #9a8300;
+  transform: translateX(-50%);
+}
+.ownership-forecast-legend {
+  margin: 16px 0 20px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #796600;
+}
+.ownership-forecast-keys,
+.ownership-forecast-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 12px;
+  row-gap: 2px;
+}
+.ownership-forecast-keys {
+  margin-bottom: 4px;
+  color: #666;
+}
+.ownership-forecast-keys > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ownership-previous-key {
+  width: 3px;
+  height: 12px;
+  background: #111;
+}
+.ownership-forecast-key {
+  width: 12px;
+  height: 8px;
+  border: 1px solid #9a8300;
+  background: repeating-linear-gradient(135deg, #b9a02099 0 2px, #f4e8a977 2px 4px);
+}
+.ownership-card.has-prediction {
+  height: 423px;
+}
+.ownership-card.has-prediction:hover,
+.ownership-card.has-prediction:focus-visible {
+  height: 478px;
+}
+.ownership-card.has-prediction .gauge {
+  margin-top: 20px;
+}
+.ownership-card.has-prediction .ownership-note {
+  top: 355px;
+}
+.ownership-card.has-prediction:hover .ownership-note,
+.ownership-card.has-prediction:focus-visible .ownership-note {
+  top: 366px;
+}
+.ownership-grid:has(.has-prediction) {
+  min-height: 478px;
 }
 .ownership-values > div {
   display: flex;

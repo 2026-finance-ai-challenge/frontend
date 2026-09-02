@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { useLocale } from "../state/LocaleContext";
 import type { ForeignLimitMonitor } from "../types";
 import { adaptiveTextClass, conciseCompanyName } from "../utils/text";
+import { legalOwnershipLimit, ownershipPrediction } from "./ownershipPredictionModel";
+import { OwnershipPredictionLegend, OwnershipPredictionOverlay } from "./OwnershipPrediction";
 
 export const ownershipLabels = {
   danger: "Near reached",
@@ -23,12 +25,17 @@ export function ownershipExhaustion(item: ForeignLimitMonitor) {
   return item.stock.foreignOwnership?.limitExhaustionRate ?? -1;
 }
 
-export function ForeignOwnershipCard({ item }: { item: ForeignLimitMonitor }) {
+export function ForeignOwnershipCard({ item, regularDay }: { item: ForeignLimitMonitor; regularDay: string | null }) {
   const { locale, stockName } = useLocale();
   const used = item.stock.foreignOwnership?.ownershipRate ?? null;
-  const cap = item.stock.foreignOwnership?.foreignLimitQuantity && item.stock.foreignOwnership?.totalListedQuantity
-    ? item.stock.foreignOwnership.foreignLimitQuantity / item.stock.foreignOwnership.totalListedQuantity * 100
-    : null;
+  const cap = legalOwnershipLimit(item.stock.foreignOwnership);
+  const prediction = ownershipPrediction({
+    subjectToLimit: Boolean(item.policy),
+    ownership: item.stock.foreignOwnership,
+    prediction: item.prediction,
+    quote: item.stock.quote,
+    regularDay,
+  });
   const tone = ownershipTone(item);
   const remaining = cap !== null && used !== null ? Math.max(cap - used, 0) : null;
   const exhaustion = cap !== null && used !== null && cap > 0 ? used / cap * 100 : null;
@@ -36,7 +43,7 @@ export function ForeignOwnershipCard({ item }: { item: ForeignLimitMonitor }) {
   const name = locale === "en" ? conciseCompanyName(stockName(item.stock)) : stockName(item.stock);
 
   return (
-    <Link className="ownership-card" to={`/stocks/${item.stock.stockCode}`}>
+    <Link className={`ownership-card${prediction ? " has-prediction" : ""}`} to={`/stocks/${item.stock.stockCode}`}>
       <div className="card-title">
         <span className={tone}>
           {tone === "danger" ? <img src="/assets/status-warning.svg" alt="" /> : null}
@@ -56,11 +63,13 @@ export function ForeignOwnershipCard({ item }: { item: ForeignLimitMonitor }) {
       <div className={`gauge gauge-${tone}`}>
         <span className={tone} style={{ width }} />
         <i style={{ left: width }} />
+        {prediction ? <OwnershipPredictionOverlay prediction={prediction} /> : null}
       </div>
       <div className="gauge-labels">
         <span>{locale === "ko" ? "사용" : "Used"} {used === null ? locale === "ko" ? "정보 없음" : "Unavailable" : `${used.toFixed(2)}%`}</span>
         <span>{locale === "ko" ? "한도" : "Cap"} {cap === null ? locale === "ko" ? "정보 없음" : "Unavailable" : `${cap.toFixed(2)}%`}</span>
       </div>
+      {prediction ? <OwnershipPredictionLegend prediction={prediction} /> : null}
       <p className="ownership-note">
         {remaining === null
           ? locale === "ko" ? "검증된 보유 현황이 수집되면 주문 가능 여유를 표시합니다." : "Verified headroom will appear when the ownership snapshot is available."
