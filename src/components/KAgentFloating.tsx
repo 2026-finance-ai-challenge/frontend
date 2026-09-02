@@ -1,10 +1,11 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { OPEN_AGENT_EVENT, type KAgentContext } from "../agentEvents";
 import { useProfile } from "../hooks/useRemote";
 import { AgentHistoryView, AgentOverflowMenu } from "./AgentHistory";
 import { useLocale } from "../state/LocaleContext";
+import { TaxEligibilityPanel } from "./TaxEligibilityPanel";
 
 type Room = {
   id: string;
@@ -27,15 +28,24 @@ type Generation = { id: string; status: string; errorCode: string | null };
 
 export function KAgentFloating() {
   const { locale } = useLocale();
-  const [open, setOpen] = useState(false);
-  const [context, setContext] = useState<KAgentContext>({ contextType: "GENERAL" });
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(location.pathname === "/tax");
+  const [context, setContext] = useState<KAgentContext>({ contextType: location.pathname === "/tax" ? "TAX_GUIDE" : "GENERAL" });
   const launcherRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const close = useCallback(() => {
     setOpen(false);
-    window.requestAnimationFrame(() => launcherRef.current?.focus());
-  }, []);
+    if (location.pathname === "/tax") navigate("/", { replace: true });
+    window.requestAnimationFrame(() => (openerRef.current?.isConnected ? openerRef.current : launcherRef.current)?.focus());
+  }, [location.pathname, navigate]);
+  useEffect(() => {
+    setOpen(location.pathname === "/tax");
+    if (location.pathname === "/tax") setContext({ contextType: "TAX_GUIDE" });
+  }, [location.pathname]);
   useEffect(() => {
     const handleOpen = (event: Event) => {
+      openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setContext((event as CustomEvent<KAgentContext>).detail || { contextType: "GENERAL" });
       setOpen(true);
     };
@@ -43,12 +53,14 @@ export function KAgentFloating() {
     return () => window.removeEventListener(OPEN_AGENT_EVENT, handleOpen);
   }, []);
   return <>
-    <button type="button" className="agent-launcher" aria-label={locale === "ko" ? "K-Agent 열기" : "Open K-Agent"} aria-haspopup="dialog" aria-expanded={open} onClick={() => { setContext({ contextType: "GENERAL" }); setOpen(true); }} ref={launcherRef} hidden={open}>
+    <button type="button" className="agent-launcher" aria-label={locale === "ko" ? "K-Agent 열기" : "Open K-Agent"} aria-haspopup="dialog" aria-expanded={open} onClick={() => { openerRef.current = launcherRef.current; setContext({ contextType: "GENERAL" }); setOpen(true); }} ref={launcherRef} hidden={open}>
       <span className="agent-launcher-surface" aria-hidden="true" />
       <span className="agent-launcher-inner" aria-hidden="true" />
       <img src="/assets/k-agent-floating-figma.svg" alt="" />
     </button>
-    {open ? <KAgentPanel close={close} requestedContext={context} /> : null}
+    {open ? context.contextType === "TAX_GUIDE"
+      ? <TaxEligibilityPanel close={close} />
+      : <KAgentPanel close={close} requestedContext={context} /> : null}
   </>;
 }
 
