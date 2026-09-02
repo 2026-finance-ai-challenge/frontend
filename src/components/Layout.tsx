@@ -12,6 +12,7 @@ import { REALTIME_API_BASE, api, queryString } from "../api";
 import { useProfile } from "../hooks/useRemote";
 import type { NotificationInbox, NotificationItem, Stock } from "../types";
 import { useLocale } from "../state/LocaleContext";
+import { TaxEligibilityLink } from "./TaxEligibilityLink";
 
 type HeaderProps = {
   initialQuery?: string;
@@ -390,6 +391,7 @@ export function Header({
           </button>
           <div className="primary-navigation-links">
             {primaryNavigation.map((item) => {
+              if (item.to === "/tax") return <TaxEligibilityLink key={item.to} onClick={() => setMenuOpen(false)}>{item.label}</TaxEligibilityLink>;
               const active =
                 location.pathname.startsWith(item.to);
 
@@ -434,7 +436,7 @@ export function Footer() {
           <Link to="/news">{locale === "ko" ? "AI 뉴스 요약" : "AI news summary"}</Link>
           <Link to="/disclosures">{locale === "ko" ? "DART 공시" : "Dart filings"}</Link>
           <Link to="/foreign-limits">{locale === "ko" ? "외국인 보유 한도" : "Foreigner ownership limits"}</Link>
-          <Link to="/tax">{locale === "ko" ? "내 세율 확인" : "Check my tax rate"}</Link>
+          <TaxEligibilityLink>{locale === "ko" ? "내 세율 확인" : "Check my tax rate"}</TaxEligibilityLink>
         </div>
       </div>
       <div className="footer-meta">

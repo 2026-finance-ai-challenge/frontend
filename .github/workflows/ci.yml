@@ -31,6 +31,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: 타입 검사
         run: npm run lint
+      - name: 프론트 회귀 테스트
+        run: npm test
       - name: 운영 빌드
         env:
           VITE_API_BASE_URL: https://api.kartkr.cloud
@@ -41,4 +43,3 @@ jobs:
             echo "운영 번들에 금지된 주소 또는 비밀 변수 이름이 포함되어 있습니다." >&2
             exit 1
           fi
-
