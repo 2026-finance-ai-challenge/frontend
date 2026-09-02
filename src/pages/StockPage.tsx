@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { StockNewsFeed } from "../components/StockNewsFeed";
 import { WatchlistHeart } from "../components/WatchlistHeart";
 import { StockDisclosureFeed } from "./DisclosurePage";
-import { API_BASE, api } from "../api";
+import { REALTIME_API_BASE, api } from "../api";
 import { RemoteState, formatDate, formatNumber } from "../components/RemoteState";
 import { useProfile, useRemote } from "../hooks/useRemote";
 import type { GlobalPeer, StockDetail } from "../types";
@@ -42,7 +42,7 @@ export function StockPage() {
   const [params] = useSearchParams();
   const { stockCode = "" } = useParams();
   const profile = useProfile();
-  const [period, setPeriod] = useState(params.get("period") || "1M");
+  const [period, setPeriod] = useState(params.get("period") || "1D");
   const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile]);
   const historyState = useRemote((signal) => api<{ status: string; intervalMinutes: number; items: ChartBar[] }>(`/api/v1/market/stocks/${stockCode}/chart?period=${period}`, { signal }), [stockCode, period]);
   const peersState = useRemote((signal) => api<GlobalPeer>(`/api/v1/market/stocks/${stockCode}/global-peers`, { signal }), [stockCode]);
@@ -50,6 +50,7 @@ export function StockPage() {
   const [alert, setAlert] = useState<StockAlert | null>(null);
   const [chartMode, setChartMode] = useState<ChartMode>("line");
   const [liveQuote, setLiveQuote] = useState<RealtimeMarketEvent | null>(null);
+  const [chartItems, setChartItems] = useState<ChartBar[]>([]);
   const chartCardRef = useRef<HTMLElement>(null);
   const initialTab = params.get("tab");
   const [activeTab, setActiveTab] = useState<
@@ -74,7 +75,7 @@ export function StockPage() {
   }, [profile, stockCode]);
   useEffect(() => {
     setLiveQuote(null);
-    const source = new EventSource(`${API_BASE}/api/v1/market/stream?stockCode=${encodeURIComponent(stockCode)}`);
+    const source = new EventSource(`${REALTIME_API_BASE}/api/v1/market/stream?stockCode=${encodeURIComponent(stockCode)}`);
     const onMarket = (message: MessageEvent<string>) => {
       try {
         const event = JSON.parse(message.data) as RealtimeMarketEvent;
@@ -86,12 +87,17 @@ export function StockPage() {
     source.addEventListener("market", onMarket as EventListener);
     return () => source.close();
   }, [stockCode]);
-  const chartItems = useMemo(
-    () => mergeLiveBar(historyState.data?.items ?? [], liveQuote, period),
-    [historyState.data?.items, liveQuote, period],
-  );
+  useEffect(() => {
+    setChartItems(mergeLiveBar(historyState.data?.items ?? [], liveQuote, period));
+  }, [historyState.data?.items, period, stockCode]);
+  useEffect(() => {
+    if (!liveQuote) return;
+    setChartItems((current) => mergeLiveBar(current.length ? current : historyState.data?.items ?? [], liveQuote, period));
+  }, [liveQuote, period]);
   const quoteChangeRate = liveQuote?.changeRate ?? detailState.data?.quote.changeRate;
   const currentPriceKrw = liveQuote?.currentValue ?? detailState.data?.quote.currentPriceKrw;
+  const quoteStatus = liveQuote?.status ?? detailState.data?.quote.status;
+  const quoteAsOf = liveQuote?.asOf ?? detailState.data?.quote.asOf;
   const ownershipExhaustion = detailState.data?.foreignOwnership.limitExhaustionRate;
   const activePrediction = detailState.data?.foreignLimitPrediction.status === "AVAILABLE"
     && detailState.data.quote.marketSession === "REGULAR";
@@ -115,7 +121,7 @@ export function StockPage() {
                 </h1>
                 <p>{stockCode}&nbsp;&nbsp; · &nbsp;&nbsp;{detailState.data?.market || "—"}</p>
                 <p>
-                  {localizedMarketStatus(detailState.data?.quote.status, locale)} · {formatDate(detailState.data?.quote.asOf)} · {locale === "ko" ? `환율 ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)}원/USD` : `Converted at ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)} KRW/USD`}
+                  {localizedMarketStatus(quoteStatus, locale)} · {formatDate(quoteAsOf)} · {locale === "ko" ? `환율 ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)}원/USD` : `Converted at ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)} KRW/USD`}
                 </p>
               </div>
               <div className="stock-price">
@@ -493,14 +499,18 @@ function PriceChart({ items, mode, period, locale, label }: {
   const range = Math.max(max - min, 1);
   const maxVolume = Math.max(...items.map((item) => item.volume), 1);
   const yFor = (price: number) => 238 - ((price - min) / range) * 210;
-  const xFor = (index: number) => items.length === 1 ? 500 : index / (items.length - 1) * 1000;
+  const [domainStart, domainEnd] = chartTimeDomain(items, period);
+  const xForTimestamp = (timestamp: string) => Math.min(1000, Math.max(0,
+    (new Date(timestamp).getTime() - domainStart) / Math.max(domainEnd - domainStart, 1) * 1000,
+  ));
+  const xFor = (index: number) => xForTimestamp(items[index].timestamp);
   const points = items.map((item, index) => {
     const x = xFor(index);
     const y = yFor(item.closePriceKrw);
     return `${x},${y}`;
   }).join(" ");
   const positive = items.at(-1)!.closePriceKrw >= items[0]!.openPriceKrw;
-  const labelIndexes = chartLabelIndexes(items, period);
+  const axisLabels = chartAxisLabels(items, period, domainStart, domainEnd);
   const hoveredItem = hovered === null ? null : items[hovered];
   return <div className={`stock-chart-wrap ${positive ? "is-positive" : "is-negative"}`} onPointerLeave={() => setHovered(null)}>
     {hoveredItem ? <div className="stock-chart-tooltip" style={{ left: `${Math.min(82, Math.max(2, xFor(hovered!) / 10))}%` }}>
@@ -531,24 +541,51 @@ function PriceChart({ items, mode, period, locale, label }: {
         const height = item.volume / maxVolume * 62;
         return <rect className="volume-bar" key={`volume-${item.timestamp}`} x={x - barWidth / 2} y={322 - height} width={barWidth} height={height} />;
       })}
-      {labelIndexes.map((index) => <text x={xFor(index)} y="350" textAnchor={index === 0 ? "start" : index === items.length - 1 ? "end" : "middle"} key={`label-${items[index].timestamp}`}>{formatChartDate(items[index].timestamp, period, locale)}</text>)}
+      {axisLabels.map((axis) => {
+        const x = xForTimestamp(axis.timestamp);
+        return <text x={x} y="350" textAnchor={x < 1 ? "start" : x > 999 ? "end" : "middle"} key={`label-${axis.timestamp}`}>{formatChartDate(axis.timestamp, period, locale)}</text>;
+      })}
       {items.map((item, index) => {
-        const width = 1000 / Math.max(items.length, 1);
-        return <rect className="chart-hit-zone" x={Math.max(0, xFor(index) - width / 2)} y="0" width={width} height="325" key={`hit-${item.timestamp}`} onPointerEnter={() => setHovered(index)} />;
+        const x = xFor(index);
+        const previousX = index === 0 ? x : xFor(index - 1);
+        const nextX = index === items.length - 1 ? x : xFor(index + 1);
+        const left = index === 0 ? Math.max(0, x - Math.max(8, (nextX - x) / 2)) : (previousX + x) / 2;
+        const right = index === items.length - 1 ? Math.min(1000, x + Math.max(8, (x - previousX) / 2)) : (x + nextX) / 2;
+        return <rect className="chart-hit-zone" x={left} y="0" width={Math.max(1, right - left)} height="325" key={`hit-${item.timestamp}`} onPointerEnter={() => setHovered(index)} />;
       })}
     </svg>
   </div>;
 }
 
-function chartLabelIndexes(items: ChartBar[], period: string) {
+function chartTimeDomain(items: ChartBar[], period: string): [number, number] {
+  const timestamps = items.map((item) => new Date(item.timestamp).getTime());
+  if (period !== "1D") {
+    const start = Math.min(...timestamps);
+    const end = Math.max(...timestamps);
+    return start === end ? [start - 30 * 60_000, end + 30 * 60_000] : [start, end];
+  }
+  const koreaClock = new Date(timestamps[0] + 9 * 60 * 60_000);
+  const start = Date.UTC(koreaClock.getUTCFullYear(), koreaClock.getUTCMonth(), koreaClock.getUTCDate(), 0, 0);
+  return [start, start + 6.5 * 60 * 60_000];
+}
+
+function chartAxisLabels(items: ChartBar[], period: string, domainStart: number, domainEnd: number) {
+  if (period === "1D") {
+    return [0, 1, 2, 3, 4, 5, 6, 6.5].map((hours) => ({
+      timestamp: new Date(domainStart + hours * 60 * 60_000).toISOString(),
+    }));
+  }
   if (period === "1W") {
     const seen = new Set<string>();
     return items.map((item, index) => [item.timestamp.slice(0, 10), index] as const)
       .filter(([date]) => seen.has(date) ? false : (seen.add(date), true))
-      .map(([, index]) => index);
+      .map(([, index]) => ({ timestamp: items[index].timestamp }));
   }
   const zones = period === "1Y" ? 6 : 5;
-  return Array.from(new Set(Array.from({ length: Math.min(zones, items.length) }, (_, index) => Math.round(index * (items.length - 1) / Math.max(1, Math.min(zones, items.length) - 1)))));
+  if (items.length === 1) return [{ timestamp: items[0].timestamp }];
+  return Array.from({ length: Math.min(zones, items.length) }, (_, index) => ({
+    timestamp: new Date(domainStart + index * (domainEnd - domainStart) / Math.max(1, Math.min(zones, items.length) - 1)).toISOString(),
+  }));
 }
 
 function formatChartDate(timestamp: string, period: string, locale: "en" | "ko", detailed = false) {

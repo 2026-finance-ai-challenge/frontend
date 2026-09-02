@@ -2682,6 +2682,13 @@ a {
   padding: 30px;
   border-radius: 12px;
   box-shadow: 0 0 70px rgba(0, 0, 0, 0.05);
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  transition: outline-color 160ms ease;
+}
+.news-row:hover,
+.news-row:focus-visible {
+  outline-color: var(--gold);
 }
 .news-row > :is(img, .news-thumbnail-empty) {
   width: 220px;

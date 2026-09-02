@@ -8,7 +8,7 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { WatchlistHeart } from "./WatchlistHeart";
 import { getKoreaMarketSnapshot } from "../utils/koreaMarketClock";
-import { API_BASE, api, queryString } from "../api";
+import { REALTIME_API_BASE, api, queryString } from "../api";
 import { useProfile } from "../hooks/useRemote";
 import type { NotificationInbox, NotificationItem, Stock } from "../types";
 import { useLocale } from "../state/LocaleContext";
@@ -496,7 +496,7 @@ export function MarketBar() {
     return () => window.clearInterval(timer);
   }, []);
   useEffect(() => {
-    const source = new EventSource(`${API_BASE}/api/v1/market/stream`);
+    const source = new EventSource(`${REALTIME_API_BASE}/api/v1/market/stream`);
     const onMarket = (message: MessageEvent<string>) => {
       const event = JSON.parse(message.data) as {
         type: string;
