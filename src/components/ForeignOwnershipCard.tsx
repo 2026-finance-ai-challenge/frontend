@@ -69,7 +69,7 @@ export function ForeignOwnershipCard({ item, regularDay }: { item: ForeignLimitM
         <span>{locale === "ko" ? "사용" : "Used"} {used === null ? locale === "ko" ? "정보 없음" : "Unavailable" : `${used.toFixed(2)}%`}</span>
         <span>{locale === "ko" ? "한도" : "Cap"} {cap === null ? locale === "ko" ? "정보 없음" : "Unavailable" : `${cap.toFixed(2)}%`}</span>
       </div>
-      {prediction ? <OwnershipPredictionLegend prediction={prediction} /> : null}
+      {prediction ? <OwnershipPredictionLegend prediction={prediction} previousRate={used} /> : null}
       <p className="ownership-note">
         {remaining === null
           ? locale === "ko" ? "검증된 보유 현황이 수집되면 주문 가능 여유를 표시합니다." : "Verified headroom will appear when the ownership snapshot is available."

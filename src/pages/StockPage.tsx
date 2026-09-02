@@ -283,7 +283,7 @@ export function StockPage() {
                     <strong>{detailState.data?.subjectToForeignAcquisitionLimit && detailState.data.foreignOwnership.foreignLimitQuantity && detailState.data.foreignOwnership.totalListedQuantity ? `${(detailState.data.foreignOwnership.foreignLimitQuantity / detailState.data.foreignOwnership.totalListedQuantity * 100).toFixed(2)}%` : (locale === "ko" ? "해당 없음" : "Not applicable")}</strong>
                   </div>
                 </div>
-                {activePrediction ? <OwnershipPredictionLegend prediction={activePrediction} /> : null}
+                {activePrediction ? <OwnershipPredictionLegend prediction={activePrediction} previousRate={detailState.data?.foreignOwnership.ownershipRate ?? null} /> : null}
                 {activePrediction ? <div className="prediction">
                   <div>
                     <b>{locale === "ko" ? "오늘의 현재 예측" : "Today’s current prediction"}</b>

@@ -2227,34 +2227,48 @@ a {
   line-height: 20px;
   color: #796600;
 }
-.ownership-forecast-keys,
-.ownership-forecast-numbers {
+.ownership-forecast-legend dl,
+.ownership-forecast-legend dd {
+  margin: 0;
+}
+.ownership-forecast-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  column-gap: 12px;
-  row-gap: 2px;
+  gap: 12px;
 }
-.ownership-forecast-keys {
-  margin-bottom: 4px;
-  color: #666;
+.ownership-forecast-row + .ownership-forecast-row {
+  margin-top: 2px;
 }
-.ownership-forecast-keys > span {
+.ownership-forecast-row.is-previous {
+  color: #555;
+}
+.ownership-forecast-row dt {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+.ownership-forecast-row dd {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .ownership-previous-key {
   width: 3px;
   height: 12px;
   background: #111;
 }
-.ownership-forecast-key {
+.ownership-range-key {
   width: 12px;
   height: 8px;
   border: 1px solid #9a8300;
   background: repeating-linear-gradient(135deg, #b9a02099 0 2px, #f4e8a977 2px 4px);
+}
+.ownership-base-key {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 6px solid #9a8300;
 }
 .ownership-card.has-prediction {
   height: 423px;

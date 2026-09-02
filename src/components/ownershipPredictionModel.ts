@@ -33,3 +33,11 @@ export function ownershipPrediction({ subjectToLimit, ownership, prediction, quo
 }
 
 export type OwnershipPrediction = NonNullable<ReturnType<typeof ownershipPrediction>>;
+
+export function ownershipLegendRows(prediction: OwnershipPrediction, previousRate: number | null, locale: string) {
+  return [
+    { kind: "previous", label: locale === "ko" ? "직전 보유율" : "Previous", value: previousRate != null && Number.isFinite(previousRate) ? `${previousRate.toFixed(2)}%` : "—" },
+    { kind: "range", label: locale === "ko" ? "예측 범위" : "Forecast range", value: `${prediction.minRate.toFixed(2)}–${prediction.maxRate.toFixed(2)}%` },
+    { kind: "base", label: locale === "ko" ? "예측 기준값" : "Forecast base", value: `${prediction.baseRate.toFixed(2)}%` },
+  ];
+}
