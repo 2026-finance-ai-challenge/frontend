@@ -5,6 +5,7 @@ const configuredBase = typeof runtimeEnv?.VITE_API_BASE_URL === 'string'
   ? runtimeEnv.VITE_API_BASE_URL.trim()
   : undefined
 export const API_BASE = (configuredBase ?? (runtimeEnv?.DEV ? '' : 'https://api.kartkr.cloud')).replace(/\/$/, '')
+export const REALTIME_API_BASE = API_BASE || 'https://api.kartkr.cloud'
 
 export class ApiError extends Error {
   readonly status: number
