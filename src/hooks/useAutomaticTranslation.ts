@@ -3,7 +3,7 @@ import { api, ApiError } from "../api";
 import type { TranslationResult } from "../types";
 import { useRemote } from "./useRemote";
 
-export function useAutomaticTranslation(path: string, enabled = true) {
+export function useAutomaticTranslation(path: string, enabled = true, autoRequest = true) {
   const state = useRemote(
     (signal) => enabled
       ? api<TranslationResult>(path, { signal })
@@ -21,7 +21,7 @@ export function useAutomaticTranslation(path: string, enabled = true) {
   }, [path]);
 
   useEffect(() => {
-    if (!enabled || !state.data || state.data.status !== "NOT_REQUESTED") return;
+    if (!enabled || !autoRequest || !state.data || !["NOT_REQUESTED", "FAILED"].includes(state.data.status)) return;
     if (requestedPath.current === path) return;
     requestedPath.current = path;
     setRequestError(null);
@@ -38,10 +38,10 @@ export function useAutomaticTranslation(path: string, enabled = true) {
       .finally(() => {
         if (requestedPath.current === path) setRequesting(false);
       });
-  }, [enabled, path, state.data, state.setData]);
+  }, [autoRequest, enabled, path, state.data, state.setData]);
 
   useEffect(() => {
-    if (!enabled || (state.data?.status !== "PENDING" && state.data?.status !== "PROCESSING")) return;
+    if (!enabled || !state.data || !["NOT_REQUESTED", "PENDING", "PROCESSING"].includes(state.data.status)) return;
     if (state.loading) return;
     const timer = window.setTimeout(state.retry, 2_500);
     return () => window.clearTimeout(timer);

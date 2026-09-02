@@ -133,7 +133,7 @@ export function TaxPage() {
               </section>
             </>
           ) : null}
-          {profile ? <TaxDocumentsPanel country={country} documents={documents} /> : <section className="tax-message"><p><Link to="/login?returnTo=%2Ftax">{locale === "ko" ? "로그인" : "Log in"}</Link>{locale === "ko" ? " 후 세무 서류를 안전하게 업로드하고 검증할 수 있습니다." : " to upload and verify tax documents securely."}</p></section>}
+          {profile ? <TaxDocumentsPanel country={country} documents={documents} /> : <section className="tax-message"><p className="tax-login-prompt"><Link className="login-button tax-login-button" to="/login?returnTo=%2Ftax">{locale === "ko" ? "로그인" : "Log in"}</Link><span>{locale === "ko" ? "세무 서류를 안전하게 업로드하고 검증할 수 있습니다." : "to upload and verify tax documents securely."}</span></p></section>}
         </div>
         <p className="tax-disclaimer">
           {locale === "ko" ? "KART는 AI 도구이며 오류가 있을 수 있습니다. 인용된 출처를 반드시 다시 확인하세요." : "KART is an AI tool and can make mistakes. Please double-check the cited sources."}
