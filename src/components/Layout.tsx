@@ -10,6 +10,7 @@ import { WatchlistHeart } from "./WatchlistHeart";
 import { getKoreaMarketSnapshot } from "../utils/koreaMarketClock";
 import { REALTIME_API_BASE, api, queryString } from "../api";
 import { useProfile } from "../hooks/useRemote";
+import { DefaultAvatar } from "./DefaultAvatar";
 import type { NotificationInbox, NotificationItem, Stock } from "../types";
 import { useLocale } from "../state/LocaleContext";
 import { TaxEligibilityLink } from "./TaxEligibilityLink";
@@ -361,7 +362,7 @@ export function Header({
           </div>
           {profile ? (
             <Link className="profile-link" to="/my" aria-label={locale === "ko" ? "마이페이지 열기" : "Open my page"}>
-              <img src="/assets/profile.png" alt="" />
+              <DefaultAvatar />
             </Link>
           ) : (
             <Link className="login-button" to="/login">

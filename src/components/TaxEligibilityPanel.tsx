@@ -175,7 +175,7 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
         <img src="/assets/close.svg" alt="" /> {locale === "ko" ? "닫기" : "Close"}
       </button>
       <header>
-        <img className="agent-logo" src="/assets/agent-badge-figma.svg" alt="" />
+        <img className="agent-logo" src="/assets/agent-badge-381-4971.svg" alt="" />
         <div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div>
       </header>
       <div className="context-chip"><img src="/assets/tax.svg" alt="" /> {locale === "ko" ? "배당 원천징수세" : "Dividend withholding tax"}</div>

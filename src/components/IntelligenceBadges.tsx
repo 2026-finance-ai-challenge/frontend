@@ -12,7 +12,7 @@ export function IntelligenceBadges({ sentiment, importance, eventType, variant =
     ? ({ POSITIVE: "긍정", NEGATIVE: "부정", NEUTRAL: "중립" }[normalized] || normalized)
     : normalized.charAt(0) + normalized.slice(1).toLowerCase();
   const importanceLabel = importance
-    ? locale === "ko" ? `${importanceLabelKo(importance)} 중요도` : `${importance} priority`
+    ? locale === "ko" ? `${importanceLabelKo(importance)} 중요도` : `${importance.charAt(0).toUpperCase()}${importance.slice(1).toLowerCase()} priority`
     : locale === "ko" ? "분석 중" : "Analysis pending";
   const sentimentAsset = normalized === "NEGATIVE"
     ? "/assets/sentiment-negative-figma.svg"

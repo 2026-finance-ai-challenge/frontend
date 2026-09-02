@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>KART responsive QA (development only)</title>
+<style>
+  body { margin: 20px; background: #ddd; font: 16px sans-serif; }
+  main { display: flex; gap: 24px; align-items: start; }
+  iframe { border: 1px solid #aaa; background: white; height: 850px; }
+  section { flex: 0 0 auto; }
+</style>
+<h1>Responsive QA — live application, no fixture data</h1>
+<main>
+  <section><h2>Signup / 375px</h2><iframe title="Mobile signup" src="/signup" width="375"></iframe></section>
+  <section><h2>My page / 375px</h2><iframe title="Mobile my page" src="/my" width="375"></iframe></section>
+  <section><h2>Login / 768px</h2><iframe title="Tablet login" src="/login" width="768"></iframe></section>
+</main>
+</html>

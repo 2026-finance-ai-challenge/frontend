@@ -154,7 +154,7 @@ export function NewsDetailPage() {
               <section className="ai-summary">
                 <h2>
                   {t("aiSummary")}{" "}
-                  <img src="/assets/agent-badge-figma.svg" alt="AI" />
+                  <img src="/assets/agent-badge-381-4971.svg" alt="AI" />
                 </h2>
                 {[[t("what"), summaryInsight.what], [t("why"), summaryInsight.why], [t("impact"), summaryInsight.impact]].map((row) => (
                   <p key={row[0]}>

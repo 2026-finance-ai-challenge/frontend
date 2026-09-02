@@ -6,7 +6,7 @@ import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
 import { ViewMoreButton } from "../components/ViewMoreButton";
 import { useCursorPage } from "../hooks/useCursorPage";
-import { useRemote } from "../hooks/useRemote";
+import { useProfile, useRemote } from "../hooks/useRemote";
 import type { Filing, FilingDetail } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
@@ -178,6 +178,11 @@ export function DisclosureDetailPage() {
   const detailState = useRemote((signal) => api<FilingDetail>(`/api/v1/disclosures/${disclosureId}`, { signal }), [disclosureId]);
   const insightState = useRemote((signal) => api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { signal }), [disclosureId]);
   const filing = detailState.data;
+  const userId = useProfile()?.id;
+  useEffect(() => {
+    if (!userId || !filing) return;
+    void api("/api/v1/me/recently-viewed", { method: "POST", body: JSON.stringify({ itemType: "FILING", referenceId: disclosureId, stockCode: filing.stockCode }) }).catch(() => undefined);
+  }, [userId, disclosureId, filing?.stockCode]);
   const englishTitle = verifiedEnglishText(filing?.titleEn);
   const insight = insightState.data && (locale === "ko" || isVerifiedEnglish({
     what: insightState.data.what,
@@ -290,7 +295,7 @@ export function DisclosureDetailPage() {
             <section className="ai-summary">
                 <h2>
                   {t("aiSummary")}{" "}
-                  <img src="/assets/agent-badge-figma.svg" alt="AI" />
+                  <img src="/assets/agent-badge-381-4971.svg" alt="AI" />
                 </h2>
                 {insight?.sufficientEvidence ? [
                   [t("what"), insight.what],

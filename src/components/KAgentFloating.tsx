@@ -61,7 +61,7 @@ export function KAgentFloating() {
     <button type="button" className="agent-launcher" aria-label={locale === "ko" ? "K-Agent 열기" : "Open K-Agent"} aria-haspopup="dialog" aria-expanded={open} onClick={() => { openerRef.current = launcherRef.current; setContext({ contextType: "GENERAL" }); setOpen(true); }} ref={launcherRef} hidden={open}>
       <span className="agent-launcher-surface" aria-hidden="true" />
       <span className="agent-launcher-inner" aria-hidden="true" />
-      <img src="/assets/k-agent-floating-figma.svg" alt="" />
+      <img src="/assets/k-agent-glyph-394-1451.svg" alt="" />
     </button>
     {open ? context.contextType === "TAX_GUIDE"
       ? <TaxEligibilityPanel close={close} />
@@ -277,14 +277,16 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
     }
   };
 
-  if (history) return <AgentHistoryView close={close} onConversation={(roomId) => {
+  if (history) return <AgentHistoryView close={close} onDeleted={(roomId) => {
+    if (roomId === room?.id) { setRoom(null); setMessages([]); setGeneration(null); setRoomResolved(false); setLoadRevision((value) => value + 1); }
+  }} onConversation={(roomId) => {
     setHistory(false);
     if (roomId) void openConversation(roomId);
   }} />;
   const generating = submitting || Boolean(profile && !roomResolved && !roomLoadError) || Boolean(generation && ["PENDING", "PROCESSING"].includes(generation.status));
   return <aside className="agent-panel article-agent-panel global-agent-panel" role="dialog" aria-modal="true" aria-label="K-Agent chat">
     <button className="agent-close" type="button" onClick={close} ref={closeButtonRef}><img src="/assets/close.svg" alt="" /> {locale === "ko" ? "닫기" : "Close"}</button>
-    <header><img className="agent-logo" src="/assets/agent-badge-figma.svg" alt="" /><div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div><AgentOverflowMenu onHistory={profile ? () => setHistory(true) : login} onDelete={profile ? (room ? () => void deleteConversation() : undefined) : login} /></header>
+    <header><img className="agent-logo" src="/assets/agent-badge-381-4971.svg" alt="" /><div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div><AgentOverflowMenu onHistory={profile ? () => setHistory(true) : login} onDelete={profile ? (room ? () => void deleteConversation() : undefined) : login} /></header>
     <div className="context-chip"><img src="/assets/agent-context.svg" alt="" /> {room?.context.title || (locale === "ko" ? "한국 시장 도우미" : "Korea market assistant")}</div>
     {!profile ? <div className="api-state agent-login-state"><b>{locale === "ko" ? "보호된 대화를 시작하려면 로그인하세요" : "Sign in to start a protected chat"}</b><span>{locale === "ko" ? "대화방과 기록은 계정별로 안전하게 저장됩니다." : "Chat rooms and history are stored per account."}</span><Link className="login-button agent-login-button" onClick={close} to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}>{locale === "ko" ? "로그인" : "Log in"}</Link></div> : null}
     <div className="chat global-agent-chat" aria-live="polite">
