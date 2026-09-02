@@ -1,5 +1,5 @@
 import { useLocale } from "../state/LocaleContext";
-import type { OwnershipPrediction } from "./ownershipPredictionModel";
+import { ownershipLegendRows, type OwnershipPrediction } from "./ownershipPredictionModel";
 
 export function OwnershipPredictionOverlay({ prediction }: { prediction: OwnershipPrediction }) {
   return <div className="ownership-forecast-overlay" aria-hidden="true">
@@ -8,16 +8,12 @@ export function OwnershipPredictionOverlay({ prediction }: { prediction: Ownersh
   </div>;
 }
 
-export function OwnershipPredictionLegend({ prediction }: { prediction: OwnershipPrediction }) {
+export function OwnershipPredictionLegend({ prediction, previousRate }: { prediction: OwnershipPrediction; previousRate: number | null }) {
   const { locale } = useLocale();
   return <div className="ownership-forecast-legend" role="note" aria-label={locale === "ko" ? "장중 외국인 보유율 예측" : "Intraday foreign ownership prediction"}>
-    <div className="ownership-forecast-keys">
-      <span><i className="ownership-previous-key" />{locale === "ko" ? "직전 보유율" : "Previous"}</span>
-      <span><i className="ownership-forecast-key" />{locale === "ko" ? "예측 범위" : "Forecast range"}</span>
-    </div>
-    <div className="ownership-forecast-numbers">
-      <span>{prediction.minRate.toFixed(2)}–{prediction.maxRate.toFixed(2)}%</span>
-      <span>{locale === "ko" ? "기준" : "Base"} {prediction.baseRate.toFixed(2)}%</span>
-    </div>
+    <dl>{ownershipLegendRows(prediction, previousRate, locale).map(row => <div className={`ownership-forecast-row is-${row.kind}`} key={row.kind}>
+      <dt><i className={`ownership-${row.kind}-key`} aria-hidden="true" />{row.label}</dt>
+      <dd>{row.value}</dd>
+    </div>)}</dl>
   </div>;
 }

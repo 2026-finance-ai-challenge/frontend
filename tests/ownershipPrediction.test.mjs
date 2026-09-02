@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { legalOwnershipLimit, ownershipPrediction } from '../src/components/ownershipPredictionModel.ts';
+import { legalOwnershipLimit, ownershipPrediction, ownershipLegendRows } from '../src/components/ownershipPredictionModel.ts';
 import { getKoreaMarketSnapshot } from '../src/utils/koreaMarketClock.ts';
 
 const input = {
@@ -10,6 +10,20 @@ const input = {
   quote: { marketSession: 'REGULAR', asOf: '2026-09-02T04:00:00Z' },
   prediction: { status: 'AVAILABLE', minRate: 40, baseRate: 41, maxRate: 42, baseDate: '2026-09-02' },
 };
+
+for (const locale of ['en', 'ko']) {
+  test(`${locale} 직전 보유율은 실측 단일 값, 범위는 예측에만 연결한다`, () => {
+    const rows = ownershipLegendRows(ownershipPrediction(input), 39.25, locale);
+    assert.deepEqual(rows.map(({ kind, value }) => ({ kind, value })), [
+      { kind: 'previous', value: '39.25%' },
+      { kind: 'range', value: '40.00–42.00%' },
+      { kind: 'base', value: '41.00%' },
+    ]);
+    assert.equal(rows[0].label, locale === 'ko' ? '직전 보유율' : 'Previous');
+    assert.equal(rows[1].label, locale === 'ko' ? '예측 범위' : 'Forecast range');
+    assert.equal(ownershipLegendRows(ownershipPrediction(input), null, locale)[0].value, '—');
+  });
+}
 
 test('홈·상세 예측은 실제 법정 한도와 같은 척도로 범위와 기준점을 만든다', () => {
   const result = ownershipPrediction(input);
