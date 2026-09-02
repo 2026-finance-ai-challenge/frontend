@@ -53,15 +53,6 @@ export type TaxDocument = {
   updatedAt: string
 }
 
-export type TokenPair = {
-  tokenType: 'Bearer'
-  accessToken: string
-  refreshToken: string
-  accessExpiresAt: string
-  refreshExpiresAt: string
-  user: Profile
-}
-
 export type Quote = {
   status: string
   currentPriceKrw: number | null

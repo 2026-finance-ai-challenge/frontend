@@ -1,4 +1,6 @@
-import type { ApiProblem, InvestorType, Profile, TokenPair } from './types'
+import type { ApiProblem, InvestorType, Profile } from './types'
+import { SessionVault, type BrowserSession } from './session'
+import { PendingRefresh } from './pendingRefresh'
 
 const runtimeEnv = (import.meta as ImportMeta & { env?: Record<string, string | boolean | undefined> }).env
 const configuredBase = typeof runtimeEnv?.VITE_API_BASE_URL === 'string'
@@ -21,77 +23,24 @@ export class ApiError extends Error {
   }
 }
 
-type Listener = (profile: Profile | null) => void
-
-class SessionVault {
-  private accessToken: string | null = null
-  private refreshToken: string | null = null
-  private profile: Profile | null = null
-  private listeners = new Set<Listener>()
-  private refreshPromise: Promise<boolean> | null = null
-
-  get user(): Profile | null { return this.profile }
-  get bearer(): string | null { return this.accessToken }
-
-  subscribe(listener: Listener): () => void {
-    this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
+const pendingRefresh = new PendingRefresh(() => localStorage)
+export const session = new SessionVault(async (action, body) => {
+  const response = await fetch(`${API_BASE}/api/v1/auth/browser/${action}`, {
+    method: 'POST', credentials: 'include',
+    keepalive: action === 'refresh',
+    signal: AbortSignal.timeout(15000),
+    headers: { 'Content-Type': 'application/json', 'X-KART-CSRF': '1' },
+    body: JSON.stringify(action === 'refresh' ? { requestId: pendingRefresh.begin() } : body ?? {}),
+  })
+  if (!response.ok) {
+    if (response.status === 401) pendingRefresh.finish()
+    throw new ApiError(await problemFrom(response))
   }
-
-  accept(pair: TokenPair): void {
-    this.accessToken = pair.accessToken
-    this.refreshToken = pair.refreshToken
-    this.profile = pair.user
-    this.listeners.forEach((listener) => listener(this.profile))
-  }
-
-  clear(): void {
-    this.accessToken = null
-    this.refreshToken = null
-    this.profile = null
-    this.listeners.forEach((listener) => listener(null))
-  }
-
-  async refresh(): Promise<boolean> {
-    if (!this.refreshToken) return false
-    if (this.refreshPromise) return this.refreshPromise
-    const token = this.refreshToken
-    this.refreshPromise = fetch(`${API_BASE}/api/v1/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: token }),
-      credentials: 'omit',
-    }).then(async (response) => {
-      if (!response.ok) {
-        this.clear()
-        return false
-      }
-      this.accept(await response.json() as TokenPair)
-      return true
-    }).catch(() => {
-      this.clear()
-      return false
-    }).finally(() => { this.refreshPromise = null })
-    return this.refreshPromise
-  }
-
-  async logout(): Promise<void> {
-    const refreshToken = this.refreshToken
-    try {
-      if (refreshToken && this.accessToken) {
-        await fetch(`${API_BASE}/api/v1/auth/logout`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.accessToken}` },
-          body: JSON.stringify({ refreshToken }),
-        })
-      }
-    } finally {
-      this.clear()
-    }
-  }
-}
-
-export const session = new SessionVault()
+  const result = response.status === 204 ? undefined : await response.json() as BrowserSession
+  pendingRefresh.finish()
+  return result
+}, async (work) => typeof navigator !== 'undefined' && navigator.locks
+  ? await navigator.locks.request('kart-browser-session', work) : await work())
 
 async function problemFrom(response: Response): Promise<ApiProblem> {
   const retryAfter = response.headers.get('Retry-After') || undefined
@@ -111,6 +60,10 @@ export async function api<T>(path: string, init: RequestInit = {}, allowRefresh 
   }
   headers.set('Accept', 'application/json')
   const response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: 'omit' })
+  if (response.status === 401 && allowRefresh && session.bearer
+    && headers.get('Authorization') !== `Bearer ${session.bearer}`) {
+    return api<T>(path, init, false)
+  }
   if (response.status === 401 && allowRefresh && await session.refresh()) {
     return api<T>(path, init, false)
   }
@@ -128,11 +81,7 @@ export function queryString(values: Record<string, string | number | boolean | n
 }
 
 export async function login(loginId: string, password: string): Promise<Profile> {
-  const pair = await api<TokenPair>('/api/v1/auth/login', {
-    method: 'POST', body: JSON.stringify({ loginId, password }),
-  }, false)
-  session.accept(pair)
-  return pair.user
+  return session.login(loginId, password)
 }
 
 export async function signup(input: {
