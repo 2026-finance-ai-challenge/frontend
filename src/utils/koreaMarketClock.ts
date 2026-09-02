@@ -1,7 +1,6 @@
 const KOREA_TIME_ZONE = "Asia/Seoul";
 
-// KRX holidays that fall on weekdays. Keep this calendar updated when the
-// exchange publishes the following year's trading schedule.
+// 평일 KRX 휴장일. 다음 연도 거래 일정이 공지되면 갱신한다.
 const KRX_HOLIDAYS = new Set([
   "2026-01-01",
   "2026-02-16",
@@ -44,6 +43,7 @@ const displayFormatter = new Intl.DateTimeFormat("en-US", {
 
 type KoreaMarketSnapshot = {
   dateTime: string;
+  tradingDate: string;
   isOpen: boolean;
   label: "Market open" | "Market closed";
   timeLabel: string;
@@ -65,9 +65,9 @@ export function getKoreaMarketSnapshot(now = new Date()): KoreaMarketSnapshot {
 
   return {
     dateTime: now.toISOString(),
+    tradingDate: dateKey,
     isOpen,
     label: isOpen ? "Market open" : "Market closed",
     timeLabel: `${displayFormatter.format(now)} KST`,
   };
 }
-

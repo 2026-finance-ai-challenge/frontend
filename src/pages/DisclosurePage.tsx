@@ -324,7 +324,7 @@ export function DisclosureDetailPage() {
             >
               <RemoteState {...detailState}>
                 {(value) => locale === "ko"
-                  ? <div className="dart-original-documents">{value.documents.map((document) => document.originalHtml ? <DartOriginalDocument html={document.originalHtml} key={document.id} /> : <div className="disclosure-structured-body" key={document.id}>{document.sections.map((section) => <OriginalDisclosureSection section={section} key={section.id} />)}</div>)}</div>
+                  ? <div className="dart-original-documents selection-content">{value.documents.map((document) => document.originalHtml ? <DartOriginalDocument html={document.originalHtml} key={document.id} /> : <div className="disclosure-structured-body" key={document.id}>{document.sections.map((section) => <OriginalDisclosureSection section={section} key={section.id} />)}</div>)}</div>
                   : <div className="disclosure-structured-body">{value.documents.flatMap((document) => document.sections).map((section) => <DisclosureSection receiptNumber={disclosureId} section={section} key={section.id} />)}</div>}
               </RemoteState>
               <SelectionAssistant
@@ -377,11 +377,11 @@ function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; 
     || translation.data?.status === "PROCESSING"
   );
   return <section id={`section-${section.id}`} aria-busy={pending}>
-    {translated?.translatedHeading ? <h3>{translated.translatedHeading}</h3> : null}
+    {translated?.translatedHeading ? <h3 className="selection-content">{translated.translatedHeading}</h3> : null}
     {translated?.translatedTableData
-      ? <StructuredTable data={translated.translatedTableData} />
+      ? <div className="selection-content"><StructuredTable data={translated.translatedTableData} /></div>
       : translated?.translatedText
-        ? <p>{translated.translatedText}</p>
+        ? <p className="selection-content">{translated.translatedText}</p>
         : pending
           ? <LoadingSkeleton lines={section.tableData ? 5 : 3} className="disclosure-section-skeleton" />
           : <div className="api-state api-error">Translation generation failed and no cache was stored.</div>}

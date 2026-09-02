@@ -21,7 +21,13 @@ export function useSelectionAssistant<T extends HTMLElement>() {
       }
 
       const range = browserSelection.getRangeAt(0);
-      if (!container.contains(range.commonAncestorContainer)) {
+      const startElement = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer as Element : range.startContainer.parentElement;
+      const endElement = range.endContainer.nodeType === Node.ELEMENT_NODE ? range.endContainer as Element : range.endContainer.parentElement;
+      // 오류·로딩 문구를 선택하거나 가로지른 범위는 AI 질문으로 전달하지 않는다.
+      const crossesStatus = Array.from(container.querySelectorAll(".api-state, .translation-status-error, .loading-skeleton, .selection-assistant"))
+        .some((element) => range.intersectsNode(element));
+      if (!container.contains(range.commonAncestorContainer)
+        || !startElement?.closest(".selection-content") || !endElement?.closest(".selection-content") || crossesStatus) {
         setSelection(null);
         return;
       }

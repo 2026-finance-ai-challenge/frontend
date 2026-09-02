@@ -6,6 +6,7 @@ import { ApiError } from "../api";
 import { useRemote } from "../hooks/useRemote";
 import type { InvestorType, SupportedCountry } from "../types";
 import { useLocale } from "../state/LocaleContext";
+import { CountryOptions } from "../components/CountryOptions";
 
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{12,}$/;
@@ -157,16 +158,8 @@ export function SignupPage() {
                 value={nationality}
                 onChange={(event) => setNationality(event.target.value)}
               >
-                <option value="">{locale === "ko" ? "국적 선택" : "Select your nationality"}</option>
-                {(countries.data || []).map((country) => (
-                  <option
-                    value={country.countryCode}
-                    disabled={country.countryCode !== "US"}
-                    key={country.countryCode}
-                  >
-                    {country.countryName}{country.countryCode === "US" ? "" : locale === "ko" ? " · 준비 중" : " · Coming soon"}
-                  </option>
-                ))}
+                <option value="" disabled hidden>{locale === "ko" ? "국적 선택" : "Select your nationality"}</option>
+                <CountryOptions countries={countries.data ?? []} />
               </select>
               {countries.loading ? <small>{locale === "ko" ? "지원 국가 불러오는 중…" : "Loading supported countries…"}</small> : null}
               {countries.error ? <FormError>{countries.error.message}</FormError> : null}

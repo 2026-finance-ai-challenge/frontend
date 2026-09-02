@@ -9,3 +9,7 @@ export const OPEN_AGENT_EVENT = "kmarket:open-agent";
 export function openKAgent(context: KAgentContext = { contextType: "GENERAL" }) {
   window.dispatchEvent(new CustomEvent<KAgentContext>(OPEN_AGENT_EVENT, { detail: context }));
 }
+
+export function openTaxEligibility() {
+  openKAgent({ contextType: "TAX_GUIDE" });
+}

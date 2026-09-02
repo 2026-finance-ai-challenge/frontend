@@ -9,6 +9,11 @@ import { RemoteState, formatDate, formatNumber } from "../components/RemoteState
 import { useProfile, useRemote } from "../hooks/useRemote";
 import type { GlobalPeer, StockDetail } from "../types";
 import { useLocale } from "../state/LocaleContext";
+import { buildStockChartAxis } from "../components/stockChartAxis";
+import { ownershipPrediction } from "../components/ownershipPredictionModel";
+import { OwnershipPredictionLegend, OwnershipPredictionOverlay } from "../components/OwnershipPrediction";
+import { useRegularMarketDay } from "../hooks/useRegularMarketDay";
+import { useMarketRefresh } from "../hooks/useMarketRefresh";
 
 type StockAlert = "vi" | "price-limit";
 type ChartMode = "candles" | "line";
@@ -42,8 +47,10 @@ export function StockPage() {
   const [params] = useSearchParams();
   const { stockCode = "" } = useParams();
   const profile = useProfile();
+  const regularDay = useRegularMarketDay();
   const [period, setPeriod] = useState(params.get("period") || "1D");
-  const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile]);
+  const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile, regularDay]);
+  useMarketRefresh(detailState.data?.subjectToForeignAcquisitionLimit ? regularDay : null, detailState.loading, detailState.retry);
   const historyState = useRemote((signal) => api<{ status: string; intervalMinutes: number; items: ChartBar[] }>(`/api/v1/market/stocks/${stockCode}/chart?period=${period}`, { signal }), [stockCode, period]);
   const peersState = useRemote((signal) => api<GlobalPeer>(`/api/v1/market/stocks/${stockCode}/global-peers`, { signal }), [stockCode]);
   const [insights, setInsights] = useState(params.get("insights") === "1");
@@ -103,8 +110,13 @@ export function StockPage() {
   const quoteStatus = liveQuote?.status ?? detailState.data?.quote.status;
   const quoteAsOf = liveQuote?.asOf ?? detailState.data?.quote.asOf;
   const ownershipExhaustion = detailState.data?.foreignOwnership.limitExhaustionRate;
-  const activePrediction = detailState.data?.foreignLimitPrediction.status === "AVAILABLE"
-    && detailState.data.quote.marketSession === "REGULAR";
+  const activePrediction = ownershipPrediction({
+    subjectToLimit: detailState.data?.subjectToForeignAcquisitionLimit === true,
+    ownership: detailState.data?.foreignOwnership,
+    prediction: detailState.data?.foreignLimitPrediction,
+    quote: detailState.data?.quote,
+    regularDay,
+  });
   return (
     <div className={`stock-page ${insights ? "panel-open" : ""}`}>
       <div className="stock-main">
@@ -259,6 +271,7 @@ export function StockPage() {
                     : (locale === "ko" ? "최신 확인 보유율" : "Latest verified ownership")}</p>
                 <div className="ownership-line">
                   <span className={ownershipExhaustion == null ? "unavailable" : ""} style={{ width: `${ownershipExhaustion == null ? 0 : Math.min(ownershipExhaustion, 100)}%` }} />
+                  {activePrediction ? <OwnershipPredictionOverlay prediction={activePrediction} /> : null}
                 </div>
                 <div className="ownership-values">
                   <div>
@@ -270,7 +283,8 @@ export function StockPage() {
                     <strong>{detailState.data?.subjectToForeignAcquisitionLimit && detailState.data.foreignOwnership.foreignLimitQuantity && detailState.data.foreignOwnership.totalListedQuantity ? `${(detailState.data.foreignOwnership.foreignLimitQuantity / detailState.data.foreignOwnership.totalListedQuantity * 100).toFixed(2)}%` : (locale === "ko" ? "해당 없음" : "Not applicable")}</strong>
                   </div>
                 </div>
-                {detailState.data?.subjectToForeignAcquisitionLimit && activePrediction ? <div className="prediction">
+                {activePrediction ? <OwnershipPredictionLegend prediction={activePrediction} previousRate={detailState.data?.foreignOwnership.ownershipRate ?? null} /> : null}
+                {activePrediction ? <div className="prediction">
                   <div>
                     <b>{locale === "ko" ? "오늘의 현재 예측" : "Today’s current prediction"}</b>
                     <span>95% CI</span>
@@ -514,18 +528,14 @@ function PriceChart({ items, mode, period, locale, label }: {
   const range = Math.max(max - min, 1);
   const maxVolume = Math.max(...items.map((item) => item.volume), 1);
   const yFor = (price: number) => 238 - ((price - min) / range) * 210;
-  const [domainStart, domainEnd] = chartTimeDomain(items, period);
-  const xForTimestamp = (timestamp: string) => Math.min(1000, Math.max(0,
-    (new Date(timestamp).getTime() - domainStart) / Math.max(domainEnd - domainStart, 1) * 1000,
-  ));
-  const xFor = (index: number) => xForTimestamp(items[index].timestamp);
+  const { positions, labels: axisLabels } = buildStockChartAxis(items, period);
+  const xFor = (index: number) => positions[index];
   const points = items.map((item, index) => {
     const x = xFor(index);
     const y = yFor(item.closePriceKrw);
     return `${x},${y}`;
   }).join(" ");
   const positive = items.at(-1)!.closePriceKrw >= items[0]!.openPriceKrw;
-  const axisLabels = chartAxisLabels(items, period, domainStart, domainEnd);
   const hoveredItem = hovered === null ? null : items[hovered];
   return <div className={`stock-chart-wrap ${positive ? "is-positive" : "is-negative"}`} onPointerLeave={() => setHovered(null)}>
     {hoveredItem ? <div className="stock-chart-tooltip" style={{ left: `${Math.min(82, Math.max(2, xFor(hovered!) / 10))}%` }}>
@@ -545,7 +555,7 @@ function PriceChart({ items, mode, period, locale, label }: {
           const bodyTop = Math.min(yFor(item.openPriceKrw), yFor(item.closePriceKrw));
           const bodyHeight = Math.max(Math.abs(yFor(item.openPriceKrw) - yFor(item.closePriceKrw)), 2);
           const width = Math.max(3, Math.min(18, 720 / Math.max(items.length, 1)));
-          return <g className={rising ? "candle-up" : "candle-down"} key={item.timestamp}>
+          return <g className={rising ? "candle-up" : "candle-down"} key={item.timestamp} data-timestamp={item.timestamp}>
             <line x1={x} x2={x} y1={yFor(item.highPriceKrw)} y2={yFor(item.lowPriceKrw)} vectorEffect="non-scaling-stroke" />
             <rect x={x - width / 2} y={bodyTop} width={width} height={bodyHeight} />
           </g>;
@@ -554,10 +564,10 @@ function PriceChart({ items, mode, period, locale, label }: {
         const x = xFor(index);
         const barWidth = Math.max(2, Math.min(16, 650 / items.length));
         const height = item.volume / maxVolume * 62;
-        return <rect className="volume-bar" key={`volume-${item.timestamp}`} x={x - barWidth / 2} y={322 - height} width={barWidth} height={height} />;
+        return <rect className="volume-bar" key={`volume-${item.timestamp}`} data-timestamp={item.timestamp} x={x - barWidth / 2} y={322 - height} width={barWidth} height={height} />;
       })}
       {axisLabels.map((axis) => {
-        const x = xForTimestamp(axis.timestamp);
+        const x = axis.x;
         return <text x={x} y="350" textAnchor={x < 1 ? "start" : x > 999 ? "end" : "middle"} key={`label-${axis.timestamp}`}>{formatChartDate(axis.timestamp, period, locale)}</text>;
       })}
       {items.map((item, index) => {
@@ -570,37 +580,6 @@ function PriceChart({ items, mode, period, locale, label }: {
       })}
     </svg>
   </div>;
-}
-
-function chartTimeDomain(items: ChartBar[], period: string): [number, number] {
-  const timestamps = items.map((item) => new Date(item.timestamp).getTime());
-  if (period !== "1D") {
-    const start = Math.min(...timestamps);
-    const end = Math.max(...timestamps);
-    return start === end ? [start - 30 * 60_000, end + 30 * 60_000] : [start, end];
-  }
-  const koreaClock = new Date(timestamps[0] + 9 * 60 * 60_000);
-  const start = Date.UTC(koreaClock.getUTCFullYear(), koreaClock.getUTCMonth(), koreaClock.getUTCDate(), 0, 0);
-  return [start, start + 6.5 * 60 * 60_000];
-}
-
-function chartAxisLabels(items: ChartBar[], period: string, domainStart: number, domainEnd: number) {
-  if (period === "1D") {
-    return [0, 1, 2, 3, 4, 5, 6, 6.5].map((hours) => ({
-      timestamp: new Date(domainStart + hours * 60 * 60_000).toISOString(),
-    }));
-  }
-  if (period === "1W") {
-    const seen = new Set<string>();
-    return items.map((item, index) => [item.timestamp.slice(0, 10), index] as const)
-      .filter(([date]) => seen.has(date) ? false : (seen.add(date), true))
-      .map(([, index]) => ({ timestamp: items[index].timestamp }));
-  }
-  const zones = period === "1Y" ? 6 : 5;
-  if (items.length === 1) return [{ timestamp: items[0].timestamp }];
-  return Array.from({ length: Math.min(zones, items.length) }, (_, index) => ({
-    timestamp: new Date(domainStart + index * (domainEnd - domainStart) / Math.max(1, Math.min(zones, items.length) - 1)).toISOString(),
-  }));
 }
 
 function formatChartDate(timestamp: string, period: string, locale: "en" | "ko", detailed = false) {

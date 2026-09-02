@@ -183,9 +183,9 @@ export function NewsDetailPage() {
                 >
                   <RemoteState {...articleState}>
                     {(value) => locale === "ko" && value.originalBody
-                      ? value.originalBody.split(/\n{2,}/).filter(Boolean).map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)
+                      ? value.originalBody.split(/\n{2,}/).filter(Boolean).map((paragraph, index) => <p className="selection-content" key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)
                       : translation?.translatedParagraphs?.length
-                      ? <>{translation.translatedParagraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
+                      ? <>{translation.translatedParagraphs.map((paragraph, index) => <p className="selection-content" key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
                       : translationPending
                         ? <LoadingSkeleton lines={8} className="article-copy-skeleton" />
                         : <div className="api-state api-error">{locale === "ko" ? "원문을 불러오지 못했습니다." : "Translation generation failed and no cache was stored."}</div>}

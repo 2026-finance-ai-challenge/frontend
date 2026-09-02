@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Footer, Header, MarketBar } from "../components/Layout";
-import { TaxEligibilityPanel } from "../components/TaxEligibilityPanel";
+import { TaxEligibilityLink } from "../components/TaxEligibilityLink";
+import { openTaxEligibility } from "../agentEvents";
 import { ForeignOwnershipCard, ownershipExhaustion } from "../components/ForeignOwnershipCard";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
 import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
+import { useRegularMarketDay } from "../hooks/useRegularMarketDay";
+import { useMarketRefresh } from "../hooks/useMarketRefresh";
 import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import type { Filing, ForeignLimitMonitor, NewsArticle, SupportedCountry } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
@@ -30,7 +33,7 @@ type TaxEligibility = { countryCode: string; countryName: string; domesticDefaul
 
 export function HomePage() {
   const { locale } = useLocale();
-  const [taxAgentOpen, setTaxAgentOpen] = useState(false);
+  const regularDay = useRegularMarketDay();
   const [newsStart, setNewsStart] = useState(0);
   const newsState = useCursorPage(
     (cursor, signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({ sort: "IMPORTANCE", cursor, limit: 20 })}`, { signal }),
@@ -44,8 +47,9 @@ export function HomePage() {
   );
   const ownershipState = useRemote(
     (signal) => api<ForeignLimitMonitor[]>("/api/v1/market/foreign-limits", { signal }),
-    [],
+    [regularDay],
   );
+  useMarketRefresh(regularDay, ownershipState.loading, ownershipState.retry);
   const taxRatesState = useRemote(async (signal) => {
     const supported = await api<SupportedCountry[]>("/api/v1/tax/countries", { signal });
     const country = supported.find((item) => item.countryCode === "US");
@@ -56,11 +60,6 @@ export function HomePage() {
       body: JSON.stringify({ residencyCountry: item.countryCode, investorType: "INDIVIDUAL" }),
     })));
   }, []);
-  const eligibilityButtonRef = useRef<HTMLButtonElement>(null);
-  const closeTaxAgent = () => {
-    setTaxAgentOpen(false);
-    window.requestAnimationFrame(() => eligibilityButtonRef.current?.focus());
-  };
   const ownershipItems = [...(ownershipState.data ?? [])].sort((a, b) => ownershipExhaustion(b) - ownershipExhaustion(a));
   const newsItems = (newsState.data?.items ?? []).filter(hasVerifiedEnglishTitle);
   const visibleNews = newsItems.slice(newsStart, newsStart + 2);
@@ -75,7 +74,7 @@ export function HomePage() {
   }, [filingsState.data]);
 
   return (
-    <div className={`app-page home-page ${taxAgentOpen ? "agent-open" : ""}`}>
+    <div className="app-page home-page">
       <div className="hero-surface">
         <Header />
         <MarketBar />
@@ -89,12 +88,12 @@ export function HomePage() {
             {locale === "ko" ? <>&amp; 투자 <u>인텔리전스</u></> : <>&amp; trading <u>Intelligence</u></>}
           </h1>
           <div className="quick-actions">
-            {quickActions.map(([icon, label, to], index) => (
-              <Link to={to} key={label}>
-                <img src={icon} alt="" />
-                {locale === "ko" ? ["오늘의 뉴스", "DART 공시", "외국인 보유 한도", "내 세율 확인"][index] : label}
-              </Link>
-            ))}
+            {quickActions.map(([icon, label, to], index) => {
+              const content = <><img src={icon} alt="" />{locale === "ko" ? ["오늘의 뉴스", "DART 공시", "외국인 보유 한도", "내 세율 확인"][index] : label}</>;
+              return to === "/tax"
+                ? <TaxEligibilityLink key={label}>{content}</TaxEligibilityLink>
+                : <Link to={to} key={label}>{content}</Link>;
+            })}
           </div>
         </main>
       </div>
@@ -166,7 +165,7 @@ export function HomePage() {
           </div>
           <RemoteState {...ownershipState} empty={(value) => !value.length}>
             {() => <div className="ownership-grid">
-            {visibleOwnership.map((item) => <ForeignOwnershipCard item={item} key={item.stock.stockCode} />)}
+            {visibleOwnership.map((item) => <ForeignOwnershipCard item={item} regularDay={regularDay} key={item.stock.stockCode} />)}
           </div>}
           </RemoteState>
         </section>
@@ -201,10 +200,9 @@ export function HomePage() {
               <button
                 className="primary-button eligibility-button"
                 type="button"
-                aria-expanded={taxAgentOpen}
+                aria-haspopup="dialog"
                 aria-controls="tax-eligibility-panel"
-                onClick={() => setTaxAgentOpen(true)}
-                ref={eligibilityButtonRef}
+                onClick={openTaxEligibility}
               >
                 {locale === "ko" ? "적용 가능 여부 확인" : "Check eligibility"}
                 <img src="/assets/chevron-right-gold.svg" alt="" />
@@ -240,7 +238,6 @@ export function HomePage() {
         </section>
       </main>
       <Footer />
-      {taxAgentOpen ? <TaxEligibilityPanel close={closeTaxAgent} /> : null}
     </div>
   );
 }

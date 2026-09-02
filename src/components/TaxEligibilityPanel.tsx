@@ -4,6 +4,7 @@ import { api, queryString } from "../api";
 import { useProfile, useRemote } from "../hooks/useRemote";
 import type { SupportedCountry, TaxDocument } from "../types";
 import { useLocale } from "../state/LocaleContext";
+import { CountryOptions } from "./CountryOptions";
 
 type TaxEligibility = {
   countryName: string;
@@ -184,7 +185,7 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
         {introStage === "ready" ? <>
           <div className="ai-message ai-message-enter"><p>{locale === "ko" ? "한국과 조세조약이 체결된 국가의 거주자는 배당 원천징수세율 감면 대상일 수 있습니다. 거주 국가와 투자자 유형을 선택해 주세요." : "If Korea has a tax treaty with your country, you may qualify for a reduced dividend withholding tax rate. Select your tax residence and investor type."}</p></div>
           <form className="tax-agent-form ai-message-enter" onSubmit={submitEligibility}>
-            <label>{locale === "ko" ? "거주 국가" : "Country of residence"}<select value={country} onChange={(event) => setCountry(event.target.value)}>{(countries.data || []).map((item) => <option disabled={item.countryCode !== "US"} value={item.countryCode} key={item.countryCode}>{item.countryName}{item.countryCode === "US" ? "" : locale === "ko" ? " · 준비 중" : " · Coming soon"}</option>)}</select></label>
+            <label>{locale === "ko" ? "거주 국가" : "Country of residence"}<select value={country} onChange={(event) => setCountry(event.target.value)}><CountryOptions countries={countries.data ?? []} /></select></label>
             <label>{locale === "ko" ? "투자자 유형" : "Investor type"}<select value={investor} onChange={(event) => setInvestor(event.target.value)}><option value="INDIVIDUAL">{locale === "ko" ? "개인" : "Individual"}</option><option value="CORPORATE">{locale === "ko" ? "법인" : "Corporate"}</option></select></label>
             <button type="submit" disabled={Boolean(busy) || !countries.data?.length}>{locale === "ko" ? "내 세율 확인" : "Check my rate"}</button>
           </form>
