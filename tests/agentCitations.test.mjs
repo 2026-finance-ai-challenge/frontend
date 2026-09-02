@@ -24,3 +24,14 @@ test("saved raw and Markdown filing URLs are replaced by citation markers", () =
   assert.equal(answerWithCitationMarkers(`[Filing](${legacy.url})`, [legacy]), "Filing [C1]");
   assert.equal(answerWithCitationMarkers("Date: 2026-09-05 [C1]", [legacy]), "Date: 2026-09-05 [C1]");
 });
+
+test("언어 전환은 공시 버튼 제목만 바꾸고 저장된 대화와 인용 경로는 보존한다", () => {
+  const message = Object.freeze({ content: "해제일은 9월 5일입니다. [C1]", citation: Object.freeze({ ...legacy, titleEn: "Release notice", titleKo: "해제 안내" }) });
+  const before = JSON.stringify(message);
+  for (const locale of ["en", "ko", "en"]) {
+    assert.equal(citationTitle(message.citation, locale), locale === "en" ? "Release notice" : "해제 안내");
+    assert.equal(citationHref(message.citation), `/disclosures/${receipt}`);
+    assert.equal(answerWithCitationMarkers(message.content, [message.citation]), message.content);
+  }
+  assert.equal(JSON.stringify(message), before);
+});

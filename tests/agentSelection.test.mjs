@@ -26,3 +26,12 @@ test("후속 일반 질문에 이전 선택문을 재사용하지 않는다", ()
   assert.equal(chatSubmissionBody("next", "Follow-up").selectedText, null);
   assert.equal(chatSubmissionBody("next", "Follow-up").selectedSectionId, null);
 });
+
+test("사이트 언어는 보내지 않고 질문과 선택문을 분리해서 보존한다", () => {
+  for (const content of ["한국어 질문", "English question"]) {
+    const request = chatSubmissionBody("request", content, {text:"인용문 quoted evidence"});
+    assert.equal(Object.hasOwn(request, "answerLocale"), false);
+    assert.equal(request.content, content);
+    assert.equal(request.selectedText, "인용문 quoted evidence");
+  }
+});
