@@ -8,7 +8,7 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { WatchlistHeart } from "./WatchlistHeart";
 import { getKoreaMarketSnapshot } from "../utils/koreaMarketClock";
-import { api, queryString } from "../api";
+import { API_BASE, api, queryString } from "../api";
 import { useProfile } from "../hooks/useRemote";
 import type { NotificationInbox, NotificationItem, Stock } from "../types";
 import { useLocale } from "../state/LocaleContext";
@@ -493,6 +493,42 @@ export function MarketBar() {
       () => setMarket(getKoreaMarketSnapshot()),
       1_000,
     );
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    const source = new EventSource(`${API_BASE}/api/v1/market/stream`);
+    const onMarket = (message: MessageEvent<string>) => {
+      const event = JSON.parse(message.data) as {
+        type: string;
+        indexCode: string | null;
+        currentValue: number;
+        changeRate: number;
+        status: string;
+      };
+      if (event.type !== "INDEX" || !event.indexCode) return;
+      setIndices((current) => {
+        const index = current.findIndex((item) => item.indexCode === event.indexCode);
+        const previous = index >= 0 ? current[index] : null;
+        const updated = {
+          indexCode: event.indexCode || "",
+          indexName: previous?.indexName || (event.indexCode === "0001" ? "KOSPI" : "KOSDAQ"),
+          currentValue: event.currentValue,
+          changeRate: event.changeRate,
+          status: event.status,
+        };
+        return index >= 0
+          ? current.map((item, itemIndex) => itemIndex === index ? updated : item)
+          : [...current, updated];
+      });
+    };
+    source.addEventListener("market", onMarket as EventListener);
+    return () => source.close();
+  }, []);
+  useEffect(() => {
+    const refresh = () => void api<NonNullable<typeof foreignFlow>>("/api/v1/market/foreign-net-flow")
+      .then(setForeignFlow)
+      .catch(() => undefined);
+    const timer = window.setInterval(refresh, 60_000);
     return () => window.clearInterval(timer);
   }, []);
   useEffect(() => {
