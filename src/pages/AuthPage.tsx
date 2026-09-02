@@ -8,8 +8,7 @@ import type { InvestorType, SupportedCountry } from "../types";
 import { useLocale } from "../state/LocaleContext";
 import { CountryOptions } from "../components/CountryOptions";
 
-const PASSWORD_PATTERN =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{12,}$/;
+import { isValidPassword, PASSWORD_HELP } from "../utils/password";
 
 function FormError({ children }: { children: string }) {
   return (
@@ -32,7 +31,7 @@ export function SignupPage() {
   const [submitted, setSubmitted] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [confirmTouched, setConfirmTouched] = useState(false);
-  const passwordIsValid = PASSWORD_PATTERN.test(password);
+  const passwordIsValid = isValidPassword(password);
   const loginIdIsValid = /^[A-Za-z0-9][A-Za-z0-9._-]{3,29}$/.test(loginId);
   const loginIdError = submitted && (!loginIdIsValid || availability !== "available");
   const passwordError =
@@ -134,7 +133,7 @@ export function SignupPage() {
               />
               {passwordError && (
                 <FormError>
-                  {locale === "ko" ? "대·소문자, 숫자, 특수문자를 포함해 12자 이상 입력하세요" : "Min 12 characters with upper/lowercase, number, and symbol"}
+                  {PASSWORD_HELP[locale]}
                 </FormError>
               )}
             </label>
