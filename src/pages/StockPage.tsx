@@ -461,18 +461,30 @@ function mergeLiveBar(items: ChartBar[], event: RealtimeMarketEvent | null, peri
   else if (period === "1W") koreaClock.setUTCMinutes(0, 0, 0);
   else koreaClock.setUTCHours(15, 30, 0, 0);
   const bucket = new Date(koreaClock.getTime() - koreaOffset).toISOString();
+  const bucketTime = new Date(bucket).getTime();
   const sameBucket = (item: ChartBar) => period === "1D" || period === "1W"
-    ? item.timestamp === bucket
+    ? new Date(item.timestamp).getTime() === bucketTime
     : item.timestamp.slice(0, 10) === bucket.slice(0, 10);
-  const existingIndex = items.findIndex(sameBucket);
+  const matchingIndexes = items.reduce<number[]>((indexes, item, index) => {
+    if (sameBucket(item)) indexes.push(index);
+    return indexes;
+  }, []);
+  const existingIndex = matchingIndexes[0] ?? -1;
+  const existing = matchingIndexes.slice(1).reduce<ChartBar>((merged, index) => ({
+    ...merged,
+    highPriceKrw: Math.max(merged.highPriceKrw, items[index].highPriceKrw),
+    lowPriceKrw: Math.min(merged.lowPriceKrw, items[index].lowPriceKrw),
+    closePriceKrw: items[index].closePriceKrw,
+    volume: merged.volume + items[index].volume,
+  }), items[existingIndex]);
   const current = event.currentValue;
   const next: ChartBar = existingIndex >= 0 ? {
-    ...items[existingIndex],
-    highPriceKrw: Math.max(items[existingIndex].highPriceKrw, current),
-    lowPriceKrw: Math.min(items[existingIndex].lowPriceKrw, current),
+    ...existing,
+    highPriceKrw: Math.max(existing.highPriceKrw, current),
+    lowPriceKrw: Math.min(existing.lowPriceKrw, current),
     closePriceKrw: current,
     volume: period === "1D" || period === "1W"
-      ? items[existingIndex].volume + event.executionVolume
+      ? existing.volume + event.executionVolume
       : event.volume,
   } : {
     timestamp: bucket,
@@ -482,8 +494,10 @@ function mergeLiveBar(items: ChartBar[], event: RealtimeMarketEvent | null, peri
     closePriceKrw: current,
     volume: period === "1D" || period === "1W" ? event.executionVolume : event.volume,
   };
-  if (existingIndex < 0) return [...items, next].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-  return items.map((item, index) => index === existingIndex ? next : item);
+  if (existingIndex < 0) return [...items, next].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  return items
+    .filter((_, index) => index === existingIndex || !matchingIndexes.includes(index))
+    .map((item, index) => index === existingIndex ? next : item);
 }
 
 function PriceChart({ items, mode, period, locale, label }: {
