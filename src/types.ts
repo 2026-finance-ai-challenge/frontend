@@ -53,15 +53,6 @@ export type TaxDocument = {
   updatedAt: string
 }
 
-export type TokenPair = {
-  tokenType: 'Bearer'
-  accessToken: string
-  refreshToken: string
-  accessExpiresAt: string
-  refreshExpiresAt: string
-  user: Profile
-}
-
 export type Quote = {
   status: string
   currentPriceKrw: number | null
@@ -176,6 +167,8 @@ export type TranslationResult = {
   status: 'NOT_REQUESTED' | 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED'
   result: {
     translatedParagraphs?: string[]
+    summaryReady?: boolean
+    bodyReady?: boolean
     what?: string
     why?: string
     impact?: string

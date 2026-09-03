@@ -8,13 +8,12 @@ import type { InvestorType, SupportedCountry } from "../types";
 import { useLocale } from "../state/LocaleContext";
 import { CountryOptions } from "../components/CountryOptions";
 
-const PASSWORD_PATTERN =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{12,}$/;
+import { isValidPassword, PASSWORD_HELP } from "../utils/password";
 
 function FormError({ children }: { children: string }) {
   return (
     <small className="auth-error">
-      <img src="/assets/form-error.svg" alt="" />
+      <img src="/assets/form-error-333-4511.svg" alt="" />
       {children}
     </small>
   );
@@ -32,7 +31,7 @@ export function SignupPage() {
   const [submitted, setSubmitted] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [confirmTouched, setConfirmTouched] = useState(false);
-  const passwordIsValid = PASSWORD_PATTERN.test(password);
+  const passwordIsValid = isValidPassword(password);
   const loginIdIsValid = /^[A-Za-z0-9][A-Za-z0-9._-]{3,29}$/.test(loginId);
   const loginIdError = submitted && (!loginIdIsValid || availability !== "available");
   const passwordError =
@@ -111,7 +110,7 @@ export function SignupPage() {
                 />
                 <button
                   type="button"
-                  disabled={availability === "checking"}
+                  disabled={availability === "checking" || availability === "available"}
                   onClick={() => void checkLoginId()}
                 >
                   {availability === "checking" ? (locale === "ko" ? "확인 중" : "Checking") : (locale === "ko" ? "중복 확인" : "Check")}
@@ -126,6 +125,7 @@ export function SignupPage() {
               <input
                 className={passwordError ? "invalid" : ""}
                 type="password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 onBlur={() => setPasswordTouched(true)}
@@ -134,7 +134,7 @@ export function SignupPage() {
               />
               {passwordError && (
                 <FormError>
-                  {locale === "ko" ? "대·소문자, 숫자, 특수문자를 포함해 12자 이상 입력하세요" : "Min 12 characters with upper/lowercase, number, and symbol"}
+                  {PASSWORD_HELP[locale]}
                 </FormError>
               )}
             </label>
@@ -143,6 +143,7 @@ export function SignupPage() {
               <input
                 className={confirmError ? "invalid" : ""}
                 type="password"
+                autoComplete="new-password"
                 value={confirm}
                 onChange={(event) => setConfirm(event.target.value)}
                 onBlur={() => setConfirmTouched(true)}
@@ -192,7 +193,7 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
 }) {
   const { locale } = useLocale();
   const [profile, setProfile] = useState<InvestorType>("INDIVIDUAL");
-  const [consents, setConsents] = useState([true, false, false]);
+  const [consents, setConsents] = useState([false, false, false]);
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -212,6 +213,7 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
         investorType: profile,
         termsAccepted: consents[0],
         privacyAccepted: consents[1],
+        fscDisclaimerAccepted: consents[2],
       });
       navigate("/login", { state: { created: true } });
     } catch (reason) {
@@ -229,6 +231,7 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
           onClick={() => setProfile("INDIVIDUAL")}
         >
           <b>{locale === "ko" ? "개인" : "Individual"}</b>
+          {profile === "INDIVIDUAL" ? <img className="profile-selected" src="/assets/profile-selected-333-4389.svg" alt="" /> : null}
           <span>{locale === "ko" ? "일반 개인 투자자를 위한 시장 인사이트" : "Standard retail market insight."}</span>
         </button>
         <button
@@ -236,6 +239,7 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
           onClick={() => setProfile("CORPORATE")}
         >
           <b>{locale === "ko" ? "기관·법인" : "Institutional"}</b>
+          {profile === "CORPORATE" ? <img className="profile-selected" src="/assets/profile-selected-333-4389.svg" alt="" /> : null}
           <span>{locale === "ko" ? "기업 공시와 대량 데이터 중심" : <>Focus on corporate filings &amp; bulk data.</>}</span>
         </button>
       </div>
@@ -323,7 +327,7 @@ export function LoginPage() {
     try {
       await login(loginId, password);
       const returnTo = params.get("returnTo");
-      navigate(returnTo?.startsWith("/") ? returnTo : "/my", { replace: true });
+      navigate(returnTo?.startsWith("/") && !returnTo.startsWith("//") && !returnTo.includes("\\") ? returnTo : "/my", { replace: true });
     } catch (reason) {
       setError(reason instanceof ApiError ? reason.message : "Please check your ID and password again.");
     } finally {
@@ -351,6 +355,7 @@ export function LoginPage() {
             <input
               className={error ? "invalid" : ""}
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder={locale === "ko" ? "비밀번호" : "Password"}
@@ -358,7 +363,7 @@ export function LoginPage() {
           </label>
           {error ? (
             <p className="auth-error">
-              <img src="/assets/form-error.svg" alt="" />
+              <img src="/assets/form-error-333-4511.svg" alt="" />
               {error}
             </p>
           ) : null}

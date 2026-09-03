@@ -51,7 +51,8 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
   const [introStage, setIntroStage] = useState<"sent" | "thinking" | "ready">("sent");
   const [assessmentRequest, setAssessmentRequest] = useState("");
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState<"eligibility" | "upload" | "comparison" | null>(null);
+  const [busy, setBusy] = useState<"eligibility" | "upload" | "comparison" | "document" | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const comparisonKeyRef = useRef("");
@@ -113,7 +114,6 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
       method: "POST",
       body: JSON.stringify({ documentIds: selected.map((document) => document.id) }),
     }).then(setComparison).catch((reason: unknown) => {
-      comparisonKeyRef.current = "";
       setError(reason instanceof Error ? reason.message : "Document comparison failed.");
     }).finally(() => setBusy(null));
   }, [busy, comparison, readyToCompare, selected]);
@@ -169,13 +169,25 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
     }
   };
 
+  const updateDocument = async (documentId: string, action: "delete" | "retry") => {
+    if (busy) return;
+    setBusy("document"); setError("");
+    try {
+      await api(`/api/v1/me/tax-documents/${documentId}${action === "retry" ? "/retry" : ""}`, { method: action === "retry" ? "POST" : "DELETE" });
+      setComparison(null); comparisonKeyRef.current = ""; setDeleteTarget(null);
+      documents.setData((documents.data || []).filter((document) => document.id !== documentId));
+      documents.retry();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Document update failed."); }
+    finally { setBusy(null); }
+  };
+
   return (
     <aside className="agent-panel tax-eligibility-panel" id="tax-eligibility-panel" role="dialog" aria-modal="true" aria-label={locale === "ko" ? "세율 확인 K-Agent" : "Tax eligibility K-Agent"}>
       <button className="agent-close" type="button" onClick={close} ref={closeButtonRef}>
         <img src="/assets/close.svg" alt="" /> {locale === "ko" ? "닫기" : "Close"}
       </button>
       <header>
-        <img className="agent-logo" src="/assets/agent-badge-figma.svg" alt="" />
+        <img className="agent-logo" src="/assets/agent-badge-381-4971.svg" alt="" />
         <div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div>
       </header>
       <div className="context-chip"><img src="/assets/tax.svg" alt="" /> {locale === "ko" ? "배당 원천징수세" : "Dividend withholding tax"}</div>
@@ -202,6 +214,14 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
           {busy === "comparison" ? <TypingBubble locale={locale} /> : null}
           {comparison ? <div className="ai-message tax-comparison-result ai-message-enter"><b>{locale === "ko" ? "3개 서류 비교 검증 완료" : "Three-document comparison complete"}</b><p>{comparison.crossCheck.matched ? locale === "ko" ? "거주자증명서와 제한세율 신청서의 성명, 납세자번호, 거주국이 일치합니다." : "Name, taxpayer identifier, and residence country match across the certificate and application." : locale === "ko" ? "서류 간 불일치가 있어 수동 검토가 필요합니다." : "A cross-document mismatch requires manual review."}</p><strong>{comparison.verificationStatus.replaceAll("_", " ")}</strong>{comparison.findings.length ? <ul>{comparison.findings.slice(0, 5).map((finding) => <li key={finding.code}>{finding.message}</li>)}</ul> : null}</div> : null}
         </> : null}
+        {result && profile ? <div className="tax-document-actions">
+          {selected.map((document) => <div key={document.id}><span>{document.originalFileName}</span>
+            {document.status === "FAILED" ? <button className="login-button" disabled={Boolean(busy)} onClick={() => void updateDocument(document.id, "retry")}>{locale === "ko" ? "검증 다시 시도" : "Retry verification"}</button> : null}
+            <button disabled={Boolean(busy)} onClick={() => setDeleteTarget(document.id)}>{locale === "ko" ? "서류 삭제" : "Delete document"}</button>
+            {deleteTarget === document.id ? <div role="alert"><p>{locale === "ko" ? "이 서류를 삭제하시겠습니까? 다시 검증하려면 재업로드해야 합니다." : "Delete this document? You will need to upload it again to verify it."}</p><button disabled={Boolean(busy)} onClick={() => void updateDocument(document.id, "delete")}>{locale === "ko" ? "삭제 확인" : "Confirm deletion"}</button><button onClick={() => setDeleteTarget(null)}>{locale === "ko" ? "취소" : "Cancel"}</button></div> : null}
+          </div>)}
+          {error && comparisonKeyRef.current && !comparison ? <button disabled={Boolean(busy)} onClick={() => { comparisonKeyRef.current = ""; setError(""); }}>{locale === "ko" ? "비교 검증 다시 시도" : "Retry comparison"}</button> : null}
+        </div> : null}
         {error ? <p className="auth-error" role="alert">{error}</p> : null}
       </div>
       <p className="tax-agent-disclaimer">{locale === "ko" ? "KART는 서류 접수 전 검증을 보조하며 정부의 진위 확인이나 세무 자문을 대체하지 않습니다." : "KART assists pre-submission checks and does not replace government authentication or tax advice."}</p>

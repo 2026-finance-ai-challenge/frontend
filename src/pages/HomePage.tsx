@@ -16,11 +16,12 @@ import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
 import { FitText } from "../components/FitText";
+import { FilingSentimentDot } from "../components/FilingSentimentDot";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { NewsThumbnail } from "../components/NewsThumbnail";
 import { hasVerifiedEnglishTitle, verifiedEnglishText } from "../utils/english";
 import { adaptiveTextClass } from "../utils/text";
-import { hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
+import { generatedNewsInsight, hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
 
 const quickActions = [
   ["/assets/news.svg", "Today’s news", "/news"],
@@ -80,12 +81,9 @@ export function HomePage() {
         <MarketBar />
         <main className="page-shell hero-content">
           <h1>
-            {locale === "ko" ? <>한국 시장 <u>분석</u>,<br />규제</> : <>Korea <u>analysis</u>,<br />regulation</>}{" "}
-            <sup>
-              <img src="/assets/hero-marker.svg" alt="KART" />
-            </sup>
-            <br />
-            {locale === "ko" ? <>&amp; 투자 <u>인텔리전스</u></> : <>&amp; trading <u>Intelligence</u></>}
+            <span>{locale === "ko" ? "한국 시장 분석," : "Korea analysis,"}</span>
+            <span>{locale === "ko" ? "규제" : "regulation"}</span>
+            <span>{locale === "ko" ? "& 투자 인텔리전스" : "& trading Intelligence"}</span>
           </h1>
           <div className="quick-actions">
             {quickActions.map(([icon, label, to], index) => {
@@ -185,7 +183,7 @@ export function HomePage() {
                   <strong>
                     {taxRatesState.data?.[0]?.domesticDefaultRate ?? "—"}<small>%</small>
                   </strong>
-                  <small>{locale === "ko" ? "국세 20% + 지방소득세 2%" : "20% national + 2% local surtax"}</small>
+                  <small>{locale === "ko" ? "지방소득세 포함" : "Including local surtax"}</small>
                 </div>
                 <b>›</b>
                 <div>
@@ -193,7 +191,7 @@ export function HomePage() {
                   <strong className="safe-text">
                     {taxRatesState.data?.[0]?.treatyDividendRate ?? "—"}<small>%</small>
                   </strong>
-                  <small>{locale === "ko" ? "대부분 조약의 포트폴리오 배당" : "Portfolio dividends, most treaties"}</small>
+                  <small>{taxRatesState.data?.[0]?.countryName}</small>
                 </div>
               </div>
               <p>{locale === "ko" ? <>인하 세율은 <b>자동 적용되지 않습니다.</b> 배당 지급일 전에 증권사가 제한세율 적용신청서와 거주자증명서를 보유해야 합니다. 사전 신청을 놓쳤다면 법정 기간 안에 환급을 청구할 수 있습니다.</> : <>The reduced rate is <b>not applied automatically.</b> Your broker must hold an Application for Reduced Tax Rate and a Certificate of Residence before the dividend payment date. Without a pre-filed application, a refund claim may still be possible within the statutory period.</>}</p>
@@ -226,11 +224,7 @@ export function HomePage() {
                   ))}
                 </div>;
               })}
-              {Array.from({ length: 4 }, () => locale === "ko" ? "추가 조세조약 데이터" : "Additional treaty data").map((label, index) => (
-                <div className="treaty-row-locked" aria-label={locale === "ko" ? "추가 국가 조세조약 데이터 없음" : "Additional country treaty data unavailable"} key={`${label}-${index}`}>
-                  <span>{label}</span><span>—</span><span>—</span><span>—</span>
-                </div>
-              ))}
+              <p className="treaty-availability-note">{locale === "ko" ? "현재 서비스에서 지원하는 국가의 세율입니다. 추가 국가는 준비 중입니다." : "Rates for countries currently supported by this service. More countries are coming soon."}</p>
               {taxRatesState.error ? <div className="api-state api-error">{locale === "ko" ? "조세조약 세율 데이터를 불러올 수 없습니다." : "Treaty rate data unavailable."}</div> : null}
             </article>
           </div>
@@ -251,11 +245,7 @@ function FilingRow({ filing }: { filing: PublishedFiling }) {
       className="filing-row"
       to={`/disclosures/${filing.receiptNumber}`}
     >
-      <img
-        className="filing-timeline-dot"
-        src="/assets/timeline-neutral.svg"
-        alt=""
-      />
+      <FilingSentimentDot sentiment={filing.sentiment} />
       <span>{formatDate(filing.detectedAt)}</span>
       <span>
         <FitText className="filing-issuer" value={issuer} />
@@ -280,9 +270,7 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
     `/api/v1/news/${article.id}/translation?locale=${locale}`,
     insightRequested,
   );
-  const insight = translation.data?.status === "READY" && translation.data.targetLocale === locale
-    ? translation.data.result
-    : null;
+  const insight = generatedNewsInsight(translation.data, locale);
   const title = locale === "ko" ? article.originalTitle : verifiedEnglishText(article.englishTitle) || "";
   const wrappedTitle = Array.from(title).length > 34;
   const cachedInsight = localizedNewsInsight(article, locale);

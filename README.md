@@ -19,10 +19,10 @@ npm ci
 npm run dev
 ```
 
-기본 개발·운영 API 주소는 `https://api.kartkr.cloud`입니다. 로컬 Backend를 사용하려면 아래처럼 지정합니다.
+개발 서버는 `http://127.0.0.1:5173`에서 `/api` 요청을 배포 Backend `https://api.kartkr.cloud`로 프록시합니다. 로컬 Backend를 사용하려면 프록시 대상을 지정합니다.
 
 ```bash
-VITE_API_BASE_URL=http://127.0.0.1:8080 npm run dev
+KART_DEV_API_TARGET=http://127.0.0.1:8080 npm run dev
 ```
 
 Vercel Production은 `main` 브랜치와 연결되어 있고 `api.kartkr.cloud`를 직접 호출합니다. 다른 Backend를 검증할 때만 다음 공개 변수를 바꿉니다.
@@ -33,7 +33,7 @@ VITE_API_BASE_URL=https://api.example.com
 
 브라우저에는 Backend URL만 노출되며 OpenAI, KIS, KRX, OpenDART 키는 절대 설정하지 않습니다.
 
-개발 서버가 실행되면 브라우저에서 [http://localhost:5173](http://localhost:5173)에 접속합니다.
+개발 서버가 실행되면 브라우저에서 [http://127.0.0.1:5173](http://127.0.0.1:5173)에 접속합니다.
 
 이미 저장소를 내려받았다면 `frontend` 디렉터리에서 아래 명령어만 실행하면 됩니다.
 
@@ -62,6 +62,13 @@ npm run preview
 
 ## 화면 데이터 기준
 
+- 로그인은 실제 Backend JWT와 HttpOnly refresh 쿠키를 사용한다. 새로고침 전에 세션을 복원하고 여러 탭의 refresh는 Web Locks로 직렬화한다. 토큰을 localStorage/sessionStorage에 저장하지 않는다.
+- 로그인 복원 실패와 인증 만료를 구분한다. 서버 장애 시 세션을 지웠다고 표시하지 않고 재시도를 제공한다.
+- refresh 응답 전 새로고침으로 연결이 끊기면 같은 UUID 요청 ID로 완료 결과를 복구한다. 저장소에는 요청 식별자만 있으며 인증 자격 증명은 없다.
+- 운영은 같은 사이트의 HTTPS UI/API를 사용한다. 임의 Vercel 미리보기 도메인은 credential CORS·SameSite 정책상 로그인 검증 대상이 아니다.
+- 로컬 HTTP 루프백 프록시에서만 refresh 쿠키의 Secure 속성을 조정하며, 운영 쿠키는 항상 Secure·HttpOnly·SameSite=Strict다.
+- 내 정보의 프로필은 공통 기본 이미지다. 이름·국적·세무 상태·관심종목·활동은 실제 API 데이터만 사용한다. 최근 본 항목과 피드는 공통 감성·중요도·분류 라벨을 사용한다.
+- 대화 기록에서 새 대화·검색·이름 변경·삭제가 계정 소유권을 검사하는 Backend API로 연결된다. 이름 변경은 버전 충돌을 검사하며 삭제는 확인 후 수행한다.
 - 홈과 뉴스 목록은 같은 중요도 정렬 API를 사용한다.
 - What/Why/Impact는 EN과 KR 캐시를 분리한다. 캐시가 없을 때만 호버 후 생성을 요청하고 완료 시 새로고침 없이 갱신한다.
 - EN 종목 상세는 USD를 주 가격, KRW를 보조 가격으로 표시하며 KR은 반대로 표시한다.
@@ -77,6 +84,6 @@ npm run preview
 
 ## 브랜치 운영
 
-- 기능 작업: `feature/*`
+- 기능 작업: `feat/*`, `fix/*` 등 `docs/GIT_WORKFLOW.md`의 규칙 적용
 - 통합 대상: `develop`
 - 운영 승격: 검증 후 `develop` → `main` PR
