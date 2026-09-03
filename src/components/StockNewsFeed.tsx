@@ -1,8 +1,7 @@
-import { useEffect, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "./RemoteState";
-import { ViewMoreButton } from "./ViewMoreButton";
 import { NewsThumbnail } from "./NewsThumbnail";
 import { useCursorPage } from "../hooks/useCursorPage";
 import type { NewsArticle } from "../types";
@@ -13,14 +12,13 @@ import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { generatedNewsInsight, hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
 
-const ITEMS_PER_PAGE = 5;
 const POINTER_INSIGHT_MAX_WIDTH = 560;
 const POINTER_INSIGHT_SAFE_HEIGHT = 360;
 
 export function StockNewsFeed({ stockCode: stockCodeOverride }: { stockCode?: string } = {}) {
   const { locale } = useLocale();
   const [filter, setFilter] = useState("All");
-  const [page, setPage] = useState(0);
+  const loadTrigger = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
   const { stockCode: routeStockCode } = useParams();
   const stockCode = stockCodeOverride || routeStockCode;
@@ -40,10 +38,15 @@ export function StockNewsFeed({ stockCode: stockCodeOverride }: { stockCode?: st
   const returnTo = pathname.startsWith("/stocks/")
     ? `${pathname}?tab=news`
     : pathname;
-  useEffect(() => setPage(0), [filter, stockCode]);
-  const itemCount = newsState.data?.items.length ?? 0;
-  const pageStart = page * ITEMS_PER_PAGE;
-  const canGoNext = pageStart + ITEMS_PER_PAGE < itemCount;
+  useEffect(() => {
+    const trigger = loadTrigger.current;
+    if (!trigger || newsState.loading || newsState.loadingMore || newsState.loadMoreError || !newsState.data?.nextCursor) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) void newsState.loadMore();
+    }, { rootMargin: "400px" });
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [newsState.data?.nextCursor, newsState.loading, newsState.loadingMore, newsState.loadMoreError, newsState.loadMore]);
 
   return (
     <>
@@ -62,23 +65,19 @@ export function StockNewsFeed({ stockCode: stockCodeOverride }: { stockCode?: st
             ),
           )}
         </div>
-        <div className="carousel-controls">
-          <button type="button" aria-label={locale === "ko" ? "이전" : "Previous"} disabled={page === 0} onClick={() => setPage((current) => Math.max(0, current - 1))}>
-            <img src="/assets/carousel-prev.svg" alt="" />
-          </button>
-          <button type="button" aria-label={locale === "ko" ? "다음" : "Next"} disabled={!canGoNext} onClick={() => setPage((current) => current + 1)}>
-            <img src="/assets/carousel-next.svg" alt="" />
-          </button>
-        </div>
       </div>
       <RemoteState {...newsState} empty={(value) => !value.items.length}>
       {(value) => <div className="news-list">
-        {value.items.filter(hasVerifiedEnglishTitle).slice(pageStart, pageStart + ITEMS_PER_PAGE).map((item) => (
+        {value.items.filter(hasVerifiedEnglishTitle).map((item) => (
           <NewsFeedRow item={item} returnTo={returnTo} key={item.id} />
         ))}
       </div>}
       </RemoteState>
-      <ViewMoreButton resource="news" hasMore={Boolean(newsState.data?.nextCursor)} loading={newsState.loadingMore} error={newsState.loadMoreError} onClick={() => void newsState.loadMore()} />
+      <div ref={loadTrigger} className="news-load-trigger" />
+      {newsState.loadingMore ? <div className="news-list" role="status" aria-label={locale === "ko" ? "뉴스를 불러오는 중" : "Loading news"}>
+        {[0, 1].map((key) => <div className="news-row" key={key}><LoadingSkeleton lines={4} /><LoadingSkeleton lines={5} /></div>)}
+      </div> : null}
+      {newsState.loadMoreError ? <div role="alert"><p>{newsState.loadMoreError.message}</p><button type="button" className="login-button" onClick={() => void newsState.loadMore()}>{locale === "ko" ? "다시 불러오기" : "Retry loading"}</button></div> : null}
     </>
   );
 }
