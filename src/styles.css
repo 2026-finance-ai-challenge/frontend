@@ -5848,7 +5848,9 @@ mark {
 .readonly-pdf { display: grid; gap: 16px; max-height: 440px; overflow-y: auto; overflow-x: hidden; }
 .readonly-pdf canvas { display: block; width: 100%; height: auto; background: white; }
 .tax-review-document.is-large .readonly-pdf { max-height: 85dvh; padding: 12px; background: #e4e1d6; }
-.tax-review-document.is-large canvas { max-width: 900px; margin: auto; }
+.readonly-pdf-page { position: relative; container-type: inline-size; }
+.tax-review-document.is-large .readonly-pdf-page { width: 100%; max-width: 900px; margin: auto; }
+.readonly-pdf-page > input { position: absolute; min-height: 0; margin: 0; padding: 0 2px; border: 1px solid #b6a451; border-radius: 2px; background: #faf7e5; color: #222; font-size: 1.34cqw; line-height: 1; box-sizing: border-box; }
 .tax-review-page > button { margin-top: 24px; }
 .tax-comparison-result > .tax-review-link { display: inline-flex; margin-top: 8px; padding: 12px 18px; align-items: center; justify-content: center; }
 @media (max-width: 800px) { .tax-review-documents { grid-template-columns: 1fr; } }
