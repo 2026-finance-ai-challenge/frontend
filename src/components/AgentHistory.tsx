@@ -152,11 +152,11 @@ export function AgentHistoryView({
       <RemoteState {...rooms} empty={(value) => !value.length}>
       {(value) => <div className="agent-history-list">
         {value.map((conversation) => (
-          <article className="agent-history-row" key={conversation.id}>
+          <article className={`agent-history-row${conversation.context.type === "TAX_GUIDE" ? " is-tax-room" : ""}`} key={conversation.id}>
           <button type="button" className="agent-history-open" onClick={() => onConversation(conversation.id, conversation.context.type)}>
             <span>
-              <b>{conversation.name}</b>
-              <small>{conversation.context.type} · {formatDate(conversation.lastMessageAt || conversation.updatedAt)}</small>
+              <b>{conversation.context.type === "TAX_GUIDE" ? locale === "ko" ? "세무 서류 검증" : "Tax document verification" : conversation.name}</b>
+              <small>{conversation.context.type === "TAX_GUIDE" ? locale === "ko" ? "세무 검증" : "Tax assessment" : conversation.context.type} · {formatDate(conversation.lastMessageAt || conversation.updatedAt)}</small>
             </span>
           </button>
           <div className="agent-overflow-wrap" ref={menu === conversation.id ? menuRef : undefined}>
