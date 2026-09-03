@@ -3,6 +3,18 @@ import assert from 'node:assert/strict'
 import { SessionVault } from '../src/session.ts'
 
 const pair = { accessToken: 'test-access', accessExpiresAt: '', user: { id: 'qa', loginId: 'tester' } }
+test('세무 상태 갱신은 현재 계정만 변경하고 로그아웃을 되돌리지 않는다', () => {
+  const vault = new SessionVault(async () => pair)
+  vault.accept(pair)
+  vault.updateUser({ ...pair.user, taxVerificationStatus: 'VERIFIED' })
+  assert.equal(vault.user.taxVerificationStatus, 'VERIFIED')
+  vault.updateUser({ id: 'other', taxVerificationStatus: 'NOT_STARTED' })
+  assert.equal(vault.user.taxVerificationStatus, 'VERIFIED')
+  vault.updateUser({ ...pair.user, taxVerificationStatus: 'IN_PROGRESS' })
+  assert.equal(vault.user.taxVerificationStatus, 'IN_PROGRESS')
+  vault.clear(); vault.updateUser(pair.user)
+  assert.equal(vault.user, null)
+})
 test('reload bootstrap restores the profile once from the server without a JS refresh token', async () => {
   let requests = 0
   const vault = new SessionVault(async (action, body) => {

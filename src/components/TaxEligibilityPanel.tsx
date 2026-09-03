@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, apiBlob, queryString } from "../api";
+import { api, apiBlob, queryString, session } from "../api";
+import type { Profile } from "../types";
 import { useProfile, useRemote } from "../hooks/useRemote";
 import type { SupportedCountry, TaxDocument } from "../types";
 import { useLocale } from "../state/LocaleContext";
@@ -47,6 +48,14 @@ export function TaxEligibilityPanel({ close, openHistory }: { close: () => void;
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const result = profile ? conversation.data?.eligibility : guestResult;
   const comparison = conversation.data?.comparison;
+  useEffect(() => {
+    if (!profile || !conversation.data?.roomId) return;
+    const controller = new AbortController();
+    void api<Profile>("/api/v1/me", { signal: controller.signal }).then(value => {
+      if (!controller.signal.aborted) session.updateUser(value);
+    }).catch(() => {});
+    return () => controller.abort();
+  }, [profile?.id, conversation.data?.roomId, comparison]);
   const messageLocale = conversation.data?.locale || locale;
   const allDocuments = documents.data || [];
   const processing = allDocuments.some((item) => item.status === "PROCESSING");

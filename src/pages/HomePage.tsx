@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Footer, Header, MarketBar } from "../components/Layout";
 import { TaxEligibilityLink } from "../components/TaxEligibilityLink";
-import { openTaxEligibility } from "../agentEvents";
 import { ForeignOwnershipCard, ownershipExhaustion } from "../components/ForeignOwnershipCard";
 import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
@@ -89,7 +88,7 @@ export function HomePage() {
             {quickActions.map(([icon, label, to], index) => {
               const content = <><img src={icon} alt="" />{locale === "ko" ? ["오늘의 뉴스", "DART 공시", "외국인 보유 한도", "내 세율 확인"][index] : label}</>;
               return to === "/tax"
-                ? <TaxEligibilityLink key={label}>{content}</TaxEligibilityLink>
+                ? <TaxEligibilityLink key={label} completedIcon={icon} iconFirst>{content}</TaxEligibilityLink>
                 : <Link to={to} key={label}>{content}</Link>;
             })}
           </div>
@@ -195,16 +194,13 @@ export function HomePage() {
                 </div>
               </div>
               <p>{locale === "ko" ? <>인하 세율은 <b>자동 적용되지 않습니다.</b> 배당 지급일 전에 증권사가 제한세율 적용신청서와 거주자증명서를 보유해야 합니다. 사전 신청을 놓쳤다면 법정 기간 안에 환급을 청구할 수 있습니다.</> : <>The reduced rate is <b>not applied automatically.</b> Your broker must hold an Application for Reduced Tax Rate and a Certificate of Residence before the dividend payment date. Without a pre-filed application, a refund claim may still be possible within the statutory period.</>}</p>
-              <button
+              <TaxEligibilityLink
                 className="primary-button eligibility-button"
-                type="button"
-                aria-haspopup="dialog"
-                aria-controls="tax-eligibility-panel"
-                onClick={openTaxEligibility}
+                completedIcon="/assets/chevron-right-gold.svg"
               >
                 {locale === "ko" ? "적용 가능 여부 확인" : "Check eligibility"}
                 <img src="/assets/chevron-right-gold.svg" alt="" />
-              </button>
+              </TaxEligibilityLink>
             </article>
             <article className="treaty-card">
               <div className="treaty-head">

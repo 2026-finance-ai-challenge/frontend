@@ -1,4 +1,8 @@
-import { useLayoutEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
+import { api, session } from './api'
+import { useProfile } from './hooks/useRemote'
+import type { Profile } from './types'
+import { TaxReviewPage } from './pages/TaxReviewPage'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { HomePage } from './pages/HomePage'
 import { StockPage } from './pages/StockPage'
@@ -25,6 +29,7 @@ export default function App() {
         <Route path="/disclosures/:disclosureId" element={<DisclosureDetailPage />} />
         <Route path="/foreign-limits" element={<ForeignLimitsPage />} />
         <Route path="/tax" element={<HomePage />} />
+        <Route path="/tax/review" element={<TaxReviewPage />} />
         <Route path="/tax-documents/:documentId" element={<TaxDocumentPage />} />
         <Route path="/my" element={<MyPage />} />
         <Route path="/signup" element={<SignupPage />} />
@@ -42,6 +47,15 @@ export default function App() {
 
 function ScrollToTop() {
   const { key, pathname } = useLocation()
+  const userId = useProfile()?.id
+  useEffect(() => {
+    if (!userId) return
+    const controller = new AbortController()
+    void api<Profile>('/api/v1/me', { signal: controller.signal }).then(user => {
+      if (!controller.signal.aborted) session.updateUser(user)
+    }).catch(() => {})
+    return () => controller.abort()
+  }, [key, userId])
 
   useLayoutEffect(() => {
     // 새 화면을 그리기 전에 즉시 초기화하여 이전 위치나 이동 애니메이션을 노출하지 않는다.
