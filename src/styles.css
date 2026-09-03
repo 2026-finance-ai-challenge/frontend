@@ -1869,6 +1869,13 @@ a {
   .ownership-card > strong {
     font-size: 34px;
   }
+  .treaty-card > .treaty-head {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .treaty-head > span:not(:first-child) {
+    white-space: nowrap;
+  }
   .footer-grid {
     grid-template-columns: 1fr 1fr;
     gap: 50px;
