@@ -3347,6 +3347,23 @@ mark {
   max-width: 72%;
   overflow-wrap: anywhere;
 }
+
+.tax-file-bubble {
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tax-file-bubble:focus-visible,
+.tax-document-retry:focus-visible {
+  outline: 2px solid #151515;
+  outline-offset: 3px;
+}
+
+.tax-document-retry {
+  margin-top: 12px;
+}
 .tax-agent-disclaimer {
   flex: 0 0 auto;
   margin: 18px 0 0;
@@ -5629,7 +5646,20 @@ mark {
 .agent-citation-button b { font-size: 12px; color: #746000; }
 .agent-citation-button:hover { border-color: #ad9500; background: #fff8d6; }
 .agent-citation-button:focus-visible { outline: 2px solid #ad9500; outline-offset: 3px; }
-.agent-thinking button { margin-left: auto; color: #806d00; font-size: 12px; }
+.agent-thinking button {
+  margin-left: 8px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid #927c00;
+  border-radius: 7px;
+  background: #fffdf3;
+  color: #655500;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+.agent-thinking button:hover { background: #fff5c6; }
+.agent-thinking button:focus-visible { outline: 2px solid #927c00; outline-offset: 2px; }
 @media (max-width: 600px) {
   .search-stock-grid {
     grid-template-columns: 1fr;

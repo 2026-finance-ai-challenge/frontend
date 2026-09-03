@@ -65,11 +65,11 @@ export function KAgentFloating() {
     </button>
     {open ? context.contextType === "TAX_GUIDE"
       ? <TaxEligibilityPanel close={close} />
-      : <KAgentPanel key={`${profile?.id || "guest"}:${context.requestId || `${context.contextType}:${context.referenceId || ""}`}`} close={close} requestedContext={context} /> : null}
+      : <KAgentPanel key={`${profile?.id || "guest"}:${context.requestId || `${context.contextType}:${context.referenceId || ""}`}`} close={close} requestedContext={context} openTax={() => setContext({ contextType: "TAX_GUIDE" })} /> : null}
   </>;
 }
 
-function KAgentPanel({ close, requestedContext }: { close: () => void; requestedContext: KAgentContext }) {
+function KAgentPanel({ close, requestedContext, openTax }: { close: () => void; requestedContext: KAgentContext; openTax: () => void }) {
   const { locale } = useLocale();
   const navigate = useNavigate();
   const profile = useProfile();
@@ -279,8 +279,9 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
 
   if (history) return <AgentHistoryView close={close} onDeleted={(roomId) => {
     if (roomId === room?.id) { setRoom(null); setMessages([]); setGeneration(null); setRoomResolved(false); setLoadRevision((value) => value + 1); }
-  }} onConversation={(roomId) => {
+  }} onConversation={(roomId, contextType) => {
     setHistory(false);
+    if (contextType === "TAX_GUIDE") { openTax(); return; }
     if (roomId) void openConversation(roomId);
   }} />;
   const generating = submitting || Boolean(profile && !roomResolved && !roomLoadError) || Boolean(generation && ["PENDING", "PROCESSING"].includes(generation.status));

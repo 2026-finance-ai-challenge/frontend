@@ -52,5 +52,11 @@ export function answerWithCitationMarkers(content: string, citations: AgentCitat
       result = result.split(address).join(`[${citation.id}]`);
     }
   }
-  return result;
+  if (!citations.length) return result;
+  const ids = citations
+    .map((citation) => citation.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .filter(Boolean)
+    .join("|");
+  // 본문 인용 표시는 버튼 출처와 중복되므로 구버전 응답에서도 제거한다.
+  return ids ? result.replace(new RegExp(`\\s*\\[(?:${ids})\\]`, "gi"), "") : result;
 }

@@ -77,6 +77,20 @@ export async function api<T>(path: string, init: RequestInit = {}, allowRefresh 
   return (text ? JSON.parse(text) : undefined) as T
 }
 
+export async function apiBlob(path: string, init: RequestInit = {}, allowRefresh = true): Promise<Blob> {
+  const headers = new Headers(init.headers)
+  if (session.bearer) headers.set('Authorization', `Bearer ${session.bearer}`)
+  headers.set('Accept', '*/*')
+  const response = await backendFetch(API_BASE, path, { ...init, headers, credentials: 'omit' })
+  if (response.status === 401 && allowRefresh && await session.refresh()) return apiBlob(path, init, false)
+  if (response.status === 401) {
+    session.clear()
+    reportApiFailure('session-expired')
+  }
+  if (!response.ok) throw new ApiError(await problemFrom(response))
+  return response.blob()
+}
+
 export function queryString(values: Record<string, string | number | boolean | null | undefined>): string {
   const params = new URLSearchParams()
   Object.entries(values).forEach(([key, value]) => {

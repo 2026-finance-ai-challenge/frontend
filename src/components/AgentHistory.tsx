@@ -58,7 +58,7 @@ export function AgentOverflowMenu({ onHistory, onDelete }: AgentOverflowMenuProp
 
 type AgentHistoryViewProps = {
   close: () => void;
-  onConversation: (roomId?: string) => void;
+  onConversation: (roomId?: string, contextType?: string) => void;
   onDeleted: (roomId: string) => void;
 };
 
@@ -153,7 +153,7 @@ export function AgentHistoryView({
       {(value) => <div className="agent-history-list">
         {value.map((conversation) => (
           <article className="agent-history-row" key={conversation.id}>
-          <button type="button" className="agent-history-open" onClick={() => onConversation(conversation.id)}>
+          <button type="button" className="agent-history-open" onClick={() => onConversation(conversation.id, conversation.context.type)}>
             <span>
               <b>{conversation.name}</b>
               <small>{conversation.context.type} · {formatDate(conversation.lastMessageAt || conversation.updatedAt)}</small>
