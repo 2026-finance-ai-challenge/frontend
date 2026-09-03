@@ -8,7 +8,7 @@ import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
 import { useCursorPage } from "../hooks/useCursorPage";
 import { useRemote } from "../hooks/useRemote";
-import { useRegularMarketDay } from "../hooks/useRegularMarketDay";
+import { useOwnershipForecastWindow } from "../hooks/useOwnershipForecastWindow";
 import { useMarketRefresh } from "../hooks/useMarketRefresh";
 import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import type { Filing, ForeignLimitMonitor, NewsArticle, SupportedCountry } from "../types";
@@ -34,7 +34,7 @@ type TaxEligibility = { countryCode: string; countryName: string; domesticDefaul
 
 export function HomePage() {
   const { locale } = useLocale();
-  const regularDay = useRegularMarketDay();
+  const forecastWindow = useOwnershipForecastWindow();
   const [newsStart, setNewsStart] = useState(0);
   const newsState = useCursorPage(
     (cursor, signal) => api<{ items: NewsArticle[]; nextCursor: string | null }>(`/api/v1/news${queryString({ sort: "IMPORTANCE", cursor, limit: 20 })}`, { signal }),
@@ -48,9 +48,9 @@ export function HomePage() {
   );
   const ownershipState = useRemote(
     (signal) => api<ForeignLimitMonitor[]>("/api/v1/market/foreign-limits", { signal }),
-    [regularDay],
+    [forecastWindow.targetDate, forecastWindow.session],
   );
-  useMarketRefresh(regularDay, ownershipState.loading, ownershipState.retry);
+  useMarketRefresh(forecastWindow.targetDate, ownershipState.loading, ownershipState.retry, forecastWindow.session === "INTRADAY" ? 60_000 : 300_000);
   const taxRatesState = useRemote(async (signal) => {
     const supported = await api<SupportedCountry[]>("/api/v1/tax/countries", { signal });
     const country = supported.find((item) => item.countryCode === "US");
@@ -163,7 +163,7 @@ export function HomePage() {
           </div>
           <RemoteState {...ownershipState} empty={(value) => !value.length}>
             {() => <div className="ownership-grid">
-            {visibleOwnership.map((item) => <ForeignOwnershipCard item={item} regularDay={regularDay} key={item.stock.stockCode} />)}
+            {visibleOwnership.map((item) => <ForeignOwnershipCard item={item} key={item.stock.stockCode} />)}
           </div>}
           </RemoteState>
         </section>
@@ -302,7 +302,7 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
     <div className="news-card-content">
       <IntelligenceBadges sentiment={article.sentiment} importance={article.importance} eventType={article.eventType} />
       <h3 className={adaptiveTextClass(title, "news-card-title", locale === "ko" ? 24 : 36, locale === "ko" ? 40 : 62)}>{title}</h3>
-      <p className="meta">{article.publisher} · {formatDate(article.publishedAt)} · {locale === "ko" ? "한글 원문" : "Auto-translated"}</p>
+      <p className="meta">{article.publisher} · {formatDate(article.publishedAt)}</p>
     </div>
     <NewsThumbnail className="news-card-thumbnail" src={article.thumbnailUrl} />
     <div className="insight">

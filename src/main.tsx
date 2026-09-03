@@ -8,6 +8,7 @@ import App from './App'
 import { WatchlistProvider } from './state/WatchlistContext'
 import { LocaleProvider } from './state/LocaleContext'
 import './styles.css'
+import './interaction-motion.css'
 import { SessionBoundary } from './components/SessionBoundary'
 import { ApiFailureBoundary } from './components/ApiFailureBoundary'
 

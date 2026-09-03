@@ -20,6 +20,28 @@ const KRX_HOLIDAYS = new Set([
   "2026-12-31",
 ]);
 
+export function nextKoreaTradingDay(value: string): string | null {
+  if (!/^2026-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00Z`);
+  if (!Number.isFinite(date.valueOf())) return null;
+  do {
+    date.setUTCDate(date.getUTCDate() + 1);
+    if (date.getUTCFullYear() !== 2026) return null;
+  } while (date.getUTCDay() === 0 || date.getUTCDay() === 6 || KRX_HOLIDAYS.has(date.toISOString().slice(0, 10)));
+  return date.toISOString().slice(0, 10);
+}
+
+export function getOwnershipForecastWindow(now = new Date()) {
+  const market = getKoreaMarketSnapshot(now);
+  const local = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const tradingDay = local.getUTCFullYear() === 2026 && local.getUTCDay() !== 0 && local.getUTCDay() !== 6 && !KRX_HOLIDAYS.has(market.tradingDate);
+  const beforeClose = local.getUTCHours() * 60 + local.getUTCMinutes() < 15 * 60 + 30;
+  return {
+    targetDate: tradingDay && beforeClose ? market.tradingDate : nextKoreaTradingDay(market.tradingDate),
+    session: market.isOpen && tradingDay ? "INTRADAY" as const : "NEXT_SESSION" as const,
+  };
+}
+
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: KOREA_TIME_ZONE,
   year: "numeric",

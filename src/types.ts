@@ -114,6 +114,8 @@ export type StockDetail = Stock & {
     confidence: number | null
     modelVersion: string | null
     baseDate: string | null
+    targetDate: string | null
+    predictionSession: "INTRADAY" | "NEXT_SESSION" | null
     calculatedAt: string | null
     source: string
   }

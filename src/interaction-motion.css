@@ -1,0 +1,111 @@
+.home-page .hero-content h1 > span,
+.home-page .quick-actions > a {
+  animation: home-enter 700ms cubic-bezier(.22, 1, .36, 1) backwards;
+}
+.home-page .hero-content h1 > span:nth-child(2) { animation-delay: 90ms; }
+.home-page .hero-content h1 > span:nth-child(3) { animation-delay: 180ms; }
+.home-page .quick-actions > a:nth-child(1) { animation-delay: 260ms; }
+.home-page .quick-actions > a:nth-child(2) { animation-delay: 330ms; }
+.home-page .quick-actions > a:nth-child(3) { animation-delay: 400ms; }
+.home-page .quick-actions > a:nth-child(4) { animation-delay: 470ms; }
+@keyframes home-enter {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stock-title-row { gap: 24px; }
+.stock-title-row > div:first-child { min-width: 0; flex: 1; }
+.stock-name-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+  margin-bottom: 16px;
+}
+.stock-name-heading h1 { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.stock-name-heading .heart-button {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+.stock-name-heading .heart-button img { width: 28px; height: 28px; display: block; }
+.stock-name-heading .heart-button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.open-original-link,
+.filing-title .open-original-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 46px;
+  box-sizing: border-box;
+  padding: 12px 18px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #edece5;
+  color: var(--gold);
+  font-size: 16px;
+  line-height: 22px;
+  text-decoration: none;
+}
+.open-original-link img { width: 20px; height: 20px; flex-shrink: 0; }
+.open-original-link:hover,
+.open-original-link:focus-visible { border-color: var(--gold); outline: none; }
+.article-hero .open-original-link { margin-top: 8px; }
+.filing-title .open-original-link { min-width: min(220px, 100%); min-height: 60px; }
+.article-grid > * { min-width: 0; }
+.ai-summary p { grid-template-columns: 80px minmax(0, 1fr); }
+.chart-layout { grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); }
+.chart-layout > * { min-width: 0; }
+.prediction > div:first-child { flex-wrap: wrap; gap: 8px; }
+.prediction > div + div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.prediction small { font-size: clamp(16px, 2vw, 22px); }
+@media (max-width: 1100px) {
+  .chart-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+.ownership-gauge > .ownership-gauge-fill {
+  width: 0;
+  border-right: 0;
+  transition: width 900ms cubic-bezier(.22, 1, .36, 1);
+}
+.ownership-gauge.is-revealed > .ownership-gauge-fill { width: var(--ownership-fill); }
+.ownership-gauge > .ownership-gauge-marker {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: calc(100% + 10px);
+  background: #111;
+  transform: translate(-100%, -50%);
+  transition: left 900ms cubic-bezier(.22, 1, .36, 1);
+}
+.ownership-gauge.is-revealed > .ownership-gauge-marker { left: var(--ownership-fill); }
+.ownership-gauge > .ownership-forecast-overlay { opacity: 0; transition: opacity 500ms ease 220ms; }
+.ownership-gauge.is-revealed > .ownership-forecast-overlay { opacity: 1; }
+.ownership-forecast-range { transition: left 700ms ease, width 700ms ease; }
+.ownership-forecast-base { transition: left 700ms ease; }
+.ownership-forecast-caption { margin: 0 0 8px; font-size: 13px; font-weight: 600; line-height: 18px; }
+.ownership-card.has-prediction { height: 459px; }
+.ownership-card.has-prediction:hover,
+.ownership-card.has-prediction:focus-visible { height: 514px; }
+.ownership-card.has-prediction .ownership-note { top: 391px; }
+.ownership-card.has-prediction:hover .ownership-note,
+.ownership-card.has-prediction:focus-visible .ownership-note { top: 402px; }
+.ownership-grid:has(.has-prediction) { min-height: 514px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-page .hero-content h1 > span,
+  .home-page .quick-actions > a { animation: none; }
+  .ownership-gauge > .ownership-gauge-fill { width: var(--ownership-fill); transition: none; }
+  .ownership-gauge > .ownership-gauge-marker { left: var(--ownership-fill); transition: none; }
+  .ownership-gauge > .ownership-forecast-overlay { opacity: 1; transition: none; }
+  .ownership-forecast-range,
+  .ownership-forecast-base { transition: none; }
+}
