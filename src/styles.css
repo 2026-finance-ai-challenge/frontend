@@ -1522,7 +1522,8 @@ a {
   height: 14px;
   filter: brightness(0) invert(1);
 }
-.treaty-card > div {
+.treaty-card > div,
+.treaty-row-locked {
   display: grid;
   grid-template-columns: 1.5fr repeat(3, 1fr);
   padding: 12px 4px;
@@ -1539,14 +1540,34 @@ a {
 .treaty-head {
   color: #888;
 }
+.treaty-locked-preview {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.treaty-row-locked > span {
+  white-space: nowrap;
+  overflow: hidden;
+}
+.treaty-availability-note {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 20px;
+  background: rgb(255 255 255 / 55%);
+  color: #666;
+  font-size: 16px;
+  line-height: 25px;
+}
 .tax-note {
-  width: 50%;
-  margin-left: auto;
-  padding-left: 30px;
+  width: calc((100% - 30px) / 2);
+  margin: 16px 0 0 auto;
+  padding-inline: 30px;
   color: #888;
   line-height: 25px;
-  position: relative;
-  top: -59px;
 }
 .site-footer {
   height: 490px;
@@ -1630,7 +1651,7 @@ a {
   }
   .tax-note {
     width: 100%;
-    padding: 0;
+    padding-inline: 0;
   }
   .site-footer {
     height: auto;

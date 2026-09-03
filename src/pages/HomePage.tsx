@@ -224,7 +224,17 @@ export function HomePage() {
                   ))}
                 </div>;
               })}
-              <p className="treaty-availability-note">{locale === "ko" ? "현재 서비스에서 지원하는 국가의 세율입니다. 추가 국가는 준비 중입니다." : "Rates for countries currently supported by this service. More countries are coming soon."}</p>
+              <section className="treaty-locked-preview">
+                <div aria-hidden="true">
+                  {Array.from({ length: 4 }, (_, index) => (
+                    <div className="treaty-row-locked" key={index}>
+                      <span>{locale === "ko" ? "추가 국가 준비 중" : "More countries coming soon"}</span>
+                      <span>—</span><span>—</span><span>—</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="treaty-availability-note">{locale === "ko" ? "현재 서비스에서 지원하는 국가의 세율입니다. 추가 국가는 준비 중입니다." : "Rates for countries currently supported by this service. More countries are coming soon."}</p>
+              </section>
               {taxRatesState.error ? <div className="api-state api-error">{locale === "ko" ? "조세조약 세율 데이터를 불러올 수 없습니다." : "Treaty rate data unavailable."}</div> : null}
             </article>
           </div>
