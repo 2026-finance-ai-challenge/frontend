@@ -213,6 +213,7 @@ function ConsentStep({ loginId, password, confirm, nationality }: {
         investorType: profile,
         termsAccepted: consents[0],
         privacyAccepted: consents[1],
+        fscDisclaimerAccepted: consents[2],
       });
       navigate("/login", { state: { created: true } });
     } catch (reason) {

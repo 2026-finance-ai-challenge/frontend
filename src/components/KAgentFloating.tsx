@@ -9,7 +9,7 @@ import { TaxEligibilityPanel } from "./TaxEligibilityPanel";
 import { answerWithCitationMarkers, citationHref, citationTitle, filingPath, type AgentCitation } from "../agentCitations";
 import { createSubmissionGate } from "../agentSubmission";
 import { chatSubmissionBody, type AgentSelection } from "../agentSelection";
-import { loadChatState, type AgentGeneration } from "../agentRecovery";
+import { loadChatMessages, loadChatState, type AgentGeneration } from "../agentRecovery";
 
 type Room = {
   id: string;
@@ -141,7 +141,7 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
           timer = window.setTimeout(() => void poll(), 1200);
           return;
         }
-        const next = await api<Message[]>(`/api/v1/me/chats/${room.id}/messages`, { signal: controller.signal });
+        const next = await loadChatMessages<Message>(api, room.id, controller.signal);
         if (controller.signal.aborted) return;
         setMessages(next);
         setGeneration(current);

@@ -1,6 +1,7 @@
 import type { ApiProblem, InvestorType, Profile } from './types'
 import { SessionVault, type BrowserSession } from './session'
 import { PendingRefresh } from './pendingRefresh'
+import { backendFetch, reportApiFailure } from './apiTransport'
 
 const runtimeEnv = (import.meta as ImportMeta & { env?: Record<string, string | boolean | undefined> }).env
 const configuredBase = typeof runtimeEnv?.VITE_API_BASE_URL === 'string'
@@ -25,7 +26,7 @@ export class ApiError extends Error {
 
 const pendingRefresh = new PendingRefresh(() => localStorage)
 export const session = new SessionVault(async (action, body) => {
-  const response = await fetch(`${API_BASE}/api/v1/auth/browser/${action}`, {
+  const response = await backendFetch(API_BASE, `/api/v1/auth/browser/${action}`, {
     method: 'POST', credentials: 'include',
     keepalive: action === 'refresh',
     signal: AbortSignal.timeout(15000),
@@ -59,13 +60,17 @@ export async function api<T>(path: string, init: RequestInit = {}, allowRefresh 
     headers.set('Content-Type', 'application/json')
   }
   headers.set('Accept', 'application/json')
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: 'omit' })
+  const response = await backendFetch(API_BASE, path, { ...init, headers, credentials: 'omit' })
   if (response.status === 401 && allowRefresh && session.bearer
     && headers.get('Authorization') !== `Bearer ${session.bearer}`) {
     return api<T>(path, init, false)
   }
   if (response.status === 401 && allowRefresh && await session.refresh()) {
     return api<T>(path, init, false)
+  }
+  if (response.status === 401 && !['/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/signup'].includes(path)) {
+    session.clear()
+    reportApiFailure('session-expired')
   }
   if (!response.ok) throw new ApiError(await problemFrom(response))
   const text = await response.text()
@@ -92,6 +97,7 @@ export async function signup(input: {
   investorType: InvestorType
   termsAccepted: boolean
   privacyAccepted: boolean
+  fscDisclaimerAccepted: boolean
 }): Promise<Profile> {
   return api<Profile>('/api/v1/auth/signup', {
     method: 'POST',

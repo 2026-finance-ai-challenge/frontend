@@ -54,6 +54,7 @@ export function Header({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationInbox | null>(null);
+  const [notificationsLoadingMore, setNotificationsLoadingMore] = useState(false);
   const [notificationsError, setNotificationsError] = useState("");
   const [surface, setSurface] = useState<HeaderSurface>(
     white ? "white" : "cream",
@@ -66,6 +67,13 @@ export function Header({
   const navigate = useNavigate();
   const location = useLocation();
   const profile = useProfile();
+  const notificationOwner = useRef(profile?.id);
+  useEffect(() => {
+    notificationOwner.current = profile?.id;
+    setNotifications(null);
+    setNotificationsOpen(false);
+    setNotificationsError("");
+  }, [profile?.id]);
   const { locale, setLocale, t, stockName } = useLocale();
   const primaryNavigation = [
     { label: locale === "ko" ? "AI 뉴스 요약" : "AI News Summary", to: "/news" },
@@ -90,8 +98,10 @@ export function Header({
     setNotificationsOpen(nextOpen);
     if (!nextOpen) return;
     setNotificationsError("");
+    const owner = profile.id;
     try {
-      setNotifications(await api<NotificationInbox>("/api/v1/me/notifications?limit=20"));
+      const inbox = await api<NotificationInbox>("/api/v1/me/notifications?limit=20");
+      if (notificationOwner.current === owner) setNotifications(inbox);
     } catch (reason) {
       setNotificationsError(reason instanceof Error ? reason.message : "Notifications could not be loaded.");
     }
@@ -107,6 +117,16 @@ export function Header({
     }
     setNotificationsOpen(false);
     navigate(notificationTarget(item));
+  };
+  const loadMoreNotifications = async () => {
+    if (!notifications?.nextCursor || notificationsLoadingMore) return;
+    setNotificationsLoadingMore(true); setNotificationsError("");
+    const owner = profile?.id;
+    try {
+      const next = await api<NotificationInbox>(`/api/v1/me/notifications${queryString({ cursor: notifications.nextCursor, limit: 20 })}`);
+      if (notificationOwner.current === owner) setNotifications((current) => current ? { ...next, items: [...new Map([...current.items, ...next.items].map((item) => [item.id, item])).values()] } : next);
+    } catch (reason) { setNotificationsError(reason instanceof Error ? reason.message : "Notifications could not be loaded."); }
+    finally { setNotificationsLoadingMore(false); }
   };
   const readAllNotifications = async () => {
     await api("/api/v1/me/notifications/read-all", { method: "PUT" });
@@ -332,6 +352,7 @@ export function Header({
             {notificationsError ? <p className="auth-error">{notificationsError}</p> : null}
             {!notificationsError && notifications?.items.length === 0 ? <p className="search-empty">{locale === "ko" ? "새 알림이 없습니다." : "No notifications yet."}</p> : null}
             {notifications?.items.map((item) => <button type="button" className={item.read ? "is-read" : ""} onClick={() => void readNotification(item)} key={item.id}><span><b>{item.title}</b><small>{item.body}</small></span><time>{new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</time></button>)}
+            {notifications?.nextCursor ? <button disabled={notificationsLoadingMore} onClick={() => void loadMoreNotifications()}>{locale === "ko" ? "이전 알림 더 보기" : "View older notifications"}</button> : null}
           </div> : null}
           <div className="language" ref={languageRef}>
             <button

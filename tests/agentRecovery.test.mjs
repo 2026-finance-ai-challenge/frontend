@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { loadChatState } from "../src/agentRecovery.ts";
+import { loadChatMessages, loadChatState } from "../src/agentRecovery.ts";
 
 for (const status of ["PENDING", "PROCESSING", "FAILED", "COMPLETED", "STOPPED"]) {
   test(`대화 재진입은 ${status} 상태를 복원하며 생성을 요청하지 않는다`, async () => {
@@ -27,4 +27,14 @@ test("다른 대화방으로 이동한 뒤 도착한 이전 요청은 상태를 
 test("생성 이력이 없는 대화도 원래 메시지를 그대로 복원한다", async () => {
   const result = await loadChatState(async (path) => path.endsWith("/latest") ? { generation: null } : [], "empty-room", new AbortController().signal);
   assert.deepEqual(result, { generation: null, messages: [] });
+});
+
+test('100개 이상인 대화도 afterSequence로 최신 답변까지 조회한다', async () => {
+  const paths = [];
+  const items = await loadChatMessages(async (path) => {
+    paths.push(path);
+    return paths.length === 1 ? Array.from({ length: 100 }, (_, i) => ({ sequence: i + 1 })) : [{ sequence: 101 }, { sequence: 102 }];
+  }, 'room', new AbortController().signal);
+  assert.equal(items.length, 102);
+  assert.equal(paths[1], '/api/v1/me/chats/room/messages?afterSequence=100');
 });
