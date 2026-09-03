@@ -14,6 +14,8 @@ import { LoadingSkeleton } from "./LoadingSkeleton";
 import { generatedNewsInsight, hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
 
 const ITEMS_PER_PAGE = 5;
+const POINTER_INSIGHT_MAX_WIDTH = 560;
+const POINTER_INSIGHT_SAFE_HEIGHT = 360;
 
 export function StockNewsFeed({ stockCode: stockCodeOverride }: { stockCode?: string } = {}) {
   const { locale } = useLocale();
@@ -105,10 +107,10 @@ function NewsFeedRow({ item, returnTo }: { item: NewsArticle; returnTo: string }
   const insight = generated && hasCompleteNewsInsight(generated) ? generated : cachedInsight;
   const ready = hasCompleteNewsInsight(insight);
   const moveTooltip = (event: PointerEvent<HTMLAnchorElement>) => {
-    const width = Math.min(420, window.innerWidth - 32);
+    const width = Math.min(POINTER_INSIGHT_MAX_WIDTH, window.innerWidth - 32);
     setPointer({
       x: Math.max(16, Math.min(event.clientX + 18, window.innerWidth - width - 16)),
-      y: Math.max(16, Math.min(event.clientY + 18, window.innerHeight - 210)),
+      y: Math.max(16, Math.min(event.clientY + 18, window.innerHeight - POINTER_INSIGHT_SAFE_HEIGHT)),
     });
   };
 
