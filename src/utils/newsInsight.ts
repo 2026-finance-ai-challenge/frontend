@@ -1,4 +1,10 @@
-import type { NewsArticle } from "../types";
+import type { NewsArticle, TranslationResult } from "../types";
+
+export function generatedNewsInsight(translation: TranslationResult | null | undefined, locale: "en" | "ko") {
+  if (!translation || translation.targetLocale !== locale) return null;
+  if (translation.status !== "READY" && translation.result?.summaryReady !== true) return null;
+  return translation.result && hasCompleteNewsInsight(translation.result) ? translation.result : null;
+}
 
 export function localizedNewsInsight(article: NewsArticle, locale: "en" | "ko") {
   return locale === "ko"

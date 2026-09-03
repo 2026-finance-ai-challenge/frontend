@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>KART responsive QA (development only)</title>
+<style>
+  body { margin: 20px; background: #ddd; font: 16px sans-serif; }
+  main { display: flex; gap: 24px; align-items: start; }
+  iframe { border: 1px solid #aaa; background: white; height: 850px; }
+  section { flex: 0 0 auto; }
+</style>
+<h1>Responsive QA — live application, no fixture data</h1>
+<pre id="metrics" aria-live="polite"></pre>
+<button id="show-filings">Show filing rows</button>
+<button id="show-tax">Show tax card</button>
+<main>
+  <section><h2>Search / 375px</h2><iframe title="Mobile search" src="/search?q=Samsung" width="375"></iframe></section>
+  <section><h2>Filings / 768px</h2><iframe title="Tablet filings" src="/disclosures" width="768"></iframe></section>
+  <section><h2>Home / 375px</h2><iframe title="Mobile home" src="/" width="375"></iframe></section>
+  <section><h2>Signup / 375px</h2><iframe title="Mobile signup" src="/signup" width="375"></iframe></section>
+  <section><h2>My page / 375px</h2><iframe title="Mobile my page" src="/my" width="375"></iframe></section>
+  <section><h2>Login / 768px</h2><iframe title="Tablet login" src="/login" width="768"></iframe></section>
+</main>
+<script>
+  const frames = [...document.querySelectorAll('iframe')];
+  const measure = () => {
+    document.querySelector('#metrics').textContent = frames.map(frame => {
+      const doc = frame.contentDocument;
+      if (!doc) return `${frame.title}: loading`;
+      const root = doc.documentElement;
+      const rows = [...doc.querySelectorAll('.disclosure-rows section > a')];
+      const hiddenTitles = rows.filter(row => getComputedStyle(row.querySelector('strong')).display === 'none').length;
+      const taxCard = doc.querySelector('.treaty-card');
+      const taxNote = doc.querySelector('.tax-note');
+      const gap = taxCard && taxNote ? `, tax note gap=${Math.round(taxNote.getBoundingClientRect().top - taxCard.getBoundingClientRect().bottom)}px, blurred rows=${doc.querySelectorAll('.treaty-row-locked').length}` : '';
+      return `${frame.title}: width=${root.clientWidth}, content=${root.scrollWidth}, rows=${rows.length}, hidden titles=${hiddenTitles}${gap}`;
+    }).join('\n');
+  };
+  for (const frame of frames) frame.addEventListener('load', () => {
+    new ResizeObserver(measure).observe(frame.contentDocument.body);
+    measure();
+  });
+  document.querySelector('#show-filings').onclick = () => {
+    for (const frame of frames) {
+      const target = frame.contentDocument?.querySelector('.disclosure-rows, .home-filing-row');
+      if (target) frame.contentWindow.scrollTo(0, target.getBoundingClientRect().top + frame.contentWindow.scrollY);
+    }
+    measure();
+  };
+  document.querySelector('#show-tax').onclick = () => {
+    for (const frame of frames) {
+      const target = frame.contentDocument?.querySelector('.treaty-card');
+      if (target) {
+        frame.scrollIntoView({ block: 'start', inline: 'center' });
+        frame.contentWindow.scrollTo(0, target.getBoundingClientRect().top + frame.contentWindow.scrollY - 70);
+      }
+    }
+    measure();
+  };
+</script>
+</html>

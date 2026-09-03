@@ -6,6 +6,10 @@ import { useProfile } from "../hooks/useRemote";
 import { AgentHistoryView, AgentOverflowMenu } from "./AgentHistory";
 import { useLocale } from "../state/LocaleContext";
 import { TaxEligibilityPanel } from "./TaxEligibilityPanel";
+import { answerWithCitationMarkers, citationHref, citationTitle, filingPath, type AgentCitation } from "../agentCitations";
+import { createSubmissionGate } from "../agentSubmission";
+import { chatSubmissionBody, type AgentSelection } from "../agentSelection";
+import { loadChatMessages, loadChatState, type AgentGeneration } from "../agentRecovery";
 
 type Room = {
   id: string;
@@ -19,15 +23,16 @@ type Message = {
   id: string;
   role: "USER" | "ASSISTANT";
   content: string;
-  citations: Array<{ id: string; title: string; url: string | null }>;
+  citations: AgentCitation[];
   insufficientEvidence: boolean;
   refusalReason: string | null;
   disclaimer: string | null;
 };
-type Generation = { id: string; status: string; errorCode: string | null };
+type Generation = AgentGeneration;
 
 export function KAgentFloating() {
   const { locale } = useLocale();
+  const profile = useProfile();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(location.pathname === "/tax");
@@ -56,11 +61,11 @@ export function KAgentFloating() {
     <button type="button" className="agent-launcher" aria-label={locale === "ko" ? "K-Agent 열기" : "Open K-Agent"} aria-haspopup="dialog" aria-expanded={open} onClick={() => { openerRef.current = launcherRef.current; setContext({ contextType: "GENERAL" }); setOpen(true); }} ref={launcherRef} hidden={open}>
       <span className="agent-launcher-surface" aria-hidden="true" />
       <span className="agent-launcher-inner" aria-hidden="true" />
-      <img src="/assets/k-agent-floating-figma.svg" alt="" />
+      <img src="/assets/k-agent-glyph-394-1451.svg" alt="" />
     </button>
     {open ? context.contextType === "TAX_GUIDE"
       ? <TaxEligibilityPanel close={close} />
-      : <KAgentPanel close={close} requestedContext={context} /> : null}
+      : <KAgentPanel key={`${profile?.id || "guest"}:${context.requestId || `${context.contextType}:${context.referenceId || ""}`}`} close={close} requestedContext={context} /> : null}
   </>;
 }
 
@@ -68,13 +73,21 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
   const { locale } = useLocale();
   const navigate = useNavigate();
   const profile = useProfile();
+  const userId = profile?.id;
   const [history, setHistory] = useState(false);
   const [room, setRoom] = useState<Room | null>(null);
+  const [roomResolved, setRoomResolved] = useState(false);
+  const submissionGate = useRef(createSubmissionGate());
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState(requestedContext.prompt || "");
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [pollError, setPollError] = useState(false);
+  const roomLoadRef = useRef<AbortController | null>(null);
+  const selectedRoomRef = useRef<string | null>(null);
+  const [roomLoadError, setRoomLoadError] = useState(false);
+  const [loadRevision, setLoadRevision] = useState(0);
   const [streamingAnswer, setStreamingAnswer] = useState("");
   const [streamedMessageId, setStreamedMessageId] = useState<string | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -87,53 +100,84 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
   }, [close]);
 
   useEffect(() => {
-    if (!profile) return;
+    if (!userId) return;
     const controller = new AbortController();
+    roomLoadRef.current?.abort();
+    roomLoadRef.current = controller;
+    setRoomResolved(false);
+    setRoomLoadError(false); setError("");
     api<Room[]>("/api/v1/me/chats", { signal: controller.signal })
-      .then((rooms) => setRoom(rooms.find((candidate) => candidate.context.type === requestedContext.contextType && (requestedContext.referenceId == null || candidate.context.referenceId === requestedContext.referenceId)) || null))
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Chat rooms could not be loaded."));
+      .then(async (rooms) => {
+        const found = rooms.find((candidate) => candidate.context.type === requestedContext.contextType && (requestedContext.referenceId == null || candidate.context.referenceId === requestedContext.referenceId)) || null;
+        const loaded = found ? await loadChatState<Message>(api, found.id, controller.signal) : { messages: [], generation: null };
+        if (controller.signal.aborted) return;
+        setRoom(found); setMessages(loaded.messages); setGeneration(loaded.generation);
+        setError(""); setPollError(false); setRoomResolved(true);
+      })
+      .catch((reason: unknown) => {
+        if (!controller.signal.aborted) {
+          setRoomLoadError(true);
+          setError(reason instanceof Error ? reason.message : "Chat rooms could not be loaded.");
+        }
+      });
     return () => controller.abort();
-  }, [profile, requestedContext.contextType, requestedContext.referenceId]);
+  }, [userId, requestedContext.contextType, requestedContext.referenceId, loadRevision]);
 
+  useEffect(() => () => roomLoadRef.current?.abort(), []);
+
+  const generationId = generation?.id;
+  const pendingGeneration = Boolean(generation && ["PENDING", "PROCESSING"].includes(generation.status));
   useEffect(() => {
-    if (!room) { setMessages([]); return; }
+    if (!room || !generationId || !pendingGeneration) return;
     const controller = new AbortController();
-    api<Message[]>(`/api/v1/me/chats/${room.id}/messages`, { signal: controller.signal })
-      .then(setMessages)
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Messages could not be loaded."));
-    return () => controller.abort();
-  }, [room]);
-
-  useEffect(() => {
-    if (!room || !generation || !["PENDING", "PROCESSING"].includes(generation.status)) return;
-    const timer = window.setInterval(() => {
-      void api<Generation>(`/api/v1/me/chats/${room.id}/generations/${generation.id}`)
-        .then(async (current) => {
+    let timer: number;
+    const poll = async () => {
+      try {
+        const current = await api<Generation>(`/api/v1/me/chats/${room.id}/generations/${generationId}`, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+        if (["PENDING", "PROCESSING"].includes(current.status)) {
+          setPollError(false);
           setGeneration(current);
-          if (!["PENDING", "PROCESSING"].includes(current.status)) {
-            const next = await api<Message[]>(`/api/v1/me/chats/${room.id}/messages`);
-            const newest = next.at(-1);
-            setMessages(next);
-            if (newest?.role === "ASSISTANT") {
-              setStreamedMessageId(newest.id);
-              setStreamingAnswer("");
-              const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-              if (reduced) setStreamingAnswer(newest.content);
-              else {
-                let index = 0;
-                const typing = window.setInterval(() => {
-                  index += 1;
-                  setStreamingAnswer(newest.content.slice(0, index));
-                  if (index >= newest.content.length) window.clearInterval(typing);
-                }, 14);
-              }
-            }
-          }
-        })
-        .catch(() => setError("The answer status could not be refreshed."));
-    }, 1200);
+          timer = window.setTimeout(() => void poll(), 1200);
+          return;
+        }
+        const next = await loadChatMessages<Message>(api, room.id, controller.signal);
+        if (controller.signal.aborted) return;
+        setMessages(next);
+        setGeneration(current);
+        setPollError(false);
+        const newest = next.at(-1);
+        if (current.status === "COMPLETED" && newest?.role === "ASSISTANT") {
+          setStreamingAnswer("");
+          setStreamedMessageId(newest.id);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setPollError(true);
+          timer = window.setTimeout(() => void poll(), 3000);
+        }
+      }
+    };
+    timer = window.setTimeout(() => void poll(), 1200);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [generationId, pendingGeneration, room]);
+
+  const animatedMessage = messages.find((message) => message.id === streamedMessageId);
+  const animatedContent = animatedMessage ? answerWithCitationMarkers(animatedMessage.content, animatedMessage.citations) : undefined;
+  useEffect(() => {
+    if (animatedContent == null) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setStreamingAnswer(animatedContent);
+      return;
+    }
+    let index = 0;
+    const timer = window.setInterval(() => {
+      index += 1;
+      setStreamingAnswer(animatedContent.slice(0, index));
+      if (index >= animatedContent.length) window.clearInterval(timer);
+    }, 14);
     return () => window.clearInterval(timer);
-  }, [generation, room]);
+  }, [animatedContent, streamedMessageId]);
 
   const ensureRoom = async () => {
     if (room) return room;
@@ -145,10 +189,10 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
     return created;
   };
 
-  const submitContent = async (content: string) => {
-    if (!content || !profile || submitting || generation && ["PENDING", "PROCESSING"].includes(generation.status)) return;
-    setDraft(""); setError(""); setStreamingAnswer(""); setStreamedMessageId(null);
-    const clientMessageId = crypto.randomUUID();
+  const submitContent = async (content: string, clientMessageId: string = crypto.randomUUID(), selection?: AgentSelection) => {
+    if (!content || !profile || !roomResolved || submitting || generation && ["PENDING", "PROCESSING"].includes(generation.status)) return;
+    if (!submissionGate.current.start(clientMessageId)) return;
+    setDraft(""); setError(""); setPollError(false); setStreamingAnswer(""); setStreamedMessageId(null);
     const optimisticId = `pending-${clientMessageId}`;
     const optimistic: Message = {
       id: optimisticId,
@@ -165,7 +209,7 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
       const target = await ensureRoom();
       const result = await api<{ userMessage: Message; generation: Generation }>(`/api/v1/me/chats/${target.id}/messages`, {
         method: "POST",
-        body: JSON.stringify({ clientMessageId, content, selectedSectionId: null, selectedText: null }),
+        body: JSON.stringify(chatSubmissionBody(clientMessageId, content, selection)),
       });
       setMessages((current) => current.map((message) => message.id === optimisticId ? result.userMessage : message));
       setGeneration(result.generation);
@@ -173,9 +217,15 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
       setMessages((current) => current.filter((message) => message.id !== optimisticId));
       setError(reason instanceof Error ? reason.message : "Your message was not sent.");
     } finally {
+      submissionGate.current.finish();
       setSubmitting(false);
     }
   };
+  useEffect(() => {
+    if (profile && roomResolved && requestedContext.prompt?.trim() && requestedContext.requestId) {
+      void submitContent(requestedContext.prompt.trim(), requestedContext.requestId, requestedContext.selection);
+    }
+  }, [profile, roomResolved, requestedContext.requestId]);
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await submitContent(draft.trim());
@@ -200,30 +250,43 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
     catch (reason) { setError(reason instanceof Error ? reason.message : "Generation could not be stopped."); }
   };
   const retryGeneration = async () => {
-    if (!room || !generation) return;
+    if (!room || !generation?.retryable || generation.status !== "FAILED") return;
     try { setError(""); setGeneration(await api<Generation>(`/api/v1/me/chats/${room.id}/generations/${generation.id}/retry`, { method: "POST" })); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Generation could not be retried."); }
-  };
-  const regenerateMessage = async (messageId: string) => {
-    if (!room) return;
-    try {
-      setError(""); setStreamingAnswer(""); setStreamedMessageId(null);
-      setGeneration(await api<Generation>(`/api/v1/me/chats/${room.id}/messages/${messageId}/regenerate`, { method: "POST", body: JSON.stringify({ requestKey: crypto.randomUUID() }) }));
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "The answer could not be regenerated."); }
   };
   const login = () => {
     close();
     navigate(`/login?returnTo=${encodeURIComponent(window.location.pathname)}`);
   };
 
-  if (history) return <AgentHistoryView close={close} onConversation={(roomId) => {
+  const openConversation = async (roomId: string) => {
+    roomLoadRef.current?.abort();
+    const controller = new AbortController();
+    roomLoadRef.current = controller;
+    selectedRoomRef.current = roomId;
+    setRoomLoadError(false);
+    setRoomResolved(false); setRoom(null); setMessages([]); setGeneration(null);
+    setError(""); setPollError(false); setStreamedMessageId(null); setStreamingAnswer("");
+    try {
+      const selected = await api<Room>(`/api/v1/me/chats/${roomId}`, { signal: controller.signal });
+      const loaded = await loadChatState<Message>(api, roomId, controller.signal);
+      if (controller.signal.aborted) return;
+      setRoom(selected); setMessages(loaded.messages); setGeneration(loaded.generation); setRoomResolved(true);
+    } catch {
+      if (!controller.signal.aborted) { setRoomLoadError(true); setError("This chat could not be opened."); }
+    }
+  };
+
+  if (history) return <AgentHistoryView close={close} onDeleted={(roomId) => {
+    if (roomId === room?.id) { setRoom(null); setMessages([]); setGeneration(null); setRoomResolved(false); setLoadRevision((value) => value + 1); }
+  }} onConversation={(roomId) => {
     setHistory(false);
-    if (roomId) void api<Room>(`/api/v1/me/chats/${roomId}`).then(setRoom).catch(() => setError("This chat could not be opened."));
+    if (roomId) void openConversation(roomId);
   }} />;
-  const generating = submitting || Boolean(generation && ["PENDING", "PROCESSING"].includes(generation.status));
+  const generating = submitting || Boolean(profile && !roomResolved && !roomLoadError) || Boolean(generation && ["PENDING", "PROCESSING"].includes(generation.status));
   return <aside className="agent-panel article-agent-panel global-agent-panel" role="dialog" aria-modal="true" aria-label="K-Agent chat">
     <button className="agent-close" type="button" onClick={close} ref={closeButtonRef}><img src="/assets/close.svg" alt="" /> {locale === "ko" ? "닫기" : "Close"}</button>
-    <header><img className="agent-logo" src="/assets/agent-badge-figma.svg" alt="" /><div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div><AgentOverflowMenu onHistory={profile ? () => setHistory(true) : login} onDelete={profile ? (room ? () => void deleteConversation() : undefined) : login} /></header>
+    <header><img className="agent-logo" src="/assets/agent-badge-381-4971.svg" alt="" /><div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div><AgentOverflowMenu onHistory={profile ? () => setHistory(true) : login} onDelete={profile ? (room ? () => void deleteConversation() : undefined) : login} /></header>
     <div className="context-chip"><img src="/assets/agent-context.svg" alt="" /> {room?.context.title || (locale === "ko" ? "한국 시장 도우미" : "Korea market assistant")}</div>
     {!profile ? <div className="api-state agent-login-state"><b>{locale === "ko" ? "보호된 대화를 시작하려면 로그인하세요" : "Sign in to start a protected chat"}</b><span>{locale === "ko" ? "대화방과 기록은 계정별로 안전하게 저장됩니다." : "Chat rooms and history are stored per account."}</span><Link className="login-button agent-login-button" onClick={close} to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}>{locale === "ko" ? "로그인" : "Log in"}</Link></div> : null}
     <div className="chat global-agent-chat" aria-live="polite">
@@ -236,12 +299,25 @@ function KAgentPanel({ close, requestedContext }: { close: () => void; requested
           ).map((suggestion) => <button type="button" key={suggestion} onClick={() => void submitContent(suggestion)}>{suggestion}</button>)}
         </div>
       </> : null}
-      {messages.map((message) => message.id === streamedMessageId ? null : message.role === "USER" ? <p className="user-message user-message-enter" key={message.id}>{message.content}</p> : <div className="ai-message ai-message-enter" key={message.id}><p>{message.content}</p>{message.insufficientEvidence ? <small>{message.refusalReason || (locale === "ko" ? "근거가 부족합니다" : "Insufficient evidence")}</small> : null}{message.citations.map((citation) => citation.url ? <a key={citation.id} href={citation.url} target="_blank" rel="noreferrer">{citation.title}</a> : <small key={citation.id}>{citation.title}</small>)}{message.disclaimer ? <small>{message.disclaimer}</small> : null}<button type="button" className="agent-message-action" onClick={() => void regenerateMessage(message.id)} disabled={Boolean(generating)}>{locale === "ko" ? "다시 생성" : "Regenerate"}</button></div>)}
+      {messages.map((message) => message.role === "USER" ? <p className="user-message user-message-enter" key={message.id}>{message.content}</p> : <div className="ai-message ai-message-enter" key={message.id}>
+        <p className={message.id === streamedMessageId ? "typewriter-answer" : undefined}>{message.id === streamedMessageId ? streamingAnswer : answerWithCitationMarkers(message.content, message.citations)}{message.id === streamedMessageId && streamingAnswer.length < (animatedContent?.length || 0) ? <span className="typing-cursor" aria-hidden="true" /> : null}</p>
+        {message.insufficientEvidence ? <small>{message.refusalReason || (locale === "ko" ? "근거가 부족합니다" : "Insufficient evidence")}</small> : null}
+        <div className="agent-citation-buttons">{message.citations.map((citation) => {
+          const href = citationHref(citation);
+          const title = citationTitle(citation, locale);
+          const label = filingPath(citation) ? (locale === "ko" ? "공시 보기" : "View filing") : (locale === "ko" ? "출처 보기" : "View source");
+          return href?.startsWith("/") ? <Link className="agent-citation-button" key={citation.id} to={href} onClick={close}>{title ? <span>{title}</span> : null}<b>{label} ↗</b></Link>
+            : href ? <a className="agent-citation-button" key={citation.id} href={href} target="_blank" rel="noopener noreferrer">{title ? <span>{title}</span> : null}<b>{label} ↗</b></a>
+            : <small key={citation.id}>{title}</small>;
+        })}</div>
+        {message.disclaimer ? <small>{message.disclaimer}</small> : null}
+      </div>)}
       {generating ? <div className="agent-thinking" role="status"><span className="sr-only">{locale === "ko" ? "K-Agent가 답변을 작성하는 중" : "K-Agent is typing"}</span><i /><i /><i />{generation ? <button type="button" onClick={() => void stopGeneration()}>{locale === "ko" ? "중지" : "Stop"}</button> : null}</div> : null}
-      {streamedMessageId ? <div className="ai-message ai-message-enter"><p className="typewriter-answer">{streamingAnswer}<span className="typing-cursor" aria-hidden="true" /></p></div> : null}
-      {generation?.status === "FAILED" ? <div className="api-state api-error"><span>{generation.errorCode || (locale === "ko" ? "AI 답변 생성에 실패했습니다." : "AI generation failed.")}</span><button type="button" onClick={() => void retryGeneration()}>{locale === "ko" ? "다시 시도" : "Retry"}</button></div> : null}
+      {generation?.status === "FAILED" ? <div className="api-state api-error"><span>{generation.errorCode || (locale === "ko" ? "AI 답변 생성에 실패했습니다." : "AI generation failed.")}</span>{generation.retryable ? <button type="button" onClick={() => void retryGeneration()}>{locale === "ko" ? "다시 시도" : "Retry"}</button> : null}</div> : null}
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
+      {roomLoadError ? <button type="button" onClick={() => selectedRoomRef.current ? void openConversation(selectedRoomRef.current) : setLoadRevision((value) => value + 1)}>{locale === "ko" ? "대화 다시 불러오기" : "Reload conversation"}</button> : null}
+      {pollError ? <p className="auth-error" role="alert">{locale === "ko" ? "답변 상태 연결을 복구하고 있습니다. 질문을 다시 보내지 않아도 됩니다." : "Reconnecting to your answer. You do not need to send your question again."}</p> : null}
     </div>
-    <form className="chat-input global-agent-input" onSubmit={(event) => void sendMessage(event)}><input type="text" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={locale === "ko" ? "한국 시장에 대해 질문하세요" : "Ask anything about this market"} aria-label={locale === "ko" ? "K-Agent에게 메시지" : "Message K-Agent"} disabled={!profile} /><button type="submit" aria-label={locale === "ko" ? "메시지 전송" : "Send message"} disabled={!draft.trim() || !profile || Boolean(generating)}><img src="/assets/agent-send.svg" alt="" /></button></form>
+    <form className="chat-input global-agent-input" onSubmit={(event) => void sendMessage(event)}><input type="text" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={locale === "ko" ? "한국 시장에 대해 질문하세요" : "Ask anything about this market"} aria-label={locale === "ko" ? "K-Agent에게 메시지" : "Message K-Agent"} disabled={!profile} /><button type="submit" aria-label={locale === "ko" ? "메시지 전송" : "Send message"} disabled={!draft.trim() || !profile || !roomResolved || Boolean(generating)}><img src="/assets/agent-send.svg" alt="" /></button></form>
   </aside>;
 }

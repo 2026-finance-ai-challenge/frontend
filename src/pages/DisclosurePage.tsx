@@ -6,13 +6,13 @@ import { api, queryString } from "../api";
 import { RemoteState, formatDate } from "../components/RemoteState";
 import { ViewMoreButton } from "../components/ViewMoreButton";
 import { useCursorPage } from "../hooks/useCursorPage";
-import { useRemote } from "../hooks/useRemote";
-import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
+import { useProfile, useRemote } from "../hooks/useRemote";
 import type { Filing, FilingDetail } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
 import { FitText } from "../components/FitText";
+import { FilingSentimentDot } from "../components/FilingSentimentDot";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
 import { hasVerifiedEnglishTitle, isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
@@ -23,13 +23,16 @@ type FilingInsight = {
   what: string | null;
   why: string | null;
   impact: string | null;
+  whatKo: string | null;
+  whyKo: string | null;
+  impactKo: string | null;
   refusalReason: string | null;
   sourceSectionIds: string[];
   modelId: string | null;
   generatedAt: string | null;
 };
 
-type FilingFiltersValue = { from: string; to: string; types: string[] };
+export type FilingFiltersValue = { from: string; to: string; types: string[] };
 
 const DISCLOSURE_FILTERS = [
   ["Reporting & Governance", ["Periodic Reports", "PERIODIC"], ["Audit Reports", "AUDIT"], ["Fair Trade", "FAIR_TRADE"]],
@@ -76,7 +79,7 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
                 key={filing.receiptNumber}
               >
                 <span>{formatDate(filing.detectedAt)}</span>
-                <i className={filing.correction ? "red" : "neutral"} />
+                <FilingSentimentDot sentiment={filing.sentiment} />
                 <span>
                   <FitText className="filing-issuer" value={issuer} />
                   <small>{filing.stockCode} · {filing.market}</small>
@@ -111,7 +114,7 @@ export function DisclosurePage() {
   );
 }
 
-function FilingFilters({ value, onChange }: { value: FilingFiltersValue; onChange: (value: FilingFiltersValue) => void }) {
+export function FilingFilters({ value, onChange }: { value: FilingFiltersValue; onChange: (value: FilingFiltersValue) => void }) {
   const { locale } = useLocale();
   const selectedRange = [["1D", 1], ["1W", 7], ["1M", 30], ["3M", 90], ["1Y", 365]].find(([, days]) => value.from === dateBefore(Number(days)) && value.to === new Date().toISOString().slice(0, 10))?.[0];
   const setRange = (days: number) => onChange({ ...value, from: dateBefore(days), to: new Date().toISOString().slice(0, 10) });
@@ -176,16 +179,27 @@ export function DisclosureDetailPage() {
   const detailState = useRemote((signal) => api<FilingDetail>(`/api/v1/disclosures/${disclosureId}`, { signal }), [disclosureId]);
   const insightState = useRemote((signal) => api<FilingInsight>(`/api/v1/disclosures/${disclosureId}/insight`, { signal }), [disclosureId]);
   const filing = detailState.data;
+  const userId = useProfile()?.id;
+  useEffect(() => {
+    if (!userId || !filing) return;
+    void api("/api/v1/me/recently-viewed", { method: "POST", body: JSON.stringify({ itemType: "FILING", referenceId: disclosureId, stockCode: filing.stockCode }) }).catch(() => undefined);
+  }, [userId, disclosureId, filing?.stockCode]);
   const englishTitle = verifiedEnglishText(filing?.titleEn);
   const insight = insightState.data && (locale === "ko" || isVerifiedEnglish({
     what: insightState.data.what,
     why: insightState.data.why,
     impact: insightState.data.impact,
     refusalReason: insightState.data.refusalReason,
-  })) ? insightState.data : null;
+  })) ? {
+    ...insightState.data,
+    what: locale === "ko" ? insightState.data.whatKo : insightState.data.what,
+    why: locale === "ko" ? insightState.data.whyKo : insightState.data.why,
+    impact: locale === "ko" ? insightState.data.impactKo : insightState.data.impact,
+  } : null;
   const [indexRequested, setIndexRequested] = useState(false);
   const [automaticError, setAutomaticError] = useState("");
-  const selectionAssistant = useSelectionAssistant<HTMLDivElement>();
+  const [translationRevision, setTranslationRevision] = useState(0);
+  const selectionAssistant = useSelectionAssistant<HTMLDivElement>(true, `${disclosureId}:${locale}`);
   const indexRequest = useRef<string | null>(null);
   const insightRequest = useRef<string | null>(null);
 	const translationRequest = useRef<string | null>(null);
@@ -205,6 +219,7 @@ export function DisclosureDetailPage() {
 		if (locale !== "en" || !filing || translationRequest.current === disclosureId) return;
 		translationRequest.current = disclosureId;
 		void api(`/api/v1/disclosures/${disclosureId}/translation`, { method: "POST" })
+			.then(() => setTranslationRevision(value => value + 1))
 			.catch((reason: unknown) => setAutomaticError(
 				reason instanceof Error ? reason.message : "Disclosure translation could not be requested.",
 			));
@@ -268,7 +283,7 @@ export function DisclosureDetailPage() {
                 {t("reporter")}<b>{locale === "ko" ? filing?.submitter || "정보 없음" : filing?.issuerNameEn || "Unavailable"}</b>
               </span>
               <span>
-                {t("receiver")}<b>{locale === "ko" ? filing?.receiverKo : filing?.receiverEn}</b>
+                {t("receiver")}<b>{(locale === "ko" ? filing?.receiverKo : filing?.receiverEn) || (locale === "ko" ? "정보 없음" : "Unavailable")}</b>
               </span>
               <span>
                 {t("documentNo")}<b>{filing?.receiptNumber || disclosureId}</b>
@@ -281,7 +296,7 @@ export function DisclosureDetailPage() {
             <section className="ai-summary">
                 <h2>
                   {t("aiSummary")}{" "}
-                  <img src="/assets/agent-badge-figma.svg" alt="AI" />
+                  <img src="/assets/agent-badge-381-4971.svg" alt="AI" />
                 </h2>
                 {insight?.sufficientEvidence ? [
                   [t("what"), insight.what],
@@ -324,14 +339,17 @@ export function DisclosureDetailPage() {
             >
               <RemoteState {...detailState}>
                 {(value) => locale === "ko"
-                  ? <div className="dart-original-documents selection-content">{value.documents.map((document) => document.originalHtml ? <DartOriginalDocument html={document.originalHtml} key={document.id} /> : <div className="disclosure-structured-body" key={document.id}>{document.sections.map((section) => <OriginalDisclosureSection section={section} key={section.id} />)}</div>)}</div>
-                  : <div className="disclosure-structured-body">{value.documents.flatMap((document) => document.sections).map((section) => <DisclosureSection receiptNumber={disclosureId} section={section} key={section.id} />)}</div>}
+                  ? <div className="dart-original-documents">{value.documents.map((document) => document.originalHtml ? <DartOriginalDocument html={document.originalHtml} key={document.id} /> : <div className="disclosure-structured-body" key={document.id}>{document.sections.map((section) => <OriginalDisclosureSection section={section} key={section.id} />)}</div>)}</div>
+                  : <TranslatedDisclosureDocuments receiptNumber={disclosureId} revision={translationRevision} />}
               </RemoteState>
               <SelectionAssistant
                 selection={selectionAssistant.selection}
                 prompt={locale === "ko" ? "이 내용이 궁금한가요?" : "Want to know what this means?"}
                 actionLabel={locale === "ko" ? "질문하기" : "Click"}
-                onAsk={(selectedText) => openKAgent({ contextType: "FILING", referenceId: disclosureId, prompt: locale === "ko" ? `이 공시에서 “${selectedText}”의 뜻과 투자 영향을 한국어로 설명해줘.` : `Explain “${selectedText}” and its investment impact in this filing.` })}
+                onAsk={(selectedText, sectionId) => {
+                  if (!sectionId) return;
+                  openKAgent({ contextType: "FILING", referenceId: disclosureId, selection: { sectionId, text: selectedText }, prompt: locale === "ko" ? `이 공시에서 “${selectedText}”의 뜻과 투자 영향을 한국어로 설명해줘.` : `Explain “${selectedText}” and its investment impact in this filing.` });
+                }}
               />
             </div>
           </section>
@@ -360,41 +378,30 @@ async function sharePage(title: string) {
   await navigator.clipboard.writeText(window.location.href);
 }
 
-function DisclosureSection({ receiptNumber, section }: { receiptNumber: string; section: FilingSection }) {
-  const translation = useAutomaticTranslation(
-		`/api/v1/disclosures/${receiptNumber}/sections/${section.id}/translation`,
-		true,
-		false,
-	);
-  const translated = translation.data?.status === "READY" && isVerifiedEnglish(translation.data.result)
-    ? translation.data.result
-    : null;
-  const pending = (
-    translation.loading
-    || translation.requesting
-    || translation.data?.status === "NOT_REQUESTED"
-    || translation.data?.status === "PENDING"
-    || translation.data?.status === "PROCESSING"
-  );
-  return <section id={`section-${section.id}`} aria-busy={pending}>
-    {translated?.translatedHeading ? <h3 className="selection-content">{translated.translatedHeading}</h3> : null}
-    {translated?.translatedTableData
-      ? <div className="selection-content"><StructuredTable data={translated.translatedTableData} /></div>
-      : translated?.translatedText
-        ? <p className="selection-content">{translated.translatedText}</p>
-        : pending
-          ? <LoadingSkeleton lines={section.tableData ? 5 : 3} className="disclosure-section-skeleton" />
-          : <div className="api-state api-error">Translation generation failed and no cache was stored.</div>}
-    {translation.requestError ? <small className="translation-status-error">{translation.requestError.message}</small> : null}
-  </section>;
-}
-
 function DartOriginalDocument({ html }: { html: string }) {
   return <article className="dart-original-html" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
+type DocumentTranslation = { documentId: string; html: string | null; total: number; ready: number; failed: number };
+
+function TranslatedDisclosureDocuments({ receiptNumber, revision }: { receiptNumber: string; revision: number }) {
+  const { locale } = useLocale();
+  const state = useRemote((signal) => api<DocumentTranslation[]>(`/api/v1/disclosures/${receiptNumber}/translation`, { signal }), [receiptNumber, revision]);
+  const pending = state.data?.some(document => document.ready + document.failed < document.total);
+  useEffect(() => {
+    if (!pending || state.loading) return;
+    const timer = window.setTimeout(state.retry, 2_000);
+    return () => window.clearTimeout(timer);
+  }, [pending, state.loading, state.retry]);
+  if (!state.data) return <RemoteState {...state}>{() => null}</RemoteState>;
+  return <div className="dart-original-documents" aria-busy={pending}>{state.data.map(document => <div key={document.documentId}>
+    {document.html ? <DartOriginalDocument html={document.html} /> : <div className="api-state api-error">{locale === "ko" ? "원본 HTML을 복구 중입니다." : "The original HTML is not available yet."}</div>}
+    {document.failed > 0 ? <div className="api-state api-error">{locale === "ko" ? `${document.failed}개 구간 번역에 실패했습니다.` : `${document.failed} sections could not be translated.`}</div> : null}
+  </div>)}</div>;
+}
+
 function OriginalDisclosureSection({ section }: { section: FilingSection }) {
-  return <section>
+  return <section className="selection-content" data-section-id={section.id}>
     {section.heading ? <h3>{section.heading}</h3> : null}
     {section.kind === "TABLE" ? <StructuredTable data={section.tableData} /> : <p>{section.text}</p>}
   </section>;
@@ -409,20 +416,13 @@ function StructuredTable({ data }: { data: unknown }) {
     : <td key={cellIndex}>{String(cell ?? "")}</td>)}</tr>)}</tbody></table></div>;
 }
 
-type DisclosureAnswer = { answer: string; refused: boolean; refusalReason: string | null; citations: Array<{ id: string; heading: string | null; excerpt: string | null }> };
-
 function DisclosureQuestionBox({ receiptNumber, ready }: { receiptNumber: string; ready: boolean }) {
   const { locale } = useLocale();
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState<DisclosureAnswer | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const ask = async () => {
+  const ask = () => {
     if (!question.trim()) return;
-    setBusy(true); setError("");
-    try { setAnswer(await api<DisclosureAnswer>(`/api/v1/disclosures/${receiptNumber}/questions`, { method: "POST", body: JSON.stringify({ question: question.trim() }) })); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "The filing question could not be answered."); }
-    finally { setBusy(false); }
+    openKAgent({ contextType: "FILING", referenceId: receiptNumber, prompt: question.trim() });
+    setQuestion("");
   };
-  return <section className="disclosure-question"><h2>{locale === "ko" ? "공시에 대해 질문하기" : "Ask about this filing"}</h2><p>{locale === "ko" ? "현재 공시 버전에서 색인된 원문만 근거로 답합니다." : "Answers are restricted to indexed sections of the current disclosure version."}</p><form onSubmit={(event) => { event.preventDefault(); void ask(); }}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={locale === "ko" ? "무엇이 바뀌었고 투자자에게 어떤 영향이 있나요?" : "What changed and how could it affect investors?"} disabled={!ready || busy} /><button disabled={!ready || !question.trim() || busy}>{busy ? locale === "ko" ? "근거 확인 중…" : "Checking sources…" : locale === "ko" ? "질문" : "Ask"}</button></form>{!ready ? <small>{locale === "ko" ? "근거 기반 질문은 문서 색인이 끝난 뒤 사용할 수 있습니다." : "The document must finish indexing before grounded questions are available."}</small> : null}{error ? <p className="auth-error">{error}</p> : null}{answer ? <blockquote><p>{answer.refused ? answer.refusalReason : answer.answer}</p>{answer.citations.map((citation) => <small key={citation.id}><b>{citation.heading || (locale === "ko" ? "원문 구간" : "Source section")}</b> {citation.excerpt}</small>)}</blockquote> : null}</section>;
+  return <section className="disclosure-question"><h2>{locale === "ko" ? "공시에 대해 질문하기" : "Ask about this filing"}</h2><p>{locale === "ko" ? "현재 공시 버전에서 색인된 원문만 근거로 답합니다." : "Answers are restricted to indexed sections of the current disclosure version."}</p><form onSubmit={(event) => { event.preventDefault(); ask(); }}><input value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={2000} placeholder={locale === "ko" ? "무엇이 바뀌었고 투자자에게 어떤 영향이 있나요?" : "What changed and how could it affect investors?"} disabled={!ready} /><button disabled={!ready || !question.trim()}>{locale === "ko" ? "질문" : "Ask"}</button></form>{!ready ? <small>{locale === "ko" ? "근거 기반 질문은 문서 색인이 끝난 뒤 사용할 수 있습니다." : "The document must finish indexing before grounded questions are available."}</small> : null}</section>;
 }

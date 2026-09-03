@@ -11,7 +11,7 @@ import { IntelligenceBadges } from "./IntelligenceBadges";
 import { hasVerifiedEnglishTitle, verifiedEnglishText } from "../utils/english";
 import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
 import { LoadingSkeleton } from "./LoadingSkeleton";
-import { hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
+import { generatedNewsInsight, hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -101,9 +101,7 @@ function NewsFeedRow({ item, returnTo }: { item: NewsArticle; returnTo: string }
     `/api/v1/news/${item.id}/translation?locale=${locale}`,
     hovered && !cached,
   );
-  const generated = translation.data?.status === "READY" && translation.data.targetLocale === locale
-    ? translation.data.result
-    : null;
+  const generated = generatedNewsInsight(translation.data, locale);
   const insight = generated && hasCompleteNewsInsight(generated) ? generated : cachedInsight;
   const ready = hasCompleteNewsInsight(insight);
   const moveTooltip = (event: PointerEvent<HTMLAnchorElement>) => {

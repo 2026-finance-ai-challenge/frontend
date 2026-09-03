@@ -14,6 +14,7 @@ import type { Stock } from "../types";
 type WatchlistContextValue = {
   isSaved: (stockCode: string) => boolean;
   toggle: (stockCode: string) => Promise<void>;
+  remove: (stockCode: string) => Promise<void>;
   loading: boolean;
 };
 
@@ -68,11 +69,16 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     }
   }, [profile, savedItems]);
 
+  const remove = useCallback(async (stockCode: string) => {
+    await api(`/api/v1/me/watchlist/${stockCode}`, { method: "DELETE" });
+    setSavedItems((current) => { const next = new Set(current); next.delete(stockCode); return next; });
+  }, []);
   const value = useMemo<WatchlistContextValue>(() => ({
     isSaved: (stockCode) => savedItems.has(stockCode),
     toggle,
+    remove,
     loading,
-  }), [loading, savedItems, toggle]);
+  }), [loading, savedItems, toggle, remove]);
 
   return <WatchlistContext.Provider value={value}>{children}</WatchlistContext.Provider>;
 }
