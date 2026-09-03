@@ -128,7 +128,7 @@ function NewsFeedRow({ item, returnTo }: { item: NewsArticle; returnTo: string }
       <div>
         <IntelligenceBadges sentiment={item.sentiment} importance={item.importance} eventType={item.eventType} />
         <h2>{locale === "ko" ? item.originalTitle : verifiedEnglishText(item.englishTitle) || ""}</h2>
-        <p>{item.publisher} · {formatDate(item.publishedAt)} · {locale === "ko" ? "한글 원문" : "Auto-translated title"}</p>
+        <p>{item.publisher} · {formatDate(item.publishedAt)}</p>
       </div>
       {hovered ? (
         <aside
