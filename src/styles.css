@@ -3234,7 +3234,10 @@ mark {
 .tax-eligibility-panel {
   display: flex;
   flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
 }
+.tax-eligibility-panel > :not(.chat) { flex: 0 0 auto; }
 .tax-eligibility-panel .context-chip img {
   width: 20px;
   height: 20px;
@@ -3562,6 +3565,27 @@ mark {
 .chat {
   margin-top: 60px;
 }
+.agent-panel { overflow-x: hidden; }
+.agent-panel > .chat {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+.agent-panel :is(.ai-message, .user-message, .agent-thinking, .context-chip, .agent-suggestions, .tax-document-turn, .agent-history-open) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.agent-panel .ai-message > * { min-width: 0; max-width: 100%; }
+.agent-panel :is(pre, blockquote) { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.agent-panel .chat :is(img, video, iframe) { max-width: 100%; }
+.agent-panel .chat table { width: 100%; table-layout: fixed; }
+.agent-panel .chat :is(th, td) { overflow-wrap: anywhere; }
+.agent-panel > .tax-restart { border: 1px solid #ded7c5; background: #f7f4ed; }
 .user-message {
   margin: 0 0 30px auto;
   background: var(--gold);
