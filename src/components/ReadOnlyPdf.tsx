@@ -3,7 +3,9 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { LoadingSkeleton } from './LoadingSkeleton'
 import { useLocale } from '../state/LocaleContext'
 
-export function ReadOnlyPdf({ blob, title }: { blob: Blob; title: string }) {
+export type PdfPreviewField = { key: string; label: string; value: string | null; page: number; x: number; y: number; width: number; height: number }
+const noFields: PdfPreviewField[] = []
+export function ReadOnlyPdf({ blob, title, fields = noFields }: { blob: Blob; title: string; fields?: PdfPreviewField[] }) {
   const container = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
@@ -30,11 +32,27 @@ export function ReadOnlyPdf({ blob, title }: { blob: Blob; title: string }) {
         canvas.setAttribute('role', 'img')
         canvas.setAttribute('aria-label', `${title} · ${pageNumber}`)
         await page.render({ canvas, viewport }).promise
-        if (!stopped) host.append(canvas)
+        if (!stopped) {
+          const wrapper = document.createElement('div')
+          wrapper.className = 'readonly-pdf-page'
+          wrapper.append(canvas)
+          const original = page.getViewport({ scale: 1 })
+          for (const field of fields.filter(item => item.page === pageNumber && item.value)) {
+            const input = document.createElement('input')
+            input.readOnly = true; input.value = field.value!; input.title = field.label
+            input.setAttribute('aria-label', field.label)
+            input.style.left = `${field.x / original.width * 100}%`
+            input.style.bottom = `${field.y / original.height * 100}%`
+            input.style.width = `${field.width / original.width * 100}%`
+            input.style.height = `${field.height / original.height * 100}%`
+            wrapper.append(input)
+          }
+          host.append(wrapper)
+        }
       }
       if (!stopped) setLoading(false)
     })().catch(() => { if (!stopped) { setFailed(true); setLoading(false) } })
     return () => { stopped = true; void task?.destroy(); host.replaceChildren() }
-  }, [blob, title])
+  }, [blob, title, fields])
   return <>{loading ? <LoadingSkeleton lines={6} /> : null}{failed ? <p role="alert">{locale === 'ko' ? 'PDF를 표시하지 못했습니다.' : 'Unable to display PDF.'}</p> : null}<div ref={container} className="readonly-pdf" aria-busy={loading} /></>
 }
