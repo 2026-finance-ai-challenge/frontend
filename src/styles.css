@@ -3348,6 +3348,19 @@ mark {
   overflow-wrap: anywhere;
 }
 
+.tax-restart {
+  align-self: flex-start;
+  margin: 10px 22px 0;
+  border: 1px solid #ded7c5;
+  border-radius: 7px;
+  background: #f7f4ed;
+  color: #5e5139;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px;
+}
+
+
 .tax-file-bubble {
   border: 0;
   cursor: pointer;
@@ -4981,6 +4994,8 @@ mark {
 .agent-history-new { border: 0; border-radius: 8px; background: black; color: white; padding: 10px 16px; margin-left: 16px; }
 .agent-history-row { display: flex; align-items: center; border: 1px solid #eee; border-radius: 12px; min-width: 0; padding: 12px; gap: 8px; }
 .agent-history-row:hover, .agent-history-row:focus-within { border-color: var(--gold); }
+.agent-history-row.is-tax-room { background: #fff9e9; border-color: #e8c77a; box-shadow: inset 3px 0 0 var(--gold); }
+.agent-history-row.is-tax-room:hover, .agent-history-row.is-tax-room:focus-within { background: #fff3d2; border-color: #caa048; }
 .agent-history-open { flex: 1; min-width: 0; border: 0; background: transparent; text-align: left; padding: 6px; }
 .agent-history-open b { overflow-wrap: anywhere; }
 .agent-history-row .agent-overflow-wrap { flex: 0 0 auto; }

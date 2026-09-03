@@ -5,6 +5,7 @@ import { useProfile, useRemote } from "../hooks/useRemote";
 import type { SupportedCountry, TaxDocument } from "../types";
 import { useLocale } from "../state/LocaleContext";
 import { CountryOptions } from "./CountryOptions";
+import { AgentOverflowMenu } from "./AgentHistory";
 
 type TaxEligibility = {
   countryName: string;
@@ -26,7 +27,10 @@ type TaxComparison = {
 
 type TaxEligibilityPanelProps = {
   close: () => void;
+  openHistory: () => void;
 };
+
+type TaxRoom = { id: string; context: { type: string } };
 
 const requiredDocuments = [
   { type: "RESIDENCY_CERTIFICATE", en: "Certificate of residence", ko: "거주자 증명서" },
@@ -34,7 +38,7 @@ const requiredDocuments = [
   { type: "REDUCED_TAX_APPLICATION", en: "Application for reduced tax rate", ko: "제한세율 적용신청서" },
 ] as const;
 
-export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
+export function TaxEligibilityPanel({ close, openHistory }: TaxEligibilityPanelProps) {
   const { locale } = useLocale();
   const profile = useProfile();
   const countries = useRemote((signal) => api<SupportedCountry[]>("/api/v1/tax/countries", { signal }), []);
@@ -50,6 +54,7 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
   const [introStage, setIntroStage] = useState<"sent" | "thinking" | "ready">("sent");
   const [assessmentRequest, setAssessmentRequest] = useState("");
   const [error, setError] = useState("");
+  const [taxRoomId, setTaxRoomId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"eligibility" | "upload" | "comparison" | "document" | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
@@ -66,10 +71,12 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
 
   useEffect(() => {
     if (!profile) return;
-    void api<Array<{ id: string; context: { type: string } }>>("/api/v1/me/chats")
-      .then((rooms) => rooms.some((room) => room.context.type === "TAX_GUIDE")
-        ? undefined
-        : api("/api/v1/me/chats", { method: "POST", body: JSON.stringify({ contextType: "TAX_GUIDE" }) }))
+    void api<TaxRoom[]>("/api/v1/me/chats")
+      .then((rooms) => {
+        const existing = rooms.find((room) => room.context.type === "TAX_GUIDE");
+        return existing ? existing : api<TaxRoom>("/api/v1/me/chats", { method: "POST", body: JSON.stringify({ contextType: "TAX_GUIDE" }) });
+      })
+      .then((room) => setTaxRoomId(room.id))
       .catch(() => undefined);
   }, [profile]);
 
@@ -203,6 +210,27 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
     }
   };
 
+  const restart = async () => {
+    if (busy || !profile) return;
+    setBusy("document"); setError("");
+    try {
+      await Promise.all((documents.data || []).map((document) => api(`/api/v1/me/tax-documents/${document.id}`, { method: "DELETE" })));
+      setResult(null); setComparison(null); setAssessmentRequest(""); setFile(null); comparisonKeyRef.current = "";
+      documents.retry();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "The assessment could not be restarted."); }
+    finally { setBusy(null); }
+  };
+
+  const deleteTaxConversation = async () => {
+    if (busy || !taxRoomId) return;
+    setBusy("document"); setError("");
+    try {
+      await api(`/api/v1/me/chats/${taxRoomId}`, { method: "DELETE" });
+      close();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "The assessment could not be deleted."); }
+    finally { setBusy(null); }
+  };
+
   return (
     <aside className="agent-panel tax-eligibility-panel" id="tax-eligibility-panel" role="dialog" aria-modal="true" aria-label={locale === "ko" ? "세율 확인 K-Agent" : "Tax eligibility K-Agent"}>
       <button className="agent-close" type="button" onClick={close} ref={closeButtonRef}>
@@ -211,8 +239,10 @@ export function TaxEligibilityPanel({ close }: TaxEligibilityPanelProps) {
       <header>
         <img className="agent-logo" src="/assets/agent-badge-381-4971.svg" alt="" />
         <div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div>
+        <AgentOverflowMenu onHistory={openHistory} onDelete={profile && taxRoomId ? () => void deleteTaxConversation() : undefined} />
       </header>
       <div className="context-chip"><img src="/assets/tax.svg" alt="" /> {locale === "ko" ? "배당 원천징수세" : "Dividend withholding tax"}</div>
+      {profile ? <button className="tax-restart" type="button" disabled={Boolean(busy)} onClick={() => void restart()}>{locale === "ko" ? "처음부터 다시 시작" : "Start over"}</button> : null}
       <div className="chat tax-agent-chat" aria-live="polite" ref={chatRef}>
         <p className="user-message user-message-enter">{locale === "ko" ? "세율 확인을 시작했습니다" : "Tax assessment started"}</p>
         {introStage === "thinking" ? <TypingBubble locale={locale} /> : null}

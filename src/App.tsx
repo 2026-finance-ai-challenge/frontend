@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useLayoutEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { HomePage } from './pages/HomePage'
 import { StockPage } from './pages/StockPage'
@@ -39,11 +39,17 @@ export default function App() {
 }
 
 function ScrollToTop() {
-  const { pathname } = useLocation()
+  const { key, pathname } = useLocation()
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [pathname])
+  useLayoutEffect(() => {
+    // 브라우저의 이전 위치 복원을 끄고 라우트 커밋 전 스크롤을 초기화한다.
+    const previous = window.history.scrollRestoration
+    window.history.scrollRestoration = 'manual'
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    window.scrollTo(0, 0)
+    return () => { window.history.scrollRestoration = previous }
+  }, [key, pathname])
 
   return null
 }

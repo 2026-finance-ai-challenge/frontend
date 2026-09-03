@@ -37,6 +37,7 @@ export function KAgentFloating() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(location.pathname === "/tax");
   const [context, setContext] = useState<KAgentContext>({ contextType: location.pathname === "/tax" ? "TAX_GUIDE" : "GENERAL" });
+  const [taxHistory, setTaxHistory] = useState(false);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const close = useCallback(() => {
@@ -64,17 +65,17 @@ export function KAgentFloating() {
       <img src="/assets/k-agent-glyph-394-1451.svg" alt="" />
     </button>
     {open ? context.contextType === "TAX_GUIDE"
-      ? <TaxEligibilityPanel close={close} />
-      : <KAgentPanel key={`${profile?.id || "guest"}:${context.requestId || `${context.contextType}:${context.referenceId || ""}`}`} close={close} requestedContext={context} openTax={() => setContext({ contextType: "TAX_GUIDE" })} /> : null}
+      ? taxHistory ? <AgentHistoryView close={close} onDeleted={() => undefined} onConversation={(_, type) => { setTaxHistory(false); if (type !== "TAX_GUIDE") setContext({ contextType: "GENERAL" }); }} /> : <TaxEligibilityPanel close={close} openHistory={() => setTaxHistory(true)} />
+      : <KAgentPanel key={`${profile?.id || "guest"}:${context.requestId || `${context.contextType}:${context.referenceId || ""}`}`} close={close} requestedContext={context} openTax={() => setContext({ contextType: "TAX_GUIDE" })} initialHistory={context.contextType === "GENERAL" && !context.requestId} /> : null}
   </>;
 }
 
-function KAgentPanel({ close, requestedContext, openTax }: { close: () => void; requestedContext: KAgentContext; openTax: () => void }) {
+function KAgentPanel({ close, requestedContext, openTax, initialHistory }: { close: () => void; requestedContext: KAgentContext; openTax: () => void; initialHistory: boolean }) {
   const { locale } = useLocale();
   const navigate = useNavigate();
   const profile = useProfile();
   const userId = profile?.id;
-  const [history, setHistory] = useState(false);
+  const [history, setHistory] = useState(initialHistory);
   const [room, setRoom] = useState<Room | null>(null);
   const [roomResolved, setRoomResolved] = useState(false);
   const submissionGate = useRef(createSubmissionGate());
@@ -90,6 +91,7 @@ function KAgentPanel({ close, requestedContext, openTax }: { close: () => void; 
   const [loadRevision, setLoadRevision] = useState(0);
   const [streamingAnswer, setStreamingAnswer] = useState("");
   const [streamedMessageId, setStreamedMessageId] = useState<string | null>(null);
+  const [localizedContextTitle, setLocalizedContextTitle] = useState("");
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -122,6 +124,28 @@ function KAgentPanel({ close, requestedContext, openTax }: { close: () => void; 
       });
     return () => controller.abort();
   }, [userId, requestedContext.contextType, requestedContext.referenceId, loadRevision]);
+
+  useEffect(() => {
+    const referenceId = requestedContext.referenceId;
+    if (requestedContext.contextType === "GENERAL") {
+      setLocalizedContextTitle(locale === "ko" ? "한국 시장 도우미" : "Korea market assistant"); return;
+    }
+    if (requestedContext.contextType === "TAX_GUIDE") {
+      setLocalizedContextTitle(locale === "ko" ? "배당 원천징수세" : "Dividend withholding tax"); return;
+    }
+    if (!referenceId) return;
+    const controller = new AbortController();
+    const path = requestedContext.contextType === "NEWS" ? `/api/v1/news/${referenceId}`
+      : requestedContext.contextType === "FILING" ? `/api/v1/disclosures/${referenceId}`
+        : `/api/v1/market/stocks/${referenceId}`;
+    void api<Record<string, string>>(path, { signal: controller.signal }).then((value) => {
+      if (controller.signal.aborted) return;
+      setLocalizedContextTitle(locale === "ko"
+        ? value.titleKo || value.originalTitle || value.nameKo || room?.context.title || ""
+        : value.titleEn || value.englishTitle || value.nameEn || room?.context.title || "");
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, [locale, requestedContext.contextType, requestedContext.referenceId, room?.context.title]);
 
   useEffect(() => () => roomLoadRef.current?.abort(), []);
 
@@ -288,7 +312,7 @@ function KAgentPanel({ close, requestedContext, openTax }: { close: () => void; 
   return <aside className="agent-panel article-agent-panel global-agent-panel" role="dialog" aria-modal="true" aria-label="K-Agent chat">
     <button className="agent-close" type="button" onClick={close} ref={closeButtonRef}><img src="/assets/close.svg" alt="" /> {locale === "ko" ? "닫기" : "Close"}</button>
     <header><img className="agent-logo" src="/assets/agent-badge-381-4971.svg" alt="" /><div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div><AgentOverflowMenu onHistory={profile ? () => setHistory(true) : login} onDelete={profile ? (room ? () => void deleteConversation() : undefined) : login} /></header>
-    <div className="context-chip"><img src="/assets/agent-context.svg" alt="" /> {room?.context.title || (locale === "ko" ? "한국 시장 도우미" : "Korea market assistant")}</div>
+    <div className="context-chip"><img src="/assets/agent-context.svg" alt="" /> {localizedContextTitle || room?.context.title || (locale === "ko" ? "한국 시장 도우미" : "Korea market assistant")}</div>
     {!profile ? <div className="api-state agent-login-state"><b>{locale === "ko" ? "보호된 대화를 시작하려면 로그인하세요" : "Sign in to start a protected chat"}</b><span>{locale === "ko" ? "대화방과 기록은 계정별로 안전하게 저장됩니다." : "Chat rooms and history are stored per account."}</span><Link className="login-button agent-login-button" onClick={close} to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}>{locale === "ko" ? "로그인" : "Log in"}</Link></div> : null}
     <div className="chat global-agent-chat" aria-live="polite">
       {profile && messages.length === 0 ? <>
