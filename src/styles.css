@@ -5839,3 +5839,15 @@ mark {
 .tax-document-viewer { min-height: 100dvh; padding: 24px; background: #edece5; display: grid; place-items: start center; }
 .tax-document-viewer > img { max-width: 100%; height: auto; }
 .tax-document-viewer > iframe { width: 100%; height: calc(100dvh - 48px); border: 0; }
+.tax-review-page { padding-top: 60px; padding-bottom: 60px; }
+.tax-review-page > p, .tax-review-page section > p { color: #666; line-height: 1.6; }
+.tax-review-documents { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 32px 0; }
+.tax-review-document { min-width: 0; padding: 18px; background: #f8f7f2; border: 1px solid #e4e1d6; border-radius: 14px; }
+.tax-review-document h3 { font-size: 18px; overflow-wrap: anywhere; }
+.tax-review-document img { display: block; width: 100%; height: 440px; object-fit: contain; border: 0; }
+.readonly-pdf { display: grid; gap: 16px; max-height: 440px; overflow-y: auto; overflow-x: hidden; }
+.readonly-pdf canvas { display: block; width: 100%; height: auto; background: white; }
+.tax-review-document.is-large .readonly-pdf { max-height: 85dvh; padding: 12px; background: #e4e1d6; }
+.tax-review-document.is-large canvas { max-width: 900px; margin: auto; }
+.tax-review-page > button { margin-top: 24px; }
+@media (max-width: 800px) { .tax-review-documents { grid-template-columns: 1fr; } }
