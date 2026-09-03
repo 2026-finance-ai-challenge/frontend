@@ -3348,6 +3348,19 @@ mark {
   overflow-wrap: anywhere;
 }
 
+.tax-restart {
+  align-self: flex-start;
+  margin: 10px 22px 0;
+  border: 1px solid #ded7c5;
+  border-radius: 7px;
+  background: #f7f4ed;
+  color: #5e5139;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px;
+}
+
+
 .tax-file-bubble {
   border: 0;
   cursor: pointer;

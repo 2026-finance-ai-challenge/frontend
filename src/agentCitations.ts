@@ -32,6 +32,7 @@ export function filingPath(citation: AgentCitation): string | null {
 export function citationHref(citation: AgentCitation): string | null {
   const internal = filingPath(citation);
   if (internal) return internal;
+  if (citation.sourceType === "NEWS" && /^\/news\/[0-9a-f-]{36}$/i.test(citation.url || "")) return citation.url;
   try {
     const url = new URL(citation.url || "");
     return url.protocol === "https:" ? url.href : null;

@@ -10,6 +10,7 @@ export function RemoteState<T>({
   retry,
   children,
   empty,
+  emptyMessage,
 }: {
   data: T | null;
   error: ApiError | null;
@@ -17,6 +18,7 @@ export function RemoteState<T>({
   retry: () => void;
   children: (data: T) => ReactNode;
   empty?: (data: T) => boolean;
+  emptyMessage?: string;
 }) {
   const { t } = useLocale();
   if (loading && data === null) {
@@ -33,7 +35,7 @@ export function RemoteState<T>({
   }
   if (data === null) return null;
   if (empty?.(data)) {
-    return <div className="api-state">{t("noData")}</div>;
+    return <div className="api-state">{emptyMessage || t("noData")}</div>;
   }
   return <>{children(data)}</>;
 }
