@@ -3321,6 +3321,7 @@ mark {
 }
 .tax-file-picker {
   display: block;
+  position: relative;
 }
 .tax-file-picker input {
   position: absolute;
