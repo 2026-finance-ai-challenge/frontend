@@ -19,10 +19,10 @@ test("filing citations and saved DART citations navigate within the service", ()
   assert.equal(filingPath({ ...legacy, url: `https://dart.fss.or.kr.evil.test/?rcpNo=${receipt}` }), null);
   assert.equal(citationHref({ ...legacy, url: "javascript:alert(1)" }), null);
 });
-test("saved raw and Markdown filing URLs are replaced by citation markers", () => {
-  assert.equal(answerWithCitationMarkers(`Source: ${legacy.url}`, [legacy]), "Source: [C1]");
-  assert.equal(answerWithCitationMarkers(`[Filing](${legacy.url})`, [legacy]), "Filing [C1]");
-  assert.equal(answerWithCitationMarkers("Date: 2026-09-05 [C1]", [legacy]), "Date: 2026-09-05 [C1]");
+test("saved raw and Markdown filing URLs are removed from the body when source buttons exist", () => {
+  assert.equal(answerWithCitationMarkers(`Source: ${legacy.url}`, [legacy]), "Source:");
+  assert.equal(answerWithCitationMarkers(`[Filing](${legacy.url})`, [legacy]), "Filing");
+  assert.equal(answerWithCitationMarkers("Date: 2026-09-05 [c1]", [legacy]), "Date: 2026-09-05");
 });
 
 test("언어 전환은 공시 버튼 제목만 바꾸고 저장된 대화와 인용 경로는 보존한다", () => {
@@ -31,7 +31,7 @@ test("언어 전환은 공시 버튼 제목만 바꾸고 저장된 대화와 인
   for (const locale of ["en", "ko", "en"]) {
     assert.equal(citationTitle(message.citation, locale), locale === "en" ? "Release notice" : "해제 안내");
     assert.equal(citationHref(message.citation), `/disclosures/${receipt}`);
-    assert.equal(answerWithCitationMarkers(message.content, [message.citation]), message.content);
+    assert.equal(answerWithCitationMarkers(message.content, [message.citation]), "해제일은 9월 5일입니다.");
   }
   assert.equal(JSON.stringify(message), before);
 });
