@@ -22,6 +22,7 @@ export function useCursorPage<T>(
   useEffect(() => {
     const controller = new AbortController();
     loadMoreController.current?.abort();
+    loadMoreController.current = null;
     setData(null);
     setError(null);
     setLoadMoreError(null);
@@ -52,14 +53,14 @@ export function useCursorPage<T>(
 
   const loadMore = async () => {
     const cursor = data?.nextCursor;
-    if (!cursor || loadingMore) return;
+    if (!cursor || loadingMore || loadMoreController.current) return;
     const controller = new AbortController();
-    loadMoreController.current?.abort();
     loadMoreController.current = controller;
     setLoadingMore(true);
     setLoadMoreError(null);
     try {
       const nextPage = await loader(cursor, controller.signal);
+      if (controller.signal.aborted) return;
       setData((current) => {
         if (!current) return nextPage;
         const keys = new Set(current.items.map(itemKey));
@@ -79,7 +80,10 @@ export function useCursorPage<T>(
           : new ApiError({ message: String(reason) }),
       );
     } finally {
-      if (!controller.signal.aborted) setLoadingMore(false);
+      if (loadMoreController.current === controller) {
+        loadMoreController.current = null;
+        if (!controller.signal.aborted) setLoadingMore(false);
+      }
     }
   };
 
