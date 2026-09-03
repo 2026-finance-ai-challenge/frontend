@@ -3,6 +3,7 @@ export type KAgentContext = {
   referenceId?: string | null;
   prompt?: string;
   requestId?: string;
+  roomId?: string;
   selection?: { sectionId?: string | null; text: string };
 };
 

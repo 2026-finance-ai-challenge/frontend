@@ -10,6 +10,7 @@ import { SearchPage } from './pages/SearchPage'
 import { LegalPage } from './pages/LegalPage'
 import { ForeignLimitsPage } from './pages/ForeignLimitsPage'
 import { KAgentFloating } from './components/KAgentFloating'
+import { TaxDocumentPage } from './pages/TaxDocumentPage'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/disclosures/:disclosureId" element={<DisclosureDetailPage />} />
         <Route path="/foreign-limits" element={<ForeignLimitsPage />} />
         <Route path="/tax" element={<HomePage />} />
+        <Route path="/tax-documents/:documentId" element={<TaxDocumentPage />} />
         <Route path="/my" element={<MyPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -42,13 +44,8 @@ function ScrollToTop() {
   const { key, pathname } = useLocation()
 
   useLayoutEffect(() => {
-    // 브라우저의 이전 위치 복원을 끄고 라우트 커밋 전 스크롤을 초기화한다.
-    const previous = window.history.scrollRestoration
-    window.history.scrollRestoration = 'manual'
-    document.documentElement.scrollTop = 0
-    document.body.scrollTop = 0
-    window.scrollTo(0, 0)
-    return () => { window.history.scrollRestoration = previous }
+    // 새 화면을 그리기 전에 즉시 초기화하여 이전 위치나 이동 애니메이션을 노출하지 않는다.
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   }, [key, pathname])
 
   return null

@@ -53,6 +53,7 @@ export function KAgentFloating() {
     const handleOpen = (event: Event) => {
       openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setContext((event as CustomEvent<KAgentContext>).detail || { contextType: "GENERAL" });
+      setTaxHistory(false);
       setOpen(true);
     };
     window.addEventListener(OPEN_AGENT_EVENT, handleOpen);
@@ -65,8 +66,8 @@ export function KAgentFloating() {
       <img src="/assets/k-agent-glyph-394-1451.svg" alt="" />
     </button>
     {open ? context.contextType === "TAX_GUIDE"
-      ? taxHistory ? <AgentHistoryView close={close} onDeleted={() => undefined} onConversation={(_, type) => { setTaxHistory(false); if (type !== "TAX_GUIDE") setContext({ contextType: "GENERAL" }); }} /> : <TaxEligibilityPanel close={close} openHistory={() => setTaxHistory(true)} />
-      : <KAgentPanel key={`${profile?.id || "guest"}:${context.requestId || `${context.contextType}:${context.referenceId || ""}`}`} close={close} requestedContext={context} openTax={() => setContext({ contextType: "TAX_GUIDE" })} initialHistory={context.contextType === "GENERAL" && !context.requestId} /> : null}
+      ? taxHistory ? <AgentHistoryView close={close} onDeleted={() => undefined} onConversation={(roomId, type) => { setTaxHistory(false); if (type !== "TAX_GUIDE") setContext({ contextType: "GENERAL", roomId }); }} /> : <TaxEligibilityPanel key={profile?.id || "guest"} close={close} openHistory={() => setTaxHistory(true)} />
+      : <KAgentPanel key={`${profile?.id || "guest"}:${context.roomId || context.requestId || `${context.contextType}:${context.referenceId || ""}`}`} close={close} requestedContext={context} openTax={() => { setTaxHistory(false); setContext({ contextType: "TAX_GUIDE" }); }} initialHistory={context.contextType === "GENERAL" && !context.requestId && !context.roomId} /> : null}
   </>;
 }
 
@@ -108,9 +109,11 @@ function KAgentPanel({ close, requestedContext, openTax, initialHistory }: { clo
     roomLoadRef.current = controller;
     setRoomResolved(false);
     setRoomLoadError(false); setError("");
-    api<Room[]>("/api/v1/me/chats", { signal: controller.signal })
+    (requestedContext.roomId
+      ? api<Room>("/api/v1/me/chats/" + requestedContext.roomId, { signal: controller.signal }).then((value) => [value])
+      : api<Room[]>("/api/v1/me/chats", { signal: controller.signal }))
       .then(async (rooms) => {
-        const found = rooms.find((candidate) => candidate.context.type === requestedContext.contextType && (requestedContext.referenceId == null || candidate.context.referenceId === requestedContext.referenceId)) || null;
+        const found = rooms.find((candidate) => requestedContext.roomId ? candidate.id === requestedContext.roomId : candidate.context.type === requestedContext.contextType && (requestedContext.referenceId == null || candidate.context.referenceId === requestedContext.referenceId)) || null;
         const loaded = found ? await loadChatState<Message>(api, found.id, controller.signal) : { messages: [], generation: null };
         if (controller.signal.aborted) return;
         setRoom(found); setMessages(loaded.messages); setGeneration(loaded.generation);
@@ -123,20 +126,21 @@ function KAgentPanel({ close, requestedContext, openTax, initialHistory }: { clo
         }
       });
     return () => controller.abort();
-  }, [userId, requestedContext.contextType, requestedContext.referenceId, loadRevision]);
+  }, [userId, requestedContext.contextType, requestedContext.referenceId, requestedContext.roomId, loadRevision]);
 
   useEffect(() => {
-    const referenceId = requestedContext.referenceId;
-    if (requestedContext.contextType === "GENERAL") {
+    const referenceId = room?.context.referenceId || requestedContext.referenceId;
+    const contextType = room?.context.type || requestedContext.contextType;
+    if (contextType === "GENERAL") {
       setLocalizedContextTitle(locale === "ko" ? "한국 시장 도우미" : "Korea market assistant"); return;
     }
-    if (requestedContext.contextType === "TAX_GUIDE") {
+    if (contextType === "TAX_GUIDE") {
       setLocalizedContextTitle(locale === "ko" ? "배당 원천징수세" : "Dividend withholding tax"); return;
     }
     if (!referenceId) return;
     const controller = new AbortController();
-    const path = requestedContext.contextType === "NEWS" ? `/api/v1/news/${referenceId}`
-      : requestedContext.contextType === "FILING" ? `/api/v1/disclosures/${referenceId}`
+    const path = contextType === "NEWS" ? `/api/v1/news/${referenceId}`
+      : contextType === "FILING" ? `/api/v1/disclosures/${referenceId}`
         : `/api/v1/market/stocks/${referenceId}`;
     void api<Record<string, string>>(path, { signal: controller.signal }).then((value) => {
       if (controller.signal.aborted) return;
@@ -145,7 +149,7 @@ function KAgentPanel({ close, requestedContext, openTax, initialHistory }: { clo
         : value.titleEn || value.englishTitle || value.nameEn || room?.context.title || "");
     }).catch(() => undefined);
     return () => controller.abort();
-  }, [locale, requestedContext.contextType, requestedContext.referenceId, room?.context.title]);
+  }, [locale, requestedContext.contextType, requestedContext.referenceId, room?.context.title, room?.context.type, room?.context.referenceId]);
 
   useEffect(() => () => roomLoadRef.current?.abort(), []);
 
