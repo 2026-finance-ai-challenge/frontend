@@ -1,8 +1,8 @@
 export const PASSWORD_HELP = {
-  ko: "특수기호를 포함해 8~128자로 입력하세요. 대문자는 필수가 아닙니다.",
-  en: "Use 8–128 characters including a symbol. Uppercase is optional.",
+  ko: "8자 이상, 영문·숫자·특수기호를 조합하세요.",
+  en: "Min 8 characters, combination of letters, numbers, and symbols",
 } as const;
 
 export function isValidPassword(value: string) {
-  return /^(?=.*[\p{P}\p{S}])[^\s\p{C}]{8,128}$/u.test(value);
+  return /^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[\p{P}\p{S}])[^\s\p{C}]{8,128}$/u.test(value);
 }
