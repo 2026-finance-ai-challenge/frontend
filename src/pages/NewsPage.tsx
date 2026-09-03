@@ -16,12 +16,14 @@ import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
 import { isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
 import { generatedNewsInsight, hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
+import { stockCurrency } from "../utils/stockCurrency";
 
 function StockNewsHeader({ stockCode }: { stockCode: string }) {
   const { locale, stockName } = useLocale();
   const stockState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode]);
   const stock = stockState.data;
   const changeRate = stock?.quote.changeRate;
+  const price = (value: number | null | undefined, primary = true, signed = false) => stockCurrency(value, stock?.exchangeRate.krwPerUnit, locale, primary, signed);
   return (
     <div className="news-stock-hero">
       <Header />
@@ -36,9 +38,10 @@ function StockNewsHeader({ stockCode }: { stockCode: string }) {
             />
           </h1>
           <span className="mini-price">
-            <strong>{formatNumber(stock?.quote.currentPriceKrw, { style: "currency", currency: "KRW", maximumFractionDigits: 0 })}</strong>
+            <strong>{price(stock?.quote.currentPriceKrw)}</strong>
+            <span className="stock-price-secondary">{price(stock?.quote.currentPriceKrw, false)}</span>
             <small className={changeRate == null ? "" : changeRate >= 0 ? "is-positive" : ""}>
-              {stock?.quote.changeAmountKrw == null ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${stock.quote.changeAmountKrw >= 0 ? "+" : ""}${formatNumber(stock.quote.changeAmountKrw)}`} {changeRate == null ? null : <img src={changeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {changeRate == null ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${changeRate >= 0 ? "+" : ""}${changeRate.toFixed(2)}%`}
+              {price(stock?.quote.changeAmountKrw, true, true)} {changeRate == null ? null : <img src={changeRate >= 0 ? "/assets/trend-up.svg" : "/assets/price-down.svg"} alt="" />} {changeRate == null ? (locale === "ko" ? "정보 없음" : "Unavailable") : `${changeRate >= 0 ? "+" : ""}${changeRate.toFixed(2)}%`}
             </small>
           </span>
         </div>
@@ -46,16 +49,16 @@ function StockNewsHeader({ stockCode }: { stockCode: string }) {
         <p>{stock?.quote.status || (locale === "ko" ? "불러오는 중" : "Loading")} · {formatDate(stock?.quote.asOf)} · {locale === "ko" ? `환율 ${formatNumber(stock?.exchangeRate.krwPerUnit)}원/USD` : `Converted at ${formatNumber(stock?.exchangeRate.krwPerUnit)} KRW/USD`}</p>
         <div className="mini-metrics">
           <span>
-            {locale === "ko" ? "고가" : "High"}<b>{formatNumber(stock?.quote.highPriceKrw)}</b>
+            {locale === "ko" ? "고가" : "High"}<b>{price(stock?.quote.highPriceKrw)}</b><small>{price(stock?.quote.highPriceKrw, false)}</small>
           </span>
           <span>
-            {locale === "ko" ? "저가" : "Low"}<b>{formatNumber(stock?.quote.lowPriceKrw)}</b>
+            {locale === "ko" ? "저가" : "Low"}<b>{price(stock?.quote.lowPriceKrw)}</b><small>{price(stock?.quote.lowPriceKrw, false)}</small>
           </span>
           <span>
             {locale === "ko" ? "거래량" : "Volume"}<b>{formatNumber(stock?.quote.volume, { notation: "compact" })}</b>
           </span>
           <span>
-            {locale === "ko" ? "시가" : "Open"}<b>{formatNumber(stock?.quote.openPriceKrw)}</b>
+            {locale === "ko" ? "시가" : "Open"}<b>{price(stock?.quote.openPriceKrw)}</b><small>{price(stock?.quote.openPriceKrw, false)}</small>
           </span>
         </div>
         <div className="stock-badges">

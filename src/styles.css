@@ -562,27 +562,18 @@ a {
   background: var(--cream);
 }
 .hero-content {
-  padding-top: 88px;
+  padding-top: 100px;
 }
 .hero-content h1 {
   font-size: 96px;
-  line-height: 96px;
+  line-height: 1;
   letter-spacing: -0.04em;
-  margin: 0 0 85px;
+  margin: 0 0 60px;
   font-weight: 600;
-  max-width: 900px;
+  max-width: 100%;
 }
-.hero-content h1 u {
-  text-decoration-thickness: 3px;
-  text-underline-offset: 6px;
-}
-.hero-content h1 sup {
-  vertical-align: top;
-  margin-left: 8px;
-}
-.hero-content h1 sup img {
-  width: 20px;
-  height: 69px;
+.hero-content h1 > span {
+  display: block;
 }
 .quick-actions {
   display: flex;
@@ -981,7 +972,7 @@ a {
   height: 89px;
   margin: 0 0;
   display: grid;
-  grid-template-columns: 170px 221px minmax(0, 1fr) minmax(240px, auto);
+  grid-template-columns: 192px 241px minmax(0, 1fr) minmax(240px, auto);
   gap: 18px;
   align-items: center;
   padding: 0 30px;
@@ -1000,7 +991,7 @@ a {
 .filing-row::before {
   content: "";
   position: absolute;
-  left: 200px;
+  left: 222px;
   top: 0;
   bottom: 0;
   width: 1px;
@@ -1024,7 +1015,7 @@ a {
 .filing-row .filing-timeline-dot {
   position: absolute;
   z-index: 1;
-  left: 194px;
+  left: 216px;
   top: 50%;
   width: 12px;
   height: 12px;
@@ -1072,7 +1063,8 @@ a {
   width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .filing-row .filing-title--compact {
   font-size: 18px;
@@ -1716,7 +1708,7 @@ a {
     padding-top: 75px;
   }
   .hero-content h1 {
-    font-size: 47px;
+    font-size: clamp(25px, 6.6vw, 47px);
     margin-bottom: 58px;
   }
   .quick-actions {
@@ -2704,6 +2696,8 @@ a {
 .mini-metrics b {
   color: #111;
 }
+.mini-metrics small { font-size: 13px; margin-top: -10px; }
+.mini-metrics { flex-wrap: wrap; }
 .warning-chip {
   background: #fbedd6;
   color: #784b00;
@@ -5245,34 +5239,45 @@ mark {
   padding: 95px 0 80px;
 }
 .search-hero h1 {
-  font-size: 42px;
+  font-size: clamp(28px, 3.2vw, 42px);
   margin: 30px 0 10px;
+  overflow-wrap: anywhere;
 }
-.search-hero > div > p {
+.search-hero-title { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
+.search-hero-title > div:first-child { min-width: 0; }
+.search-hero-title .slider-controls { flex-shrink: 0; }
+.search-hero-title p {
   color: #888;
+  margin-bottom: 0;
 }
 .search-stock-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 30px;
   margin-top: 45px;
 }
 .search-stock-card {
   background: #edece5;
   border-radius: 12px;
-  height: 152px;
+  min-height: 170px;
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.04);
   position: relative;
 }
 .search-stock-card > a {
   height: 100%;
   padding: 20px;
-  display: grid;
-  grid-template-columns: auto 1fr;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 .search-stock-card > a > div {
-  grid-column: 1 / -1;
+  min-width: 0;
 }
+.search-stock-identity { padding-right: 28px; }
+.search-stock-name { display: block; width: 100%; white-space: nowrap; overflow: hidden; font-weight: 500; }
+.search-stock-values { display: flex; gap: 10px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; }
+.search-stock-values > div { min-width: 0; }
+.search-stock-values small { display: block; color: #888; font-size: 13px; line-height: 18px; }
 .search-stock-grid h2 {
   font-size: 22px;
   margin: 0 0 6px;
@@ -5301,19 +5306,27 @@ mark {
   display: block;
 }
 .search-stock-grid strong {
-  font-size: 28px;
-  margin-top: 22px;
-  grid-column: 1;
+  font-size: clamp(20px, 1.6vw, 30px);
+  line-height: 1.1;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .search-stock-grid p {
-  color: var(--red);
-  margin-top: 26px;
+  color: #888;
+  margin: 0;
   display: flex;
   justify-content: space-between;
-  grid-column: 2;
-  justify-self: end;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 14px;
 }
+.search-stock-grid p.is-up { color: var(--red); }
+.search-stock-grid p.is-down { color: #0752cd; }
+.server-unavailable { min-height: 80vh; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 20px; max-width: 720px; }
+.server-unavailable > img { width: 96px; }
+.server-unavailable h1 { font-size: clamp(26px, 4vw, 42px); margin: 0; }
+.server-unavailable p { margin: 0; line-height: 1.6; }
+.server-unavailable .login-button { width: auto; padding-inline: 24px; }
 .search-content {
   padding: 100px 0 187px;
 }
@@ -5425,19 +5438,36 @@ mark {
   line-height: 25px;
 }
 :is(.search-filings, .disclosure-rows) section > a {
-  grid-template-columns: 10.78% 3.9% 18.67% 37.97% 8.59% 12.19% 7.89%;
-  gap: 0;
+  grid-template-columns: 170px 12px minmax(170px, 220px) minmax(0, 1fr) minmax(280px, auto);
+  gap: 14px;
   min-height: 89px;
-  height: 89px;
+  height: auto;
   padding: 0 30px;
   color: #555;
   font-size: 18px;
   line-height: 25px;
 }
-.disclosure-rows section > a {
-  grid-template-columns: 110px 12px minmax(140px, 190px) minmax(180px, 1fr) minmax(330px, auto);
-  column-gap: 14px;
-  height: auto;
+:is(.search-filings, .disclosure-rows) .filing-timeline-dot {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  align-self: center;
+}
+.search-filings section > a strong.filing-title {
+  display: flex;
+  align-items: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-height: 56px;
+}
+.search-filings section > a > .filing-row-badges {
+  padding: 0;
+  max-width: 100%;
+  overflow: visible;
+}
+.search-filings .filing-issuer {
+  width: 100%;
+  text-overflow: clip;
 }
 :is(.search-filings, .disclosure-rows) section > a > * {
   min-width: 0;
@@ -5496,7 +5526,7 @@ mark {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-:is(.search-filings, .disclosure-rows) section > a > span:nth-last-child(-n + 2) {
+:is(.search-filings, .disclosure-rows) section > a > span:nth-last-child(-n + 2):not(.filing-row-badges) {
   justify-self: start;
   max-width: calc(100% - 16px);
   padding: 6px 10px;
@@ -5551,9 +5581,6 @@ mark {
   .search-filings section > a {
     grid-template-columns: 90px 8px 150px 1fr;
   }
-  .search-filings section > a > *:nth-child(n + 5) {
-    display: none;
-  }
 }
 
 .disclosure-section-actions { display: flex; gap: 8px; margin-top: 12px; }
@@ -5586,9 +5613,8 @@ mark {
   .search-filings section > a {
     grid-template-columns: 75px 8px 1fr;
   }
-  .search-filings section > a > *:nth-child(n + 4) {
-    display: none;
-  }
+  .search-hero { padding: 40px 0; }
+  .search-hero-title { align-items: flex-start; flex-direction: column; }
   .related-news > a {
     grid-template-columns: 1fr;
   }
@@ -5633,17 +5659,14 @@ mark {
 /* Keep the disclosure rows compact when the desktop table collapses. */
 @media (max-width: 1000px) {
   :is(.search-filings, .disclosure-rows) section > a {
-    grid-template-columns: 100px 10px 160px minmax(0, 1fr);
+    grid-template-columns: 160px 12px 180px minmax(0, 1fr);
     padding: 0 20px;
   }
-  .search-filings section > a > *:nth-child(n + 5) {
-    display: none;
-  }
-  .disclosure-rows section > a {
+  :is(.search-filings, .disclosure-rows) section > a {
     min-height: 118px;
     padding-block: 12px;
   }
-  .disclosure-rows section > a > .filing-row-badges {
+  :is(.search-filings, .disclosure-rows) section > a > .filing-row-badges {
     display: block;
     grid-column: 3 / -1;
   }
@@ -5659,24 +5682,18 @@ mark {
     padding: 0 14px;
     font-size: 15px;
   }
-  .search-filings section > a > *:nth-child(n + 4) {
-    display: none;
-  }
-  .disclosure-rows section > a {
-    grid-template-columns: minmax(0, 1fr);
+  :is(.search-filings, .disclosure-rows) section > a {
+    grid-template-columns: minmax(0, 1fr) 12px;
     gap: 6px;
     min-height: 0;
     padding-block: 12px;
   }
-  .disclosure-rows section > a > i {
-    display: none;
-  }
-  .disclosure-rows section > a > span:first-child,
-  .disclosure-rows section > a > span:nth-child(3) {
+  :is(.search-filings, .disclosure-rows) section > a > span:first-child,
+  :is(.search-filings, .disclosure-rows) section > a > span:nth-child(3) {
     grid-column: 1;
   }
-  .disclosure-rows section > a > strong,
-  .disclosure-rows section > a > .filing-row-badges {
+  :is(.search-filings, .disclosure-rows) section > a > strong,
+  :is(.search-filings, .disclosure-rows) section > a > .filing-row-badges {
     display: block;
     grid-column: 1 / -1;
   }

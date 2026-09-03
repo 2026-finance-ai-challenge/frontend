@@ -6,6 +6,7 @@ import { WatchlistHeart } from "../components/WatchlistHeart";
 import { StockDisclosureFeed } from "./DisclosurePage";
 import { REALTIME_API_BASE, api } from "../api";
 import { RemoteState, formatDate, formatNumber } from "../components/RemoteState";
+import { stockCurrency } from "../utils/stockCurrency";
 import { useProfile, useRemote } from "../hooks/useRemote";
 import type { GlobalPeer, StockDetail } from "../types";
 import { useLocale } from "../state/LocaleContext";
@@ -431,25 +432,11 @@ function percentage(value: number | null | undefined, locale: "en" | "ko") {
 }
 
 function formatQuoteChange(krw: number | null | undefined, exchangeRate: number | null | undefined, locale: "en" | "ko") {
-  if (krw === null || krw === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
-  const value = locale === "en" && exchangeRate ? krw / exchangeRate : krw;
-  return `${value >= 0 ? "+" : ""}${formatNumber(value, {
-    style: "currency",
-    currency: locale === "en" ? "USD" : "KRW",
-    maximumFractionDigits: locale === "en" ? 2 : 0,
-  })}`;
+  return stockCurrency(krw, exchangeRate, locale, true, true);
 }
 
 function formatLocalizedStockPrice(currentPriceKrw: number | null | undefined, exchangeRate: number | null | undefined, locale: "en" | "ko", primary: boolean) {
-  const useUsd = primary ? locale === "en" : locale === "ko";
-  if (currentPriceKrw === null || currentPriceKrw === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
-  const value = useUsd && exchangeRate ? currentPriceKrw / exchangeRate : currentPriceKrw;
-  if (value === null || value === undefined) return locale === "ko" ? "정보 없음" : "Unavailable";
-  return formatNumber(value, {
-    style: "currency",
-    currency: useUsd ? "USD" : "KRW",
-    maximumFractionDigits: useUsd ? 2 : 0,
-  });
+  return stockCurrency(currentPriceKrw, exchangeRate, locale, primary);
 }
 
 function predictionNote(stock: StockDetail | null, locale: "en" | "ko") {

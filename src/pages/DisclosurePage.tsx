@@ -12,6 +12,7 @@ import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
 import { FitText } from "../components/FitText";
+import { FilingSentimentDot } from "../components/FilingSentimentDot";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
 import { hasVerifiedEnglishTitle, isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
@@ -31,7 +32,7 @@ type FilingInsight = {
   generatedAt: string | null;
 };
 
-type FilingFiltersValue = { from: string; to: string; types: string[] };
+export type FilingFiltersValue = { from: string; to: string; types: string[] };
 
 const DISCLOSURE_FILTERS = [
   ["Reporting & Governance", ["Periodic Reports", "PERIODIC"], ["Audit Reports", "AUDIT"], ["Fair Trade", "FAIR_TRADE"]],
@@ -78,7 +79,7 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
                 key={filing.receiptNumber}
               >
                 <span>{formatDate(filing.detectedAt)}</span>
-                <i className={filing.correction ? "red" : "neutral"} />
+                <FilingSentimentDot sentiment={filing.sentiment} />
                 <span>
                   <FitText className="filing-issuer" value={issuer} />
                   <small>{filing.stockCode} · {filing.market}</small>
@@ -113,7 +114,7 @@ export function DisclosurePage() {
   );
 }
 
-function FilingFilters({ value, onChange }: { value: FilingFiltersValue; onChange: (value: FilingFiltersValue) => void }) {
+export function FilingFilters({ value, onChange }: { value: FilingFiltersValue; onChange: (value: FilingFiltersValue) => void }) {
   const { locale } = useLocale();
   const selectedRange = [["1D", 1], ["1W", 7], ["1M", 30], ["3M", 90], ["1Y", 365]].find(([, days]) => value.from === dateBefore(Number(days)) && value.to === new Date().toISOString().slice(0, 10))?.[0];
   const setRange = (days: number) => onChange({ ...value, from: dateBefore(days), to: new Date().toISOString().slice(0, 10) });
@@ -282,7 +283,7 @@ export function DisclosureDetailPage() {
                 {t("reporter")}<b>{locale === "ko" ? filing?.submitter || "정보 없음" : filing?.issuerNameEn || "Unavailable"}</b>
               </span>
               <span>
-                {t("receiver")}<b>{locale === "ko" ? filing?.receiverKo : filing?.receiverEn}</b>
+                {t("receiver")}<b>{(locale === "ko" ? filing?.receiverKo : filing?.receiverEn) || (locale === "ko" ? "정보 없음" : "Unavailable")}</b>
               </span>
               <span>
                 {t("documentNo")}<b>{filing?.receiptNumber || disclosureId}</b>

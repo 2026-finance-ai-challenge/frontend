@@ -1,4 +1,5 @@
 import { useLocale } from "../state/LocaleContext";
+import { sentimentTone } from "../utils/sentiment";
 
 export function IntelligenceBadges({ sentiment, importance, eventType, variant = "news" }: {
   sentiment?: string | null;
@@ -7,7 +8,7 @@ export function IntelligenceBadges({ sentiment, importance, eventType, variant =
   variant?: "news" | "filing";
 }) {
   const { locale } = useLocale();
-  const normalized = (sentiment || "NEUTRAL").toUpperCase();
+  const normalized = sentimentTone(sentiment).toUpperCase();
   const sentimentLabel = locale === "ko"
     ? ({ POSITIVE: "긍정", NEGATIVE: "부정", NEUTRAL: "중립" }[normalized] || normalized)
     : normalized.charAt(0) + normalized.slice(1).toLowerCase();
@@ -41,6 +42,7 @@ function eventTypeLabel(value: string, locale: "en" | "ko") {
       FOREIGN_SELLING: "외국인 매도", LISTING: "상장", EARNINGS: "실적", DIVIDEND: "배당",
       CAPITAL_RAISE: "자본 조달", GOVERNANCE: "지배구조", REGULATION: "규제", M_AND_A: "인수합병",
       RISK: "위험", CONTRACT: "계약", INVESTMENT: "투자", PRODUCT: "제품", MARKET: "시장",
+      CAPITAL_ACTION: "자본 변동", CORPORATE_ACTION: "기업 활동", GENERAL_MARKET: "시장 일반",
     } as Record<string, string>)[normalized] || value.replaceAll("_", " ");
   }
   return value.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
