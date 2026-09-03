@@ -23,6 +23,12 @@ export class SessionVault {
   get user(): Profile | null { return this.profile }
   get bearer(): string | null { return this.accessToken }
 
+  updateUser(profile: Profile): void {
+    if (!this.accessToken || this.profile?.id !== profile.id) return
+    this.profile = profile
+    this.listeners.forEach((listener) => listener())
+  }
+
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)

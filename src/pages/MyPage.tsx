@@ -74,8 +74,9 @@ export function MyPage() {
     finally { setRemoving(false); watchlist.retry(); }
   };
   const taxStatus = ({
-    NOT_STARTED: locale === "ko" ? "세무 등록 전" : "Tax filing not started",
-    VERIFIED: locale === "ko" ? "세무 검증 완료" : "Tax verified",
+    NOT_STARTED: locale === "ko" ? "세무 사전 점검 시작 전" : "Tax verification not started",
+    IN_PROGRESS: locale === "ko" ? "세무 사전 점검 진행 중" : "Tax verification in progress",
+    VERIFIED: locale === "ko" ? "세무 사전 점검 완료" : "Tax verification complete",
     REVIEW_REQUIRED: locale === "ko" ? "세무 검토 필요" : "Tax review required",
     REJECTED: locale === "ko" ? "세무 재제출 필요" : "Tax resubmission required",
   } as Record<string, string>)[profile.taxVerificationStatus] || (locale === "ko" ? "세무 상태 확인 필요" : "Tax status unavailable");
