@@ -12,8 +12,9 @@ import type { GlobalPeer, StockDetail } from "../types";
 import { useLocale } from "../state/LocaleContext";
 import { buildStockChartAxis } from "../components/stockChartAxis";
 import { ownershipPrediction } from "../components/ownershipPredictionModel";
-import { OwnershipPredictionLegend, OwnershipPredictionOverlay } from "../components/OwnershipPrediction";
-import { useRegularMarketDay } from "../hooks/useRegularMarketDay";
+import { OwnershipPredictionLegend } from "../components/OwnershipPrediction";
+import { useOwnershipForecastWindow } from "../hooks/useOwnershipForecastWindow";
+import { OwnershipGauge } from "../components/OwnershipGauge";
 import { useMarketRefresh } from "../hooks/useMarketRefresh";
 
 type StockAlert = "vi" | "price-limit";
@@ -48,10 +49,10 @@ export function StockPage() {
   const [params] = useSearchParams();
   const { stockCode = "" } = useParams();
   const profile = useProfile();
-  const regularDay = useRegularMarketDay();
+  const forecastWindow = useOwnershipForecastWindow();
   const [period, setPeriod] = useState(params.get("period") || "1D");
-  const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile, regularDay]);
-  useMarketRefresh(detailState.data?.subjectToForeignAcquisitionLimit ? regularDay : null, detailState.loading, detailState.retry);
+  const detailState = useRemote((signal) => api<StockDetail>(`/api/v1/market/stocks/${stockCode}`, { signal }), [stockCode, profile, forecastWindow.targetDate, forecastWindow.session]);
+  useMarketRefresh(detailState.data?.subjectToForeignAcquisitionLimit ? forecastWindow.targetDate : null, detailState.loading, detailState.retry, forecastWindow.session === "INTRADAY" ? 60_000 : 300_000);
   const historyState = useRemote((signal) => api<{ status: string; intervalMinutes: number; items: ChartBar[] }>(`/api/v1/market/stocks/${stockCode}/chart?period=${period}`, { signal }), [stockCode, period]);
   const peersState = useRemote((signal) => api<GlobalPeer>(`/api/v1/market/stocks/${stockCode}/global-peers`, { signal }), [stockCode]);
   const [insights, setInsights] = useState(params.get("insights") === "1");
@@ -115,8 +116,6 @@ export function StockPage() {
     subjectToLimit: detailState.data?.subjectToForeignAcquisitionLimit === true,
     ownership: detailState.data?.foreignOwnership,
     prediction: detailState.data?.foreignLimitPrediction,
-    quote: detailState.data?.quote,
-    regularDay,
   });
   return (
     <div className={`stock-page ${insights ? "panel-open" : ""}`}>
@@ -128,14 +127,16 @@ export function StockPage() {
             {detailState.error ? <RemoteState {...detailState}>{() => null}</RemoteState> : null}
             <div className="stock-title-row">
               <div>
-                <h1 className={(detailState.data ? stockName(detailState.data) : "").length > 24 ? "is-long-title" : ""}>
-                  {detailState.data ? stockName(detailState.data) : locale === "ko" ? "종목을 불러오는 중…" : "Loading stock…"}{" "}
+                <div className="stock-name-heading">
+                  <h1 className={(detailState.data ? stockName(detailState.data) : "").length > 24 ? "is-long-title" : ""}>
+                    {detailState.data ? stockName(detailState.data) : locale === "ko" ? "종목을 불러오는 중…" : "Loading stock…"}
+                  </h1>
                   <WatchlistHeart
                     className="heart-button"
                     itemId={stockCode}
                     itemName={detailState.data ? stockName(detailState.data) : stockCode}
                   />
-                </h1>
+                </div>
                 <p>{stockCode}&nbsp;&nbsp; · &nbsp;&nbsp;{detailState.data?.market || "—"}</p>
                 <p>
                   {localizedMarketStatus(quoteStatus, locale)} · {formatDate(quoteAsOf)} · {locale === "ko" ? `환율 ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)}원/USD` : `Converted at ${formatNumber(detailState.data?.exchangeRate.krwPerUnit)} KRW/USD`}
@@ -270,10 +271,7 @@ export function StockPage() {
                   : detailState.data?.subjectToForeignAcquisitionLimit
                     ? (locale === "ko" ? "최신 확인 보유율 및 법정 한도" : "Latest verified ownership & statutory limit")
                     : (locale === "ko" ? "최신 확인 보유율" : "Latest verified ownership")}</p>
-                <div className="ownership-line">
-                  <span className={ownershipExhaustion == null ? "unavailable" : ""} style={{ width: `${ownershipExhaustion == null ? 0 : Math.min(ownershipExhaustion, 100)}%` }} />
-                  {activePrediction ? <OwnershipPredictionOverlay prediction={activePrediction} /> : null}
-                </div>
+                <OwnershipGauge className="ownership-line" tone={ownershipExhaustion == null ? "unavailable" : "safe"} value={ownershipExhaustion} prediction={activePrediction} key={stockCode} />
                 <div className="ownership-values">
                   <div>
                     <span>{locale === "ko" ? "직전 보유율" : "Previous ownership"}</span>
@@ -287,8 +285,8 @@ export function StockPage() {
                 {activePrediction ? <OwnershipPredictionLegend prediction={activePrediction} previousRate={detailState.data?.foreignOwnership.ownershipRate ?? null} /> : null}
                 {activePrediction ? <div className="prediction">
                   <div>
-                    <b>{locale === "ko" ? "오늘의 현재 예측" : "Today’s current prediction"}</b>
-                    <span>95% CI</span>
+                    <b>{locale === "ko" ? "예측값" : "Forecast values"}</b>
+                    <span>{locale === "ko" ? "모델 예측 범위" : "Model range"}</span>
                   </div>
                   <div>
                     <span>

@@ -111,7 +111,7 @@ export function SearchPage() {
 
     <section className="related-news"><div className="search-section-title"><h2>{locale === "ko" ? "관련 뉴스" : "Related news"}</h2><span>{locale === "ko" ? `${newsState.data?.items.length ?? 0}건` : `${newsState.data?.items.length ?? 0} shown`}</span></div>
       <RemoteState {...newsState} empty={(value) => !value.items.length}>{(value) => <>{value.items.filter(hasVerifiedEnglishTitle).map((item) => <Link to={`/news/${item.id}`} key={item.id}>
-        <NewsThumbnail src={item.thumbnailUrl} /><div><IntelligenceBadges sentiment={item.sentiment} importance={item.importance} eventType={item.eventType} /><h3>{locale === "ko" ? item.originalTitle : verifiedEnglishText(item.englishTitle) || ""}</h3><p>{item.publisher} · {formatDate(item.publishedAt)} · {locale === "ko" ? "한글 원문" : "Auto-translated title"}</p></div>
+        <NewsThumbnail src={item.thumbnailUrl} /><div><IntelligenceBadges sentiment={item.sentiment} importance={item.importance} eventType={item.eventType} /><h3>{locale === "ko" ? item.originalTitle : verifiedEnglishText(item.englishTitle) || ""}</h3><p>{item.publisher} · {formatDate(item.publishedAt)}</p></div>
       </Link>)}</>}</RemoteState>
       <ViewMoreButton resource="news" hasMore={Boolean(newsState.data?.nextCursor)} loading={newsState.loadingMore} error={newsState.loadMoreError} onClick={() => void newsState.loadMore()} />
     </section></main>

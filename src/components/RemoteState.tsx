@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ApiError } from "../api";
 import { useLocale } from "../state/LocaleContext";
+import { formatContentDate } from "../utils/contentDate";
 
 export function RemoteState<T>({
   data,
@@ -47,14 +48,7 @@ export function formatNumber(
 }
 
 export function formatDate(value: string | null | undefined, time = true) {
-  if (!value) return activeLocale() === "ko-KR" ? "정보 없음" : "Not available";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.valueOf())) return value;
-  return new Intl.DateTimeFormat(activeLocale(), {
-    month: "short",
-    day: "numeric",
-    ...(time ? { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" } : {}),
-  }).format(parsed);
+  return formatContentDate(value, activeLocale(), time);
 }
 
 function activeLocale() {

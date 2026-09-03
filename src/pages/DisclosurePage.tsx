@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
+import { OpenOriginalLink } from "../components/OpenOriginalLink";
 import { BackLink, Header } from "../components/Layout";
 import { openKAgent } from "../agentEvents";
 import { api, queryString } from "../api";
@@ -272,9 +273,7 @@ export function DisclosureDetailPage() {
                 </h1>
               </div>
               <div>
-                {filing?.officialUrl ? <a href={filing.officialUrl} target="_blank" rel="noreferrer">
-                  <img src="/assets/download.svg" alt="" /> {t("openOriginal")}
-                </a> : <span>{locale === "ko" ? "원문을 사용할 수 없습니다" : "Original document unavailable"}</span>}
+                {filing?.officialUrl ? <OpenOriginalLink url={filing.officialUrl} /> : <span>{locale === "ko" ? "원문을 사용할 수 없습니다" : "Original document unavailable"}</span>}
                 <small>{locale === "ko" ? "제출" : "Submitted"}: {formatDate(filing?.detectedAt)}</small>
               </div>
             </div>

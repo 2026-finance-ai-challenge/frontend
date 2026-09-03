@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { BackLink, Header } from "../components/Layout";
 import { StockNewsFeed } from "../components/StockNewsFeed";
+import { OpenOriginalLink } from "../components/OpenOriginalLink";
 import { NewsThumbnail } from "../components/NewsThumbnail";
 import { WatchlistHeart } from "../components/WatchlistHeart";
 import { openKAgent } from "../agentEvents";
@@ -148,7 +149,8 @@ export function NewsDetailPage() {
               <h1 className={((locale === "ko" ? article?.originalTitle : englishTitle) || "").length > 70 ? "is-long-title" : ""}>
                 {locale === "ko" ? article?.originalTitle || "뉴스를 불러오는 중…" : englishTitle || "Loading article…"}
               </h1>
-              <p>{article?.publisher || "—"} · {formatDate(article?.publishedAt)} · {locale === "ko" ? "한글 원문" : translation ? "Auto-translated" : translationPending ? "Translation loading" : "Translation unavailable"}</p>
+              <p>{article?.publisher || "—"} · {formatDate(article?.publishedAt)}</p>
+              <OpenOriginalLink url={article?.originalUrl} />
             </div>
             <NewsThumbnail src={article?.thumbnailUrl} />
           </section>
