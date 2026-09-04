@@ -3145,7 +3145,7 @@ mark {
   right: 0;
   width: var(--agent-panel-width);
   height: 100vh;
-  background: linear-gradient(to bottom, #fff 0 290px, #fbf9f4 290px);
+  background: #fff;
   box-shadow: -20px 0 60px rgba(0, 0, 0, 0.08);
   padding: var(--agent-panel-padding-top) var(--agent-panel-padding-x) var(--agent-panel-padding-x);
   overflow: auto;
@@ -3166,7 +3166,7 @@ mark {
   width: min(var(--agent-panel-width), 100vw);
   height: 100dvh;
   padding: var(--agent-panel-padding-top) var(--agent-panel-padding-x) var(--agent-panel-padding-x);
-  background: linear-gradient(to bottom, #fff 0 290px, #fbf9f4 290px);
+  background: #fff;
   overflow: hidden;
 }
 .global-agent-panel > header,
@@ -3178,10 +3178,12 @@ mark {
 }
 .global-agent-chat {
   flex: 1 1 auto;
-  width: 100%;
+  width: auto;
+  max-width: none !important;
   min-height: 0;
-  margin-top: clamp(24px, 1.875vw, 36px);
-  padding-right: 4px;
+  margin: clamp(10px, 0.625vw, 12px) calc(0px - var(--agent-panel-padding-x)) 0;
+  padding: clamp(12px, 0.833vw, 16px) var(--agent-panel-padding-x) 0;
+  background: #fbf9f4;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -3289,10 +3291,13 @@ mark {
   white-space: nowrap;
 }
 .tax-agent-chat {
-  margin-top: clamp(24px, 1.823vw, 35px);
+  width: auto;
+  max-width: none !important;
+  margin: clamp(10px, 0.625vw, 12px) calc(0px - var(--agent-panel-padding-x)) 0;
   flex: 1 1 auto;
   min-height: 0;
-  padding-right: 5px;
+  padding: clamp(12px, 0.833vw, 16px) var(--agent-panel-padding-x) 0;
+  background: #fbf9f4;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -4154,7 +4159,7 @@ mark {
     top: 0;
     height: 100dvh;
     padding: 24px 16px 16px;
-    background: linear-gradient(to bottom, #fff 0 180px, #fbf9f4 180px);
+    background: #fff;
   }
   .global-agent-panel header {
     margin: 18px 0;
@@ -4164,7 +4169,8 @@ mark {
     padding: 18px;
   }
   .global-agent-chat {
-    margin-top: 20px;
+    margin: 10px -16px 0;
+    padding: 12px 16px 0;
   }
   .tax-guide-columns {
     grid-template-columns: 1fr;
