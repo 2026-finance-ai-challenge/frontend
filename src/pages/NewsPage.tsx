@@ -15,8 +15,8 @@ import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
-import { isVerifiedEnglish, verifiedEnglishText } from "../utils/english";
-import { generatedNewsInsight, hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
+import { verifiedEnglishText } from "../utils/english";
+import { generatedNewsBody, generatedNewsInsight, hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
 import { stockCurrency } from "../utils/stockCurrency";
 
 function StockNewsHeader({ stockCode }: { stockCode: string }) {
@@ -120,9 +120,8 @@ export function NewsDetailPage() {
     (location.state as { returnTo?: string } | null)?.returnTo ?? "/news";
   const article = articleState.data;
   const readyResult = generatedNewsInsight(translationState.data, locale);
-  const translation = locale === "en"
-    ? readyResult && isVerifiedEnglish(readyResult) ? readyResult : null
-    : readyResult && hasCompleteNewsInsight(readyResult) ? readyResult : null;
+  const translation = readyResult;
+  const translatedParagraphs = generatedNewsBody(translationState.data, locale);
   const cachedInsight = article ? localizedNewsInsight(article, locale) : { what: null, why: null, impact: null };
   const summaryInsight = translation && hasCompleteNewsInsight(translation) ? translation : cachedInsight;
   const englishTitle = verifiedEnglishText(article?.englishTitle);
@@ -184,8 +183,8 @@ export function NewsDetailPage() {
                   <RemoteState {...articleState}>
                     {(value) => locale === "ko" && value.originalBody
                       ? value.originalBody.split(/\n{2,}/).filter(Boolean).map((paragraph, index) => <p className="selection-content" key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)
-                      : translation?.translatedParagraphs?.length
-                      ? <>{translation.translatedParagraphs.map((paragraph, index) => <p className="selection-content" key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
+                      : translatedParagraphs
+                      ? <>{translatedParagraphs.map((paragraph, index) => <p className="selection-content" key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
                       : translationPending
                         ? <LoadingSkeleton lines={8} className="article-copy-skeleton" />
                         : <div className="api-state api-error">{locale === "ko" ? "본문을 불러오지 못했습니다. 새로고침하면 실패한 번역을 다시 요청합니다. 완료된 요약은 유지됩니다." : "The article translation could not be completed. Refresh to retry the failed translation; the verified summary is preserved."}</div>}
