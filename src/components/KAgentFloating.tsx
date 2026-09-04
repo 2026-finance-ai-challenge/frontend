@@ -6,7 +6,7 @@ import { useProfile } from "../hooks/useRemote";
 import { AgentHistoryView, AgentOverflowMenu } from "./AgentHistory";
 import { useLocale } from "../state/LocaleContext";
 import { TaxEligibilityPanel } from "./TaxEligibilityPanel";
-import { answerWithCitationMarkers, citationHref, citationTitle, filingPath, type AgentCitation } from "../agentCitations";
+import { answerWithCitationMarkers, citationHref, citationTitle, contextHref, filingPath, type AgentCitation } from "../agentCitations";
 import { createSubmissionGate } from "../agentSubmission";
 import { chatSubmissionBody, type AgentSelection } from "../agentSelection";
 import { loadChatMessages, loadChatState, type AgentGeneration } from "../agentRecovery";
@@ -317,10 +317,14 @@ function KAgentPanel({ close, requestedContext, openTax, initialHistory }: { clo
     if (roomId) void openConversation(roomId);
   }} />;
   const generating = submitting || Boolean(profile && !roomResolved && !roomLoadError) || Boolean(generation && ["PENDING", "PROCESSING"].includes(generation.status));
+  const linkedContextHref = contextHref(room?.context.type || requestedContext.contextType, room?.context.referenceId || requestedContext.referenceId);
+  const contextLabel = localizedContextTitle || room?.context.title || (locale === "ko" ? "한국 시장 도우미" : "Korea market assistant");
   return <aside className="agent-panel article-agent-panel global-agent-panel" role="dialog" aria-modal="true" aria-label="K-Agent chat">
     <button className="agent-close" type="button" onClick={close} ref={closeButtonRef}><img src="/assets/close.svg" alt="" /> {locale === "ko" ? "닫기" : "Close"}</button>
     <header><img className="agent-logo" src="/assets/agent-badge-381-4971.svg" alt="" /><div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div><AgentOverflowMenu onHistory={profile ? () => setHistory(true) : login} onDelete={profile ? (room ? () => void deleteConversation() : undefined) : login} /></header>
-    <div className="context-chip"><img src="/assets/agent-context.svg" alt="" /> {localizedContextTitle || room?.context.title || (locale === "ko" ? "한국 시장 도우미" : "Korea market assistant")}</div>
+    {linkedContextHref
+      ? <Link className="context-chip context-chip-link" to={linkedContextHref} onClick={close}><img src="/assets/agent-context.svg" alt="" /><span>{contextLabel}</span><span aria-hidden="true">↗</span></Link>
+      : <div className="context-chip"><img src="/assets/agent-context.svg" alt="" /><span>{contextLabel}</span></div>}
     {!profile ? <div className="api-state agent-login-state"><b>{locale === "ko" ? "보호된 대화를 시작하려면 로그인하세요" : "Sign in to start a protected chat"}</b><span>{locale === "ko" ? "대화방과 기록은 계정별로 안전하게 저장됩니다." : "Chat rooms and history are stored per account."}</span><Link className="login-button agent-login-button" onClick={close} to={`/login?returnTo=${encodeURIComponent(window.location.pathname)}`}>{locale === "ko" ? "로그인" : "Log in"}</Link></div> : null}
     <div className="chat global-agent-chat" aria-live="polite">
       {profile && messages.length === 0 ? <>

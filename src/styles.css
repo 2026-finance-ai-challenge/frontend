@@ -2437,6 +2437,19 @@ a {
   width: 21px;
   height: 26px;
 }
+.context-chip-link {
+  text-decoration: none;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+.context-chip-link > span:first-of-type {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.context-chip-link:hover { background: #f0ebd9; box-shadow: inset 0 0 0 1px #d9c979; }
+.context-chip-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .peer-intro {
   margin: 30px -35px 0;
   padding: 30px 35px;
@@ -3269,6 +3282,12 @@ mark {
   width: 20px;
   height: 20px;
 }
+.tax-eligibility-panel .context-chip > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .tax-agent-chat {
   margin-top: clamp(24px, 1.823vw, 35px);
   flex: 1 1 auto;
@@ -3569,8 +3588,8 @@ mark {
 }
 
 .tax-restart {
-  align-self: flex-start;
-  margin: 10px 22px 0;
+  flex: 0 0 auto;
+  margin-left: 2px;
   border: 1px solid #ded7c5;
   border-radius: 7px;
   background: #f7f4ed;
@@ -3578,14 +3597,14 @@ mark {
   font-size: var(--agent-label-font);
   line-height: var(--agent-label-line);
   font-weight: 600;
-  padding: 12px 18px;
-  min-height: 44px;
+  padding: 8px 12px;
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   box-shadow: 0 2px 6px #00000012;
 }
-.tax-restart img { width: 20px; height: 20px; }
+.tax-restart img { width: 16px !important; height: 16px !important; }
 .tax-restart-confirm { padding: 16px; border-radius: 12px; background: #f4f1e6; }
 .tax-restart-confirm button { margin: 8px; }
 .tax-document-turn { display: flex; flex-direction: column; gap: 20px; }
@@ -3801,7 +3820,6 @@ mark {
 .agent-panel .chat :is(img, video, iframe) { max-width: 100%; }
 .agent-panel .chat table { width: 100%; table-layout: fixed; }
 .agent-panel .chat :is(th, td) { overflow-wrap: anywhere; }
-.agent-panel > .tax-restart { border: 1px solid #ded7c5; background: #f7f4ed; }
 .user-message {
   margin: 0 0 var(--agent-message-gap, 22px) auto;
   background: var(--gold);
