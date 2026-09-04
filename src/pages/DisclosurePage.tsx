@@ -328,9 +328,9 @@ export function DisclosureDetailPage() {
                 </button>
               </span>
             </h2>
-            <button className="selection-hint" onClick={() => openKAgent({ contextType: "FILING", referenceId: disclosureId, prompt: "Explain the important terms and practical impact of this filing." })}>
-              <img src="/assets/selection-info-figma.svg" alt="" /> {locale === "ko" ? "궁금한 내용을 선택해 AI에게 물어보세요." : "Drag over any highlighted term to look it up."}
-            </button>
+            <p className="selection-hint">
+              <img src="/assets/selection-info-figma.svg" alt="" /> {locale === "ko" ? "궁금한 문장을 드래그해 AI에게 물어보세요." : "Select a sentence you’re curious about and ask AI."}
+            </p>
             <div
               className="disclosure-copy selection-surface"
               ref={selectionAssistant.containerRef}

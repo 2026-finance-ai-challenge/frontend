@@ -10,6 +10,7 @@ import { useRemote } from "../hooks/useRemote";
 import { useOwnershipForecastWindow } from "../hooks/useOwnershipForecastWindow";
 import { useMarketRefresh } from "../hooks/useMarketRefresh";
 import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
+import { useTouchInsight } from "../hooks/useTouchInsight";
 import type { Filing, ForeignLimitMonitor, NewsArticle, SupportedCountry } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
@@ -265,13 +266,15 @@ function FilingRow({ filing }: { filing: PublishedFiling }) {
 
 function HomeNewsCard({ article }: { article: NewsArticle }) {
   const { locale, t } = useLocale();
+  const touchInsight = useTouchInsight();
   const [hovered, setHovered] = useState(false);
+  const active = hovered || touchInsight.active;
   const [insightRequested, setInsightRequested] = useState(false);
   useEffect(() => {
-    if (!hovered || insightRequested) return;
+    if (!active || insightRequested) return;
     const timer = window.setTimeout(() => setInsightRequested(true), 300);
     return () => window.clearTimeout(timer);
-  }, [hovered, insightRequested]);
+  }, [active, insightRequested]);
   const translation = useAutomaticTranslation(
     `/api/v1/news/${article.id}/translation?locale=${locale}`,
     insightRequested,
@@ -288,23 +291,25 @@ function HomeNewsCard({ article }: { article: NewsArticle }) {
     [t("impact"), readyInsight.impact],
   ];
   return <Link
-    className={`news-card ${locale === "ko" ? "is-korean" : ""} ${wrappedTitle ? "has-wrapped-title" : ""}`}
+    className={`news-card ${touchInsight.active ? "is-scroll-active" : ""} ${locale === "ko" ? "is-korean" : ""} ${wrappedTitle ? "has-wrapped-title" : ""}`}
     to={`/news/${article.id}`}
-    onPointerEnter={() => setHovered(true)}
+    onPointerEnter={() => { if (!touchInsight.touch) setHovered(true); }}
     onPointerLeave={() => setHovered(false)}
     onFocus={() => { setHovered(true); setInsightRequested(true); }}
     onBlur={() => setHovered(false)}
   >
-    <div className="news-card-content">
+    <div className="news-card-content" ref={touchInsight.anchor}>
       <IntelligenceBadges sentiment={article.sentiment} importance={article.importance} eventType={article.eventType} />
       <h3 className={adaptiveTextClass(title, "news-card-title", locale === "ko" ? 24 : 36, locale === "ko" ? 40 : 62)}>{title}</h3>
       <p className="meta">{article.publisher} · {formatDate(article.publishedAt)}</p>
     </div>
     <NewsThumbnail className="news-card-thumbnail" src={article.thumbnailUrl} />
     <div className="insight">
-      {!summaryReady && !hovered ? (
+      {!summaryReady && !active ? (
         <p className="insight-hover-prompt">
-          {locale === "ko" ? "마우스를 올려 What / Why / Impact 요약 보기" : "Hover to view the What / Why / Impact summary"}
+          {touchInsight.touch
+            ? locale === "ko" ? "스크롤하며 What / Why / Impact 요약 보기" : "Scroll to view the What / Why / Impact summary"
+            : locale === "ko" ? "마우스를 올려 What / Why / Impact 요약 보기" : "Hover to view the What / Why / Impact summary"}
         </p>
       ) : summaryReady ? (
         summary.map(([label, value]) => <p key={label}><b>{label}</b><span>{value}</span></p>)
