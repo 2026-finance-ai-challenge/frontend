@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, apiBlob, queryString, session } from "../api";
 import type { Profile } from "../types";
@@ -11,7 +11,8 @@ import { LoadingSkeleton } from "./LoadingSkeleton";
 
 type TaxEligibility = { countryCode: string; countryName: string; investorType: string; treatyDataAvailable: boolean; domesticDefaultRate: number; treatyDividendRate: number | null };
 type TaxComparison = { verificationStatus: string; findings: Array<{ code: string; message: string }>; crossCheck: { matched?: boolean } };
-type TaxConversation = { roomId: string; locale: "en" | "ko"; eligibility: TaxEligibility | null; comparison: TaxComparison | null };
+type TaxConversation = { roomId: string; locale: "en" | "ko"; eligibility: TaxEligibility | null; comparison: TaxComparison | null; guideDepth: number; verificationStarted: boolean };
+type TaxGuideAction = "SHOW_GUIDE" | "SHOW_MORE_DETAIL" | "START_VERIFICATION";
 type Document = TaxDocument & { contentAvailable?: boolean };
 type Preview = { url: string; mediaType: string };
 const requiredDocuments = [
@@ -32,6 +33,8 @@ export function TaxEligibilityPanel({ close, openHistory }: { close: () => void;
   const [country, setCountry] = useState("US");
   const [investor, setInvestor] = useState("INDIVIDUAL");
   const [guestResult, setGuestResult] = useState<TaxEligibility | null>(null);
+  const [guestGuideDepth, setGuestGuideDepth] = useState(0);
+  const [guestVerificationStarted, setGuestVerificationStarted] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [pendingPreview, setPendingPreview] = useState<Preview | null>(null);
   const [previews, setPreviews] = useState<Record<string, Preview>>({});
@@ -58,6 +61,8 @@ export function TaxEligibilityPanel({ close, openHistory }: { close: () => void;
   }, [profile?.id, conversation.data?.roomId, comparison]);
   const messageLocale = conversation.data?.locale || locale;
   const allDocuments = documents.data || [];
+  const guideDepth = profile ? conversation.data?.guideDepth || 0 : guestGuideDepth;
+  const verificationStarted = profile ? Boolean(conversation.data?.verificationStarted) : guestVerificationStarted;
   const processing = allDocuments.some((item) => item.status === "PROCESSING");
   const locked = Boolean(busy) || processing || (Boolean(profile) && (conversation.loading || documents.loading));
   const nextDocument = requiredDocuments.find((required) => !allDocuments.some((item) => item.documentType === required.type && item.status === "VERIFIED"));
@@ -127,8 +132,28 @@ export function TaxEligibilityPanel({ close, openHistory }: { close: () => void;
           new Promise<void>((resolve) => window.setTimeout(resolve, 700)),
         ]);
         setGuestResult(value);
+        setGuestGuideDepth(0);
+        setGuestVerificationStarted(false);
       }
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to check eligibility."); }
+    finally { busyRef.current = false; setBusy(null); }
+  };
+  const advanceFlow = async (action: TaxGuideAction) => {
+    if (!result || locked || busyRef.current) return;
+    busyRef.current = true; setBusy("flow"); setError("");
+    try {
+      if (profile) {
+        conversation.setData(await api<TaxConversation>("/api/v1/me/tax-conversation/flow", {
+          method: "POST", body: JSON.stringify({ action }),
+        }));
+      } else if (action === "SHOW_GUIDE") {
+        setGuestGuideDepth((value) => Math.max(value, 1));
+      } else if (action === "SHOW_MORE_DETAIL") {
+        setGuestGuideDepth(2);
+      } else {
+        setGuestVerificationStarted(true);
+      }
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to continue the tax guide."); }
     finally { busyRef.current = false; setBusy(null); }
   };
   const upload = async (event: FormEvent) => {
@@ -154,6 +179,7 @@ export function TaxEligibilityPanel({ close, openHistory }: { close: () => void;
       conversation.setData(fresh); documents.setData([]); setPreviews({});
       for (const url of previewUrls.current) URL.revokeObjectURL(url);
       previewUrls.current.clear(); setFile(null); setAssessmentRequest(""); comparisonAttempt.current = "";
+      setGuestGuideDepth(0); setGuestVerificationStarted(false);
       setComparisonFailed(false);
       setRestartConfirm(false);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to restart."); }
@@ -179,17 +205,29 @@ export function TaxEligibilityPanel({ close, openHistory }: { close: () => void;
       {profile && conversation.loading ? <LoadingSkeleton lines={5} /> : <>
       <p className="user-message user-message-enter">{messageLocale === "ko" ? "세율 확인을 시작했습니다" : "Tax assessment started"}</p>
       {!result && introStage === "thinking" ? <TypingBubble locale={locale} /> : null}
-      {(introStage === "ready" || result) ? <div className="ai-message ai-message-enter"><p>{messageLocale === "ko" ? "거주 국가와 투자자 유형을 선택해 배당 원천징수세율을 확인하세요." : "Select your tax residence and investor type to check the dividend withholding tax rate."}</p></div> : null}
+      {(introStage === "ready" || result) ? <div className="ai-message ai-message-enter"><p>{messageLocale === "ko" ? "한국과 조세조약이 체결된 경우 배당소득 원천징수세율을 낮출 수 있습니다. 거주 국가와 투자자 유형을 선택해 주세요." : "If a tax treaty is in place with Korea, you may be eligible for a reduced withholding tax rate on dividend income. What is your nationality?"}</p></div> : null}
       {!result && introStage === "ready" ? <form className="tax-agent-form" onSubmit={submitEligibility}>
         <label>{locale === "ko" ? "거주 국가" : "Country of residence"}<select value={country} disabled={locked} onChange={(event) => setCountry(event.target.value)}><CountryOptions countries={countries.data || []} /></select></label>
         <label>{locale === "ko" ? "투자자 유형" : "Investor type"}<select value={investor} disabled={locked} onChange={(event) => setInvestor(event.target.value)}><option value="INDIVIDUAL">{locale === "ko" ? "개인" : "Individual"}</option><option value="CORPORATE">{locale === "ko" ? "법인" : "Corporate"}</option></select></label>
         <button type="submit" disabled={locked || !countries.data?.length}>{locale === "ko" ? "내 세율 확인" : "Check my rate"}</button>
       </form> : null}
-      {result || assessmentRequest ? <p className="user-message user-message-enter">{result ? result.countryName + " · " + (result.investorType === "INDIVIDUAL" ? messageLocale === "ko" ? "개인" : "Individual" : messageLocale === "ko" ? "법인" : "Corporate") : assessmentRequest}</p> : null}
+      {result || assessmentRequest ? <p className="user-message user-message-enter">{result ? result.countryName + ", " + (result.investorType === "INDIVIDUAL" ? messageLocale === "ko" ? "개인" : "Individual" : messageLocale === "ko" ? "법인" : "Corporate") : assessmentRequest}</p> : null}
       {busy === "eligibility" ? <TypingBubble locale={locale} /> : null}
-      {result ? <div className="ai-message tax-agent-result"><p>{result.treatyDataAvailable ? messageLocale === "ko" ? <>일반 조세조약 배당세율은 <b>{result.treatyDividendRate}%</b>, 국내 기본세율은 <b>{result.domesticDefaultRate}%</b>입니다.</> : <>The general treaty dividend rate is <b>{result.treatyDividendRate}%</b>, compared with the <b>{result.domesticDefaultRate}%</b> domestic default.</> : messageLocale === "ko" ? "확인된 조세조약 세율이 없습니다." : "No verified treaty rate is available."}</p></div> : null}
-      {result && !profile ? <div className="ai-message"><p className="tax-login-prompt"><Link className="login-button tax-login-button" to="/login?returnTo=%2Ftax" onClick={close}>{locale === "ko" ? "로그인" : "Log in"}</Link><span>{locale === "ko" ? "세무 서류를 안전하게 업로드하고 검증할 수 있습니다." : "to upload and verify tax documents securely."}</span></p></div> : null}
-      {result && profile ? <>
+      {result ? <div className="ai-message tax-agent-result"><TaxResult result={result} locale={messageLocale} />
+        {!verificationStarted && guideDepth === 0 ? <TaxGuideActions locale={locale} primary={locale === "ko" ? "가이드 보기" : "Yes, show me the guide"} onPrimary={() => void advanceFlow("SHOW_GUIDE")} onVerify={() => void advanceFlow("START_VERIFICATION")} disabled={locked} /> : null}
+      </div> : null}
+      {busy === "flow" ? <TypingBubble locale={locale} /> : null}
+      {guideDepth >= 1 ? <>
+        <p className="user-message user-message-enter">{messageLocale === "ko" ? "가이드를 보여주세요" : "Yes, show me the guide"}</p>
+        <TaxGuideOverview locale={messageLocale} actions={!verificationStarted && guideDepth === 1 ? <TaxGuideActions locale={locale} primary={locale === "ko" ? "더 자세히 보기" : "Yes, show more detail"} onPrimary={() => void advanceFlow("SHOW_MORE_DETAIL")} onVerify={() => void advanceFlow("START_VERIFICATION")} disabled={locked} /> : null} />
+      </> : null}
+      {guideDepth >= 2 ? <>
+        <p className="user-message user-message-enter">{messageLocale === "ko" ? "더 자세히 보여주세요" : "Yes, show more details"}</p>
+        <TaxGuideDetail locale={messageLocale} onVerify={!verificationStarted ? () => void advanceFlow("START_VERIFICATION") : undefined} disabled={locked} />
+      </> : null}
+      {verificationStarted ? <p className="user-message user-message-enter">{messageLocale === "ko" ? "서류 검증 해보기" : "Verify my documents"}</p> : null}
+      {verificationStarted && !profile ? <div className="ai-message"><p className="tax-login-prompt"><Link className="login-button tax-login-button" to="/login?returnTo=%2Ftax" onClick={close}>{locale === "ko" ? "로그인" : "Log in"}</Link><span>{locale === "ko" ? "세무 서류를 안전하게 업로드하고 검증할 수 있습니다." : "to upload and verify tax documents securely."}</span></p></div> : null}
+      {verificationStarted && profile ? <>
         {ordered.map((document) => <div className="tax-document-turn" key={document.id}>
           <DocumentPreview document={document} preview={previews[document.id]} locale={locale} />
           <div className="ai-message tax-document-message"><b>{requiredDocuments.find((item) => item.type === document.documentType)?.[messageLocale === "ko" ? "ko" : "en"]}</b>
@@ -214,6 +252,68 @@ export function TaxEligibilityPanel({ close, openHistory }: { close: () => void;
     </div>
     <p className="tax-agent-disclaimer">{locale === "ko" ? "서류 제출 전 확인을 돕는 기능이며 정부의 진위 확인이나 세무 자문을 대체하지 않습니다." : "Pre-submission checks do not replace government authentication or tax advice."}</p>
   </aside>;
+}
+
+function TaxResult({ result, locale }: { result: TaxEligibility; locale: "ko" | "en" }) {
+  if (!result.treatyDataAvailable) return <><div className="tax-guide-heading"><img src="/assets/tax-treaty-complete.svg" alt="" /><b>{locale === "ko" ? "조세조약 분석 완료" : "Treaty analysis complete"}</b></div><p>{locale === "ko" ? "확인된 조세조약 세율이 없습니다." : "No verified treaty rate is available."}</p></>;
+  return <>
+    <div className="tax-guide-heading"><img src="/assets/tax-treaty-complete.svg" alt="" /><b>{locale === "ko" ? "조세조약 분석 완료" : "Treaty analysis complete"}</b></div>
+    <p>{locale === "ko" ? <>한미 조세조약에 따라 배당소득에 <b>{result.treatyDividendRate}%</b>의 제한세율을 적용받을 수 있습니다. 이 세율을 신청하는 방법을 안내해 드릴까요?</> : <>Under the Korea - US tax treaty, you are eligible for a reduced tax rate of <b>{result.treatyDividendRate}%</b> on dividend income. Would you like a guide on how to apply for this rate?</>}</p>
+  </>;
+}
+
+function TaxGuideActions({ locale, primary, onPrimary, onVerify, disabled }: { locale: "ko" | "en"; primary: string; onPrimary: () => void; onVerify: () => void; disabled: boolean }) {
+  return <div className="tax-guide-actions">
+    <button type="button" className="tax-guide-primary" disabled={disabled} onClick={onPrimary}><img src="/assets/tax-guide-action.svg" alt="" />{primary}</button>
+    <button type="button" className="tax-guide-verify" disabled={disabled} onClick={onVerify}>{locale === "ko" ? "검증 해보기" : "Verify documents"}</button>
+  </div>;
+}
+
+function TaxGuideOverview({ locale, actions }: { locale: "ko" | "en"; actions: ReactNode }) {
+  return <div className="ai-message tax-guide-overview ai-message-enter">
+    <p>{locale === "ko" ? "배당소득 제한세율 신청에 필요한 서류와 절차를 안내해 드리겠습니다." : "Certainly, I will guide you through the documents and procedures required to apply for the reduced tax rate on dividend income."}</p>
+    <hr />
+    <div className="tax-guide-columns">
+      <section><img src="/assets/tax-guide-documents.svg" alt="" /><b>{locale === "ko" ? "1. 필요 서류" : "1. Required Documents"}</b><span>{locale === "ko" ? "거주자 증명서와 제한세율 적용신청서" : "Certificate of residence and application for reduced tax rate"}</span></section>
+      <section><img src="/assets/tax-guide-submission.svg" alt="" /><b>{locale === "ko" ? "2. 제출 절차" : "2. Submission Process"}</b><span>{locale === "ko" ? <>준비한 서류를 <strong>브로커</strong> 또는 <strong>수탁기관</strong>에 제출합니다.</> : <>Submit the prepared documents to your <strong>broker</strong> or <strong>custodian</strong>.</>}</span></section>
+    </div>
+    <div className="tax-guide-notice"><div><img src="/assets/tax-guide-notice.svg" alt="" /><b>{locale === "ko" ? "중요 안내" : "Important Notice"}</b></div><p>{locale === "ko" ? "서류는 3년간 유효하므로 만료 전에 다시 신청해야 합니다." : "The documents are valid for 3 years, so you must re-apply before they expire."}</p></div>
+    <hr />
+    <p>{locale === "ko" ? "세무 신청 절차를 더 자세히 알아보시겠어요?" : "Would you like more specific details on the tax filing process?"}</p>
+    {actions}
+  </div>;
+}
+
+function TaxGuideDetail({ locale, onVerify, disabled }: { locale: "ko" | "en"; onVerify?: () => void; disabled: boolean }) {
+  const applicationName = "[별지 제29호의12서식] 국내원천소득 제한세율 적용신청서 (비거주자용)(소득세법 시행규칙).pdf";
+  return <>
+    <div className="ai-message ai-message-enter"><p>{locale === "ko" ? "제한세율 신청을 위한 단계별 상세 가이드와 서류 목록입니다." : "Here is the detailed step-by-step guide and documents checklist for applying for the reduced tax rate."}</p></div>
+    <div className="ai-message tax-guide-card ai-message-enter">
+      <div className="tax-guide-heading"><img src="/assets/tax-guide-required.svg" alt="" /><b>{locale === "ko" ? "필요 서류" : "Required documents"}</b></div>
+      <p>{locale === "ko" ? "발급에 가장 오래 걸리는 거주자 증명서부터 준비하세요." : "Start with the certificate of residence; it is by far the slowest step."}</p>
+      <hr />
+      <TaxGuideStep number="1" title={locale === "ko" ? "제한세율 적용신청서" : "Application for Reduced Tax Rate"} description={locale === "ko" ? "브로커가 투자자를 대신해 국세청에 제출하는 신청서입니다." : "The Korean National Tax Service form your broker submits on your behalf."} />
+      <a className="tax-guide-download" href="/forms/reduced-tax-rate-application-nonresident.pdf" download={applicationName}><img src="/assets/download.svg" alt="" />{locale === "ko" ? "원본 다운로드(PDF)" : "Download Original (PDF)"}</a>
+      <hr />
+      <TaxGuideStep number="2" title={locale === "ko" ? "거주자 증명서" : "Certificate of Residence"} description={locale === "ko" ? "거주 국가의 세무당국에서 발급받습니다. 미국 거주자는 IRS Form 6166이며 통상 4~6주가 걸립니다." : "Issued by your own tax authority - Form 6166 from the IRS for US residents. Allow four to six weeks."} />
+    </div>
+    <div className="ai-message tax-guide-card ai-message-enter">
+      <div className="tax-guide-heading"><img src="/assets/tax-guide-steps.svg" alt="" /><b>{locale === "ko" ? "단계별 제출 가이드" : "Step-by-step submission guide"}</b></div>
+      <p>{locale === "ko" ? "원천징수의무자인 브로커를 통해 다음 세 단계로 진행합니다." : "Three steps, handled through your broker as withholding agent."}</p>
+      <hr />
+      <TaxGuideStep number="1" title={locale === "ko" ? "신청서 다운로드 및 거주자 증명서 발급" : "Download the form and obtain your certificate"} description={locale === "ko" ? "다른 절차는 거주자 증명서가 준비된 뒤 진행할 수 있습니다." : "Everything else waits on the certificate of residence."} />
+      <hr />
+      <TaxGuideStep number="2" title={locale === "ko" ? "현지 브로커 또는 한국 제휴 브로커에 제출" : "Submit to your local broker or partner Korean broker"} description={locale === "ko" ? "예: IBKR 또는 삼성증권과 같은 제휴 증권사" : "For example IBKR, or a partner such as Samsung Securities."} />
+      <hr />
+      <TaxGuideStep number="3" title={locale === "ko" ? "조세조약 세율로 배당 수령" : "Receive dividends at the treaty rate"} description={locale === "ko" ? "접수가 승인되면 다음 지급일부터 적용됩니다." : "Applies from the next payment date once your filing is accepted."} />
+    </div>
+    <div className="ai-message tax-guide-tip ai-message-enter"><p>{locale === "ko" ? "☝️ 팁: 대부분의 세무당국은 거주자 증명서 온라인 신청을 지원합니다. 현지 정부 웹사이트를 확인하세요." : "☝️ Tip: Most tax authorities allow online applications for residency certificates. Check your local government website."}</p></div>
+    {onVerify ? <button type="button" className="tax-guide-final-verify" disabled={disabled} onClick={onVerify}>{locale === "ko" ? "서류 검증 해보기" : "Verify my documents"}</button> : null}
+  </>;
+}
+
+function TaxGuideStep({ number, title, description }: { number: string; title: string; description: string }) {
+  return <div className="tax-guide-step"><span>{number}</span><div><b>{title}</b><p>{description}</p></div></div>;
 }
 
 function statusLabel(status: string, locale: "ko" | "en") {
