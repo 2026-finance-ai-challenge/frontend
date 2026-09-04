@@ -5909,8 +5909,11 @@ mark {
 @media (max-width: 1100px) {
   .news-grid { grid-template-columns: minmax(0, 1fr); min-height: 0; }
   .ownership-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+}
+@media (max-width: 1100px), (hover: none), (pointer: coarse) {
   .ownership-card, .ownership-card.has-prediction,
-  .ownership-card:is(:hover, :focus-visible, .is-scroll-active) { height: auto; min-height: 333px; }
+  .ownership-card:is(:hover, :focus-visible, .is-scroll-active),
+  .ownership-card.has-prediction:is(:hover, :focus-visible, .is-scroll-active) { height: auto; min-height: 333px; }
   .ownership-card .ownership-note, .ownership-card.has-prediction .ownership-note { position: static; height: auto; max-height: 44px; margin: 22px 0 0; padding: 16px 0 0; overflow: hidden; }
   .ownership-card:is(:hover, :focus-visible, .is-scroll-active) .ownership-note { max-height: none; mask-image: none; opacity: 1; visibility: visible; }
   .ownership-card.is-scroll-active { border-color: var(--gold); }
