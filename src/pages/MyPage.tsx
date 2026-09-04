@@ -146,9 +146,11 @@ function ActivityList({ items }: { items: Activity[] }) {
   const { locale } = useLocale();
   const [page, setPage] = useState(0);
   const start = Math.min(page * 5, Math.max(0, Math.ceil(items.length / 5) - 1) * 5);
+  const previousDisabled = start === 0;
+  const nextDisabled = start + 5 >= items.length;
   return <div className="activity-carousel"><div className="carousel-controls">
-    <button type="button" disabled={start === 0} aria-label={locale === "ko" ? "이전 항목" : "Previous items"} onClick={() => setPage((value) => Math.max(0, value - 1))}><img src="/assets/carousel-prev.svg" alt="" /></button>
-    <button type="button" disabled={start + 5 >= items.length} aria-label={locale === "ko" ? "다음 항목" : "Next items"} onClick={() => setPage((value) => value + 1)}><img src="/assets/carousel-next.svg" alt="" /></button>
+    <button type="button" disabled={previousDisabled} aria-label={locale === "ko" ? "이전 항목" : "Previous items"} onClick={() => setPage((value) => Math.max(0, value - 1))}><img className={previousDisabled ? "" : "is-reversed"} src={previousDisabled ? "/assets/carousel-prev.svg" : "/assets/carousel-next.svg"} alt="" /></button>
+    <button type="button" disabled={nextDisabled} aria-label={locale === "ko" ? "다음 항목" : "Next items"} onClick={() => setPage((value) => value + 1)}><img className={nextDisabled ? "is-reversed" : ""} src={nextDisabled ? "/assets/carousel-prev.svg" : "/assets/carousel-next.svg"} alt="" /></button>
   </div><div className="activity-list">{items.slice(start, start + 5).map((item) => <Link to={item.type === "NEWS" ? `/news/${item.id}` : item.type === "FILING" ? `/disclosures/${item.id}` : `/stocks/${item.id}`} key={`${item.type}-${item.id}`}><div className="activity-copy"><span>{item.type === "NEWS" ? locale === "ko" ? "뉴스" : "News" : item.type === "FILING" ? locale === "ko" ? "공시" : "Disclosure" : locale === "ko" ? "종목" : "Company"}</span><b>{locale === "ko" ? item.titleKo : item.titleEn}</b><small>{formatDate(item.date)}</small></div>{item.type !== "STOCK" ? <IntelligenceBadges sentiment={item.sentiment} importance={item.importance} eventType={item.eventType} variant={item.type === "FILING" ? "filing" : "news"} /> : null}</Link>)}</div></div>;
 }
 
