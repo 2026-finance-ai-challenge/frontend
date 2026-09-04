@@ -32,11 +32,20 @@ export function filingPath(citation: AgentCitation): string | null {
 export function citationHref(citation: AgentCitation): string | null {
   const internal = filingPath(citation);
   if (internal) return internal;
+  if (citation.sourceType === "NEWS" && /^[0-9a-f-]{36}$/i.test(citation.referenceId || "")) {
+    return `/news/${citation.referenceId}`;
+  }
   if (citation.sourceType === "NEWS" && /^\/news\/[0-9a-f-]{36}$/i.test(citation.url || "")) return citation.url;
   try {
     const url = new URL(citation.url || "");
     return url.protocol === "https:" ? url.href : null;
   } catch { return null; }
+}
+
+export function contextHref(contextType: string, referenceId?: string | null): string | null {
+  if (contextType === "NEWS" && /^[0-9a-f-]{36}$/i.test(referenceId || "")) return `/news/${referenceId}`;
+  if (contextType === "FILING" && /^\d{14}$/.test(referenceId || "")) return `/disclosures/${referenceId}`;
+  return null;
 }
 
 export function answerWithCitationMarkers(content: string, citations: AgentCitation[]): string {
