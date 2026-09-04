@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { filingPath, citationHref, citationTitle, answerWithCitationMarkers } from "../src/agentCitations.ts";
+import { filingPath, citationHref, citationTitle, contextHref, answerWithCitationMarkers } from "../src/agentCitations.ts";
 
 const receipt = "20260902800513";
 const legacy = { id: "C1", title: "Filing", url: `https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${receipt}` };
@@ -18,6 +18,13 @@ test("filing citations and saved DART citations navigate within the service", ()
   assert.equal(filingPath({ ...legacy, sourceType: "FILING", referenceId: receipt, url: null }), `/disclosures/${receipt}`);
   assert.equal(filingPath({ ...legacy, url: `https://dart.fss.or.kr.evil.test/?rcpNo=${receipt}` }), null);
   assert.equal(citationHref({ ...legacy, url: "javascript:alert(1)" }), null);
+});
+test("news citations and linked chat headers prefer verified internal routes", () => {
+  const newsId = "ecab4bdf-4cf4-4131-bcaf-dc4076facb64";
+  assert.equal(citationHref({ id: "N1", sourceType: "NEWS", referenceId: newsId, title: "News", url: "https://publisher.example/article" }), `/news/${newsId}`);
+  assert.equal(contextHref("NEWS", newsId), `/news/${newsId}`);
+  assert.equal(contextHref("FILING", receipt), `/disclosures/${receipt}`);
+  assert.equal(contextHref("GENERAL", null), null);
 });
 test("saved raw and Markdown filing URLs are removed from the body when source buttons exist", () => {
   assert.equal(answerWithCitationMarkers(`Source: ${legacy.url}`, [legacy]), "Source:");
