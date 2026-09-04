@@ -59,6 +59,10 @@ export function KAgentFloating() {
     window.addEventListener(OPEN_AGENT_EVENT, handleOpen);
     return () => window.removeEventListener(OPEN_AGENT_EVENT, handleOpen);
   }, []);
+  useEffect(() => {
+    document.body.classList.toggle("agent-drawer-open", open);
+    return () => document.body.classList.remove("agent-drawer-open");
+  }, [open]);
   return <>
     <button type="button" className="agent-launcher" aria-label={locale === "ko" ? "K-Agent 열기" : "Open K-Agent"} aria-haspopup="dialog" aria-expanded={open} onClick={() => { openerRef.current = launcherRef.current; setContext({ contextType: "GENERAL" }); setOpen(true); }} ref={launcherRef} hidden={open}>
       <span className="agent-launcher-surface" aria-hidden="true" />

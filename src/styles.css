@@ -10,6 +10,7 @@
   --red: #d70911;
   --blue: #0051cb;
   --green: #4b7b36;
+  --agent-panel-width: clamp(480px, 37.34375vw, 717px);
 }
 * {
   box-sizing: border-box;
@@ -26,6 +27,9 @@ body {
   letter-spacing: -0.04em;
   -webkit-user-select: none;
   user-select: none;
+}
+body.agent-drawer-open {
+  overflow: hidden;
 }
 input,
 textarea,
@@ -2891,7 +2895,7 @@ a {
   right: 0;
 }
 .filing-detail.agent-open .site-header {
-  right: 717px;
+  right: var(--agent-panel-width);
 }
 .article-shell {
   padding-top: 95px;
@@ -3111,7 +3115,7 @@ mark {
   z-index: 60;
   top: 0;
   right: 0;
-  width: 717px;
+  width: var(--agent-panel-width);
   height: 100vh;
   background: linear-gradient(to bottom, #fff 0 290px, #fbf9f4 290px);
   box-shadow: -20px 0 60px rgba(0, 0, 0, 0.08);
@@ -3131,7 +3135,7 @@ mark {
 .global-agent-panel {
   top: 0;
   left: auto;
-  width: min(717px, 100vw);
+  width: min(var(--agent-panel-width), 100vw);
   height: 100dvh;
   padding: 35px 30px 30px;
   background: linear-gradient(to bottom, #fff 0 290px, #fbf9f4 290px);
@@ -3234,7 +3238,7 @@ mark {
   }
 }
 .home-page:has(~ .tax-eligibility-panel) .site-header {
-  right: 717px;
+  right: var(--agent-panel-width);
 }
 .tax-eligibility-panel {
   display: flex;
@@ -3299,6 +3303,187 @@ mark {
   color: #111;
   border-top: 0;
   padding-top: 0;
+}
+.tax-agent-result,
+.tax-guide-overview,
+.tax-guide-card,
+.tax-guide-tip {
+  width: 100%;
+  max-width: 655px;
+}
+.tax-guide-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gold);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
+}
+.tax-guide-heading img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.tax-agent-result > p {
+  color: #111;
+}
+.tax-guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 10px;
+}
+.tax-guide-actions button,
+.tax-guide-final-verify {
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+}
+.tax-guide-actions .tax-guide-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-right: 30px;
+  padding-left: 30px;
+  background: #111;
+  color: #fff;
+}
+.tax-guide-primary img {
+  width: 20px;
+  height: 20px;
+}
+.tax-guide-actions .tax-guide-verify {
+  background: #deddd5;
+  color: #111;
+}
+.tax-guide-actions button:disabled,
+.tax-guide-final-verify:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+.tax-guide-overview hr,
+.tax-guide-card hr {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid #deddd5;
+}
+.tax-guide-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+.tax-guide-columns section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+.tax-guide-columns section > img {
+  width: 23px;
+  height: 26px;
+  object-fit: contain;
+}
+.tax-guide-columns section > b {
+  color: var(--gold);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
+}
+.tax-guide-columns section > span {
+  color: #555;
+  font-size: 18px;
+  line-height: 25px;
+}
+.tax-guide-notice {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  background: #deddd5;
+}
+.tax-guide-notice > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--red);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+}
+.tax-guide-notice img {
+  width: 20px;
+  height: 16px;
+}
+.tax-guide-notice p {
+  margin: 10px 0 0;
+  font-size: 18px;
+  line-height: 25px;
+}
+.tax-guide-card {
+  border-radius: 16px;
+}
+.tax-guide-step {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.tax-guide-step > span {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+}
+.tax-guide-step b {
+  display: block;
+  color: #111;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
+}
+.tax-guide-step p {
+  margin: 10px 0 0;
+  color: #555;
+  font-size: 18px;
+  line-height: 25px;
+}
+.tax-guide-download {
+  display: inline-flex;
+  width: min(350px, calc(100% - 44px));
+  min-height: 60px;
+  margin-left: 44px;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  background: #deddd5;
+  color: var(--gold);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+}
+.tax-guide-download img {
+  width: 20px;
+  height: 20px;
+}
+.tax-guide-final-verify {
+  align-self: flex-start;
+  background: #111;
+  color: #fff;
 }
 .tax-eligibility-panel .chat-input {
   margin-top: auto;
@@ -3938,6 +4123,27 @@ mark {
   .global-agent-chat {
     margin-top: 20px;
   }
+  .tax-guide-columns {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .tax-guide-actions {
+    flex-direction: column;
+  }
+  .tax-guide-actions button,
+  .tax-guide-final-verify {
+    width: 100%;
+  }
+  .tax-guide-download {
+    width: 100%;
+    margin-left: 0;
+  }
+  .tax-guide-step b,
+  .tax-guide-heading,
+  .tax-guide-columns section > b {
+    font-size: 20px;
+    line-height: 28px;
+  }
   .chat-input.global-agent-input {
     height: 90px;
     min-height: 90px;
@@ -4228,7 +4434,7 @@ mark {
   transition: width 0.25s;
 }
 .filing-detail.agent-open .filing-detail-main {
-  width: calc(100% - 717px);
+  width: calc(100% - var(--agent-panel-width));
 }
 .filing-hero {
   background: var(--cream);
