@@ -5,6 +5,7 @@ import { adaptiveTextClass, conciseCompanyName } from "../utils/text";
 import { legalOwnershipLimit, ownershipPrediction } from "./ownershipPredictionModel";
 import { OwnershipPredictionLegend } from "./OwnershipPrediction";
 import { OwnershipGauge } from "./OwnershipGauge";
+import { useTouchInsight } from "../hooks/useTouchInsight";
 
 export const ownershipLabels = {
   danger: "Near reached",
@@ -27,6 +28,7 @@ export function ownershipExhaustion(item: ForeignLimitMonitor) {
 }
 
 export function ForeignOwnershipCard({ item }: { item: ForeignLimitMonitor }) {
+  const touchInsight = useTouchInsight();
   const { locale, stockName } = useLocale();
   const used = item.stock.foreignOwnership?.ownershipRate ?? null;
   const cap = legalOwnershipLimit(item.stock.foreignOwnership);
@@ -41,8 +43,8 @@ export function ForeignOwnershipCard({ item }: { item: ForeignLimitMonitor }) {
   const name = locale === "en" ? conciseCompanyName(stockName(item.stock)) : stockName(item.stock);
 
   return (
-    <Link className={`ownership-card${prediction ? " has-prediction" : ""}`} to={`/stocks/${item.stock.stockCode}`}>
-      <div className="card-title">
+    <Link className={`ownership-card${prediction ? " has-prediction" : ""}${touchInsight.active ? " is-scroll-active" : ""}`} to={`/stocks/${item.stock.stockCode}`}>
+      <div className="card-title" ref={touchInsight.anchor}>
         <span className={tone}>
           {tone === "danger" ? <img src="/assets/status-warning.svg" alt="" /> : null}
           {locale === "ko"

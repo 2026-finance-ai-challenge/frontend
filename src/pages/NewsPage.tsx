@@ -170,12 +170,9 @@ export function NewsDetailPage() {
                 {translationError ? <small className="translation-status-error">{translationError.message}</small> : null}
               </section>
               <article className="article-body">
-                <button
-                  className="selection-hint"
-                  onClick={selectionAssistant.clearSelection}
-                >
-                  <img src="/assets/selection-info-figma.svg" alt="" /> {locale === "ko" ? "궁금한 문장을 드래그해 AI에게 물어보세요." : "Drag over any highlighted term to look it up."}
-                </button>
+                <p className="selection-hint">
+                  <img src="/assets/selection-info-figma.svg" alt="" /> {locale === "ko" ? "궁금한 문장을 드래그해 AI에게 물어보세요." : "Select a sentence you’re curious about and ask AI."}
+                </p>
                 <button type="button" className="article-share" aria-label={locale === "ko" ? "뉴스 공유" : "Share article"} onClick={() => void shareArticle((locale === "ko" ? article?.originalTitle : englishTitle) || "KART news")}>
                   <img src="/assets/share.svg" alt="" />
                 </button>
@@ -191,7 +188,7 @@ export function NewsDetailPage() {
                       ? <>{translation.translatedParagraphs.map((paragraph, index) => <p className="selection-content" key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}</>
                       : translationPending
                         ? <LoadingSkeleton lines={8} className="article-copy-skeleton" />
-                        : <div className="api-state api-error">{locale === "ko" ? "원문을 불러오지 못했습니다." : "The full article translation could not be completed. Any verified summary above remains available."}</div>}
+                        : <div className="api-state api-error">{locale === "ko" ? "본문을 불러오지 못했습니다. 새로고침하면 실패한 번역을 다시 요청합니다. 완료된 요약은 유지됩니다." : "The article translation could not be completed. Refresh to retry the failed translation; the verified summary is preserved."}</div>}
                   </RemoteState>
                   <SelectionAssistant
                     selection={selectionAssistant.selection}
@@ -199,9 +196,6 @@ export function NewsDetailPage() {
                     actionLabel={locale === "ko" ? "질문하기" : "Click"}
                     onAsk={(selectedText) => openKAgent({ contextType: "NEWS", referenceId: newsId, selection: { text: selectedText }, prompt: locale === "ko" ? `이 기사에서 “${selectedText}”의 뜻과 투자 맥락을 한국어로 설명해줘.` : `Explain “${selectedText}” and its investment context in this article.` })}
                   />
-                </div>
-                <div className="article-tags">
-                  {article?.relatedStocks.map((stock) => <span key={stock.stockCode}>{stock.stockCode}</span>)}
                 </div>
               </article>
             </div>
