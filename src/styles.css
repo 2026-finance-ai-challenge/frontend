@@ -30,11 +30,14 @@ body {
 input,
 textarea,
 [contenteditable="true"],
+.selection-surface,
 .selection-content,
 .selection-content * {
   -webkit-user-select: text;
   user-select: text;
+  -webkit-touch-callout: default;
 }
+.selection-hint { cursor: default; }
 .api-state, .api-state *,
 .translation-status-error, .translation-status-error *,
 .loading-skeleton, .loading-skeleton *,
@@ -2980,11 +2983,11 @@ blockquote > b {
   margin: 26px 0;
 }
 .selection-hint {
-  border: 1px solid var(--gold);
+  border: 0;
   color: var(--gold);
   background: #fff;
   border-radius: 7px;
-  padding: 9px;
+  padding: 9px 0;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -3041,6 +3044,7 @@ mark {
   gap: 16px;
   white-space: nowrap;
   max-width: calc(100% - 16px);
+  width: min(500px, calc(100% - 16px));
   background: #000;
   color: #fff;
   border: 0;
@@ -3052,6 +3056,7 @@ mark {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 .selection-assistant button {
+  flex-shrink: 0;
   height: 34px;
   border: 0;
   border-radius: 20px;
@@ -5854,3 +5859,75 @@ mark {
 .tax-review-page > button { margin-top: 24px; }
 .tax-comparison-result > .tax-review-link { display: inline-flex; margin-top: 8px; padding: 12px 18px; align-items: center; justify-content: center; }
 @media (max-width: 800px) { .tax-review-documents { grid-template-columns: 1fr; } }
+
+/* 카드 내용은 문서 흐름에 두어 번역 길이와 화면 폭에 따라 함께 늘어난다. */
+.news-card, .news-card.has-wrapped-title,
+.news-card:is(:hover, :focus-visible, .is-scroll-active) {
+  height: auto;
+  min-height: 242px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(80px, 24%);
+  gap: 20px;
+  align-items: start;
+}
+.news-card-content { padding-right: 0; }
+.news-card .news-card-thumbnail { position: static; width: 100%; height: 110px; align-self: center; }
+.news-card .insight, .news-card.has-wrapped-title .insight {
+  position: static;
+  grid-column: 1 / -1;
+  height: 50px;
+  padding: 0;
+  min-width: 0;
+}
+.news-card:is(:hover, :focus-visible, .is-scroll-active) { border-color: var(--gold); }
+.news-card:is(:hover, :focus-visible, .is-scroll-active) .insight {
+  position: static;
+  height: auto;
+  padding: 20px 0 0;
+  border-top: 1px solid #deddd5;
+  mask-image: none;
+}
+.news-card:is(:hover, :focus-visible, .is-scroll-active) .insight p {
+  visibility: visible;
+  min-height: 0;
+  margin: 0 0 16px;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 16px;
+}
+.news-card:is(:hover, :focus-visible, .is-scroll-active) .insight p span { display: block; overflow: visible; }
+.news-card:is(:hover, :focus-visible, .is-scroll-active) .insight p:last-child { margin-bottom: 0; }
+.news-inline-insight { grid-column: 1 / -1; min-width: 0; border-top: 1px solid #deddd5; padding-top: 16px; }
+.news-inline-insight p { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 12px; font-size: 18px; line-height: 1.5; margin: 0 0 16px; }
+.news-inline-insight b { color: var(--gold); }
+.news-inline-insight span { overflow-wrap: anywhere; }
+.news-row.is-scroll-active { border-color: var(--gold); }
+.carousel-controls img.is-reversed { transform: rotate(180deg); }
+.chart-tools { flex-wrap: wrap; gap: 12px; }
+.chart-tools > div { max-width: 100%; min-width: 0; }
+.chart-tools > div:not(.chart-tool-icons) { flex: 1 1 260px; }
+.chart-tools > div:not(.chart-tool-icons) button { width: auto; flex: 1; min-width: 0; }
+@media (max-width: 1100px) {
+  .news-grid { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .ownership-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+  .ownership-card, .ownership-card.has-prediction,
+  .ownership-card:is(:hover, :focus-visible, .is-scroll-active) { height: auto; min-height: 333px; }
+  .ownership-card .ownership-note, .ownership-card.has-prediction .ownership-note { position: static; height: auto; max-height: 44px; margin: 22px 0 0; padding: 16px 0 0; overflow: hidden; }
+  .ownership-card:is(:hover, :focus-visible, .is-scroll-active) .ownership-note { max-height: none; mask-image: none; opacity: 1; visibility: visible; }
+  .ownership-card.is-scroll-active { border-color: var(--gold); }
+  .ownership-card .card-title h3 { white-space: normal; overflow-wrap: anywhere; }
+}
+@media (max-width: 700px) {
+  .news-card, .news-card.has-wrapped-title { padding: 20px; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+  .news-card .news-card-thumbnail { height: 160px; grid-row: 2; }
+  .news-card .intelligence-badges { flex-wrap: wrap; }
+  .news-card h3 { font-size: 24px; line-height: 1.3; }
+  .news-row h2 { overflow-wrap: anywhere; }
+  .chart-card, .ownership-panel { padding: 16px; min-width: 0; }
+  .chart-tool-icons { gap: 12px; }
+  .filing-row-badges .intelligence-badges.is-filing { flex-wrap: wrap; }
+  .ownership-section .section-heading > .icon-link { position: static; margin-top: 16px; }
+  .ownership-support-copy { flex-wrap: wrap; }
+  .quick-actions a { height: auto; min-height: 56px; padding: 10px; line-height: 1.4; }
+  .quick-actions img { flex-shrink: 0; }
+  .hero-surface { height: auto; min-height: 500px; padding-bottom: 60px; }
+}

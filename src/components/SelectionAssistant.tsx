@@ -14,8 +14,8 @@ export function useSelectionAssistant<T extends HTMLElement>(requireSection = fa
   const [selection, setSelection] = useState<TextSelection | null>(null);
   useEffect(() => { setSelection(null); }, [resetKey]);
 
-  const captureSelection = useCallback((event: ReactMouseEvent<T>) => {
-    if ((event.target as Element).closest(".selection-assistant")) return;
+  const captureSelection = useCallback((event?: ReactMouseEvent<T>) => {
+    if (event && (event.target as Element).closest(".selection-assistant")) return;
     window.requestAnimationFrame(() => {
       const container = containerRef.current;
       const browserSelection = window.getSelection();
@@ -62,6 +62,22 @@ export function useSelectionAssistant<T extends HTMLElement>(requireSection = fa
   }, [requireSection]);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // 모바일 길게 누르기와 선택 핸들은 mouseup 없이 selectionchange만 발생한다.
+    const onChange = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => captureSelection(), 160);
+    };
+    document.addEventListener("selectionchange", onChange);
+    window.addEventListener("resize", onChange);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("selectionchange", onChange);
+      window.removeEventListener("resize", onChange);
+    };
+  }, [captureSelection]);
+
+  useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setSelection(null);
     };
@@ -98,7 +114,7 @@ export function SelectionAssistant({
     >
       <img src="/assets/selection-arrow-figma.svg" alt="" />
       <span>{prompt}</span>
-      <button type="button" onClick={() => onAsk(selection.text, selection.sectionId)}>{actionLabel}</button>
+      <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={() => onAsk(selection.text, selection.sectionId)}>{actionLabel}</button>
     </div>
   );
 }

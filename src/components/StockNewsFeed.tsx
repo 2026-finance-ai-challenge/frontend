@@ -9,6 +9,7 @@ import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "./IntelligenceBadges";
 import { hasVerifiedEnglishTitle, verifiedEnglishText } from "../utils/english";
 import { useAutomaticTranslation } from "../hooks/useAutomaticTranslation";
+import { useTouchInsight } from "../hooks/useTouchInsight";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { generatedNewsInsight, hasCompleteNewsInsight, localizedNewsInsight } from "../utils/newsInsight";
 
@@ -93,6 +94,7 @@ function newsFilterKo(value: string) {
 }
 
 function NewsFeedRow({ item, returnTo }: { item: NewsArticle; returnTo: string }) {
+  const touchInsight = useTouchInsight();
   const { locale, t } = useLocale();
   const [hovered, setHovered] = useState(false);
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
@@ -100,7 +102,7 @@ function NewsFeedRow({ item, returnTo }: { item: NewsArticle; returnTo: string }
   const cached = hasCompleteNewsInsight(cachedInsight);
   const translation = useAutomaticTranslation(
     `/api/v1/news/${item.id}/translation?locale=${locale}`,
-    hovered && !cached,
+    (hovered || touchInsight.active) && !cached,
   );
   const generated = generatedNewsInsight(translation.data, locale);
   const insight = generated && hasCompleteNewsInsight(generated) ? generated : cachedInsight;
@@ -117,24 +119,27 @@ function NewsFeedRow({ item, returnTo }: { item: NewsArticle; returnTo: string }
     <Link
       to={`/news/${item.id}`}
       state={{ returnTo }}
-      className="news-row"
+      className={`news-row${touchInsight.active ? " is-scroll-active" : ""}`}
       onPointerEnter={(event) => {
+        if (touchInsight.touch) return;
         setHovered(true);
         moveTooltip(event);
       }}
       onPointerMove={moveTooltip}
       onPointerLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
     >
       <NewsThumbnail src={item.thumbnailUrl} />
-      <div>
+      <div ref={touchInsight.anchor}>
         <IntelligenceBadges sentiment={item.sentiment} importance={item.importance} eventType={item.eventType} />
         <h2>{locale === "ko" ? item.originalTitle : verifiedEnglishText(item.englishTitle) || ""}</h2>
         <p>{item.publisher} · {formatDate(item.publishedAt)}</p>
       </div>
-      {hovered ? (
+      {hovered || touchInsight.active ? (
         <aside
-          className="news-pointer-insight"
-          style={{ left: pointer.x, top: pointer.y }}
+          className={touchInsight.touch ? "news-inline-insight" : "news-pointer-insight"}
+          style={touchInsight.touch ? undefined : { left: pointer.x, top: pointer.y }}
           aria-live="polite"
         >
           {[t("what"), t("why"), t("impact")].map((label, index) => {
