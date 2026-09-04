@@ -1,5 +1,13 @@
 import type { NewsArticle, TranslationResult } from "../types";
 
+export function generatedNewsBody(translation: TranslationResult | null | undefined, locale: "en" | "ko") {
+  if (!translation || translation.targetLocale !== locale || translation.status !== "READY") return null;
+  if (translation.result?.bodyReady === false) return null;
+  const paragraphs = translation.result?.translatedParagraphs;
+  return Array.isArray(paragraphs) && paragraphs.length > 0
+    && paragraphs.every((value) => typeof value === "string" && value.trim()) ? paragraphs : null;
+}
+
 export function generatedNewsInsight(translation: TranslationResult | null | undefined, locale: "en" | "ko") {
   if (!translation || translation.targetLocale !== locale) return null;
   if (translation.status !== "READY" && translation.result?.summaryReady !== true) return null;
