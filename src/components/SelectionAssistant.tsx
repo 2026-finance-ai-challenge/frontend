@@ -104,6 +104,7 @@ export function SelectionAssistant({
   actionLabel: string;
   onAsk: (selectedText: string, sectionId: string | null) => void;
 }) {
+  const pointerSubmitted = useRef(false);
   if (!selection) return null;
   return (
     <div
@@ -114,7 +115,22 @@ export function SelectionAssistant({
     >
       <img src="/assets/selection-arrow-figma.svg" alt="" />
       <span>{prompt}</span>
-      <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={() => onAsk(selection.text, selection.sectionId)}>{actionLabel}</button>
+      <button
+        type="button"
+        onPointerDown={(event) => { pointerSubmitted.current = false; event.preventDefault(); }}
+        onPointerUp={(event) => {
+          // Safari는 선택 보존을 위해 pointerdown을 막으면 터치 click을 생략한다.
+          if (event.pointerType === "touch" || event.pointerType === "pen") {
+            event.preventDefault();
+            pointerSubmitted.current = true;
+            onAsk(selection.text, selection.sectionId);
+          }
+        }}
+        onClick={(event) => {
+          if (event.detail > 0 && pointerSubmitted.current) return;
+          onAsk(selection.text, selection.sectionId);
+        }}
+      >{actionLabel}</button>
     </div>
   );
 }
