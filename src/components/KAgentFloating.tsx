@@ -59,10 +59,6 @@ export function KAgentFloating() {
     window.addEventListener(OPEN_AGENT_EVENT, handleOpen);
     return () => window.removeEventListener(OPEN_AGENT_EVENT, handleOpen);
   }, []);
-  useEffect(() => {
-    document.body.classList.toggle("agent-drawer-open", open);
-    return () => document.body.classList.remove("agent-drawer-open");
-  }, [open]);
   return <>
     <button type="button" className="agent-launcher" aria-label={locale === "ko" ? "K-Agent 열기" : "Open K-Agent"} aria-haspopup="dialog" aria-expanded={open} onClick={() => { openerRef.current = launcherRef.current; setContext({ contextType: "GENERAL" }); setOpen(true); }} ref={launcherRef} hidden={open}>
       <span className="agent-launcher-surface" aria-hidden="true" />
@@ -319,7 +315,7 @@ function KAgentPanel({ close, requestedContext, openTax, initialHistory }: { clo
   const generating = submitting || Boolean(profile && !roomResolved && !roomLoadError) || Boolean(generation && ["PENDING", "PROCESSING"].includes(generation.status));
   const linkedContextHref = contextHref(room?.context.type || requestedContext.contextType, room?.context.referenceId || requestedContext.referenceId);
   const contextLabel = localizedContextTitle || room?.context.title || (locale === "ko" ? "한국 시장 도우미" : "Korea market assistant");
-  return <aside className="agent-panel article-agent-panel global-agent-panel" role="dialog" aria-modal="true" aria-label="K-Agent chat">
+  return <aside className="agent-panel article-agent-panel global-agent-panel" role="dialog" aria-label="K-Agent chat">
     <button className="agent-close" type="button" onClick={close} ref={closeButtonRef}><img src="/assets/close.svg" alt="" /> {locale === "ko" ? "닫기" : "Close"}</button>
     <header><img className="agent-logo" src="/assets/agent-badge-381-4971.svg" alt="" /><div><h2>K-Agent</h2><p>{locale === "ko" ? "AI 금융 인텔리전스" : "AI Financial Intelligence"}</p></div><AgentOverflowMenu onHistory={profile ? () => setHistory(true) : login} onDelete={profile ? (room ? () => void deleteConversation() : undefined) : login} /></header>
     {linkedContextHref
