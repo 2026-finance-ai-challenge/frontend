@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useRemote } from "../hooks/useRemote";
 import { RemoteState, formatDate } from "./RemoteState";
 import { useLocale } from "../state/LocaleContext";
+import { chatHistoryEmptyMessage } from "../chatHistory";
 
 type Room = { id: string; name: string; version: number; context: { type: string; title: string }; updatedAt: string; lastMessageAt: string | null };
 
@@ -124,7 +125,6 @@ export function AgentHistoryView({
     <aside
       className="agent-panel agent-history"
       role="dialog"
-      aria-modal="true"
       aria-label={locale === "ko" ? "대화 기록" : "Chat history"}
       onKeyDown={(event) => {
         if (event.key === "Escape" && (menu || editing || deleting)) {
@@ -149,7 +149,11 @@ export function AgentHistoryView({
         <p>{locale === "ko" ? `‘${deleting.name}’ 대화와 기록을 삭제할까요?` : `Delete “${deleting.name}” and its messages?`}</p>
         <div><button className="auth-primary" type="button" disabled={busy} onClick={() => void remove()}>{locale === "ko" ? "삭제 확인" : "Confirm delete"}</button><button type="button" disabled={busy} onClick={() => setDeleting(null)}>{locale === "ko" ? "취소" : "Cancel"}</button></div>
       </div> : null}
-      <RemoteState {...rooms} empty={(value) => !value.length}>
+      <RemoteState
+        {...rooms}
+        empty={(value) => !value.length}
+        emptyMessage={chatHistoryEmptyMessage(locale, search)}
+      >
       {(value) => <div className="agent-history-list">
         {value.map((conversation) => (
           <article className={`agent-history-row${conversation.context.type === "TAX_GUIDE" ? " is-tax-room" : ""}`} key={conversation.id}>
