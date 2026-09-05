@@ -464,6 +464,12 @@ a {
   font-size: 18px;
   font-weight: 500;
 }
+.global-search .search-empty {
+  margin: 0;
+  padding: 18px 20px;
+  color: #666;
+  text-align: left;
+}
 .agent-launcher {
   position: fixed;
   z-index: 45;
@@ -978,13 +984,13 @@ a {
   color: #555;
 }
 .filing-row {
-  height: 89px;
+  min-height: 89px;
   margin: 0 0;
   display: grid;
   grid-template-columns: 192px 241px minmax(0, 1fr) minmax(240px, auto);
   gap: 18px;
   align-items: center;
-  padding: 0 30px;
+  padding: 10px 30px;
   border-bottom: 1px solid #eee;
   font-size: 18px;
   line-height: 25px;
@@ -1019,7 +1025,7 @@ a {
   bottom: 50%;
 }
 .filing-table > .filing-row:nth-child(6) {
-  height: 99px;
+  min-height: 99px;
 }
 .filing-row .filing-timeline-dot {
   position: absolute;
@@ -1049,8 +1055,15 @@ a {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.filing-row .filing-issuer--compact { font-size: 19px; }
-.filing-row .filing-issuer--dense { font-size: 16px; letter-spacing: -0.03em; }
+.filing-row b.filing-issuer {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: clamp(16px, 1.15vw, 20px);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
 .filing-row small {
   color: #777;
   margin-top: 4px;
@@ -1070,8 +1083,8 @@ a {
   display: block;
   min-width: 0;
   width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -1081,9 +1094,7 @@ a {
 }
 .filing-row .filing-title--compact > span {
   white-space: normal;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  display: block;
 }
 .filing-row .filing-title--dense {
   font-size: 16px;
@@ -1092,9 +1103,7 @@ a {
 }
 .filing-row .filing-title--dense > span {
   white-space: normal;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  display: block;
 }
 .filing-row em {
   font-style: normal;
@@ -1978,7 +1987,7 @@ a {
   color: #777;
   font-size: 15px;
   font-weight: 500;
-  margin-top: 3px;
+  margin-top: 9px;
 }
 .stock-price span {
   font-size: 22px;
@@ -2264,9 +2273,14 @@ a {
 }
 .ownership-forecast-legend {
   margin: 16px 0 20px;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 18px;
+  line-height: 25px;
   color: #796600;
+}
+.ownership-forecast-caption {
+  margin: 0 0 7px;
+  font-size: 18px;
+  line-height: 25px;
 }
 .ownership-forecast-legend dl,
 .ownership-forecast-legend dd {
@@ -2279,7 +2293,7 @@ a {
   gap: 12px;
 }
 .ownership-forecast-row + .ownership-forecast-row {
-  margin-top: 2px;
+  margin-top: 5px;
 }
 .ownership-forecast-row.is-previous {
   color: #555;
@@ -2312,24 +2326,24 @@ a {
   border-top: 6px solid #9a8300;
 }
 .ownership-card.has-prediction {
-  height: 423px;
+  height: 446px;
 }
 .ownership-card.has-prediction:hover,
 .ownership-card.has-prediction:focus-visible {
-  height: 478px;
+  height: 501px;
 }
 .ownership-card.has-prediction .gauge {
   margin-top: 20px;
 }
 .ownership-card.has-prediction .ownership-note {
-  top: 355px;
+  top: 378px;
 }
 .ownership-card.has-prediction:hover .ownership-note,
 .ownership-card.has-prediction:focus-visible .ownership-note {
-  top: 366px;
+  top: 389px;
 }
 .ownership-grid:has(.has-prediction) {
-  min-height: 478px;
+  min-height: 501px;
 }
 .ownership-values > div {
   display: flex;
@@ -3060,8 +3074,8 @@ mark {
   align-items: center;
   gap: 16px;
   white-space: nowrap;
+  width: max-content;
   max-width: calc(100% - 16px);
-  width: min(500px, calc(100% - 16px));
   background: #000;
   color: #fff;
   border: 0;
@@ -3071,6 +3085,10 @@ mark {
   line-height: 25px;
   transform: translateX(-50%);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
+}
+.selection-popup > span {
+  min-width: 0;
 }
 .selection-assistant button {
   flex-shrink: 0;
@@ -4393,8 +4411,6 @@ mark {
   text-overflow: clip;
   white-space: nowrap;
 }
-.disclosure-rows .filing-issuer--compact { font-size: 18px; }
-.disclosure-rows .filing-issuer--dense { font-size: 16px; line-height: 23px; }
 .disclosure-rows small {
   color: #888;
 }
@@ -4433,12 +4449,10 @@ mark {
   overflow-wrap: anywhere;
 }
 .disclosure-rows .filing-title > span {
-  display: -webkit-box;
+  display: block;
   min-width: 0;
   width: 100%;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  overflow: visible;
   overflow-wrap: anywhere;
 }
 .disclosure-rows .filing-title--compact {
@@ -4602,6 +4616,13 @@ mark {
 }
 .article-copy ::selection,
 .disclosure-copy ::selection {
+  background: #927c00;
+  color: #fff;
+}
+
+[data-kart-selection-highlight] {
+  margin: 0;
+  padding: 0;
   background: #927c00;
   color: #fff;
 }
@@ -5661,10 +5682,18 @@ mark {
   min-width: 0;
 }
 .search-stock-identity { padding-right: 28px; }
-.search-stock-name { display: block; width: 100%; white-space: nowrap; overflow: hidden; font-weight: 500; }
+.search-stock-name {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+  line-height: 1.2;
+}
 .search-stock-values { display: flex; gap: 10px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; }
 .search-stock-values > div { min-width: 0; }
-.search-stock-values small { display: block; color: #888; font-size: 13px; line-height: 18px; }
+.search-stock-values small { display: block; margin-top: 9px; color: #888; font-size: 18px; line-height: 25px; }
 .search-stock-grid h2 {
   font-size: 22px;
   margin: 0 0 6px;
@@ -5705,7 +5734,8 @@ mark {
   justify-content: space-between;
   gap: 6px;
   flex-wrap: wrap;
-  font-size: 14px;
+  font-size: 18px;
+  line-height: 25px;
 }
 .search-stock-grid p.is-up { color: var(--red); }
 .search-stock-grid p.is-down { color: #0752cd; }
@@ -5874,15 +5904,25 @@ mark {
 }
 .disclosure-rows section > a b.filing-issuer {
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: clip;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 :is(.search-filings, .disclosure-rows) section > a b {
   color: #000;
   font-size: 22px;
   font-weight: 500;
   line-height: 30px;
+}
+:is(.search-filings, .disclosure-rows) section > a b.filing-issuer {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: clamp(16px, 1.15vw, 20px);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
 }
 :is(.search-filings, .disclosure-rows) section > a small {
   margin-top: 4px;
@@ -5903,6 +5943,14 @@ mark {
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
+}
+:is(.search-filings, .disclosure-rows) section > a strong.filing-title > span {
+  display: block;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: unset;
 }
 :is(.search-filings, .disclosure-rows) section > a em {
   overflow: hidden;
@@ -5963,7 +6011,7 @@ mark {
 }
 @media (max-width: 900px) {
   .search-stock-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .search-filings section > a {
     grid-template-columns: 90px 8px 150px 1fr;
@@ -5979,8 +6027,8 @@ mark {
 .disclosure-question blockquote { display: grid; gap: 8px; margin: 18px 0 0; padding: 18px; border-left: 3px solid #a58b00; background: #fff; }
 .agent-citation-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .agent-citation-button { display: flex; flex-direction: column; gap: 5px; min-width: 0; max-width: 100%; padding: 10px 14px; border: 1px solid #ddd5ad; border-radius: 10px; background: #fffdf3; color: #302b17; text-decoration: none; overflow-wrap: anywhere; }
-.agent-citation-button span { font-size: 12px; line-height: 1.4; }
-.agent-citation-button b { font-size: 12px; color: #746000; }
+.agent-citation-button span { font-size: 18px; line-height: 1.4; }
+.agent-citation-button b { font-size: 18px; line-height: 1.35; color: #746000; }
 .agent-citation-button:hover { border-color: #ad9500; background: #fff8d6; }
 .agent-citation-button:focus-visible { outline: 2px solid #ad9500; outline-offset: 3px; }
 .agent-thinking button {
