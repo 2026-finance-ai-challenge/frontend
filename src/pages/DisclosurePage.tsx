@@ -12,7 +12,6 @@ import type { Filing, FilingDetail } from "../types";
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
-import { FitText } from "../components/FitText";
 import { FilingSentimentDot } from "../components/FilingSentimentDot";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { SelectionAssistant, useSelectionAssistant } from "../components/SelectionAssistant";
@@ -82,7 +81,7 @@ function FilingRows({ stockCode, filters }: { stockCode?: string; filters: Filin
                 <span>{formatDate(filing.detectedAt)}</span>
                 <FilingSentimentDot sentiment={filing.sentiment} />
                 <span>
-                  <FitText className="filing-issuer" value={issuer} />
+                  <b className="filing-issuer">{issuer}</b>
                   <small>{filing.stockCode} · {filing.market}</small>
                 </span>
                 <strong className={adaptiveTextClass(title, "filing-title")}><span>{title}</span></strong>

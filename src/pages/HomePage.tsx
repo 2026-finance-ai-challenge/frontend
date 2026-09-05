@@ -15,7 +15,6 @@ import type { Filing, ForeignLimitMonitor, NewsArticle, SupportedCountry } from 
 import { isPublishedFiling, type PublishedFiling } from "../utils/disclosure";
 import { useLocale } from "../state/LocaleContext";
 import { IntelligenceBadges } from "../components/IntelligenceBadges";
-import { FitText } from "../components/FitText";
 import { FilingSentimentDot } from "../components/FilingSentimentDot";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { NewsThumbnail } from "../components/NewsThumbnail";
@@ -255,7 +254,7 @@ function FilingRow({ filing }: { filing: PublishedFiling }) {
       <FilingSentimentDot sentiment={filing.sentiment} />
       <span>{formatDate(filing.detectedAt)}</span>
       <span>
-        <FitText className="filing-issuer" value={issuer} />
+        <b className="filing-issuer">{issuer}</b>
         <small>{filing.stockCode} · {filing.market}</small>
       </span>
       <strong className={adaptiveTextClass(title, "filing-title")}><span>{title}</span></strong>

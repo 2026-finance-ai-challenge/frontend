@@ -101,7 +101,7 @@ export function SearchPage() {
       <RemoteState {...filingsState} empty={(value) => !value.items.length}>{() => <div className="search-filings disclosure-rows">
         {liveFilingGroups.map(([day, rows]) => <section key={day}><header><span>{formatDate(day, false)}</span><span>{locale === "ko" ? `공시 ${rows.length}건` : `${rows.length} filings shown`}</span></header>
           {rows.map((filing) => <Link to={`/disclosures/${filing.receiptNumber}`} key={filing.receiptNumber}>
-            <span>{formatDate(filing.detectedAt)}</span><FilingSentimentDot sentiment={filing.sentiment} /><span><FitText className="filing-issuer" value={stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo })} /><small>{filing.stockCode} · {filing.market}</small></span>
+            <span>{formatDate(filing.detectedAt)}</span><FilingSentimentDot sentiment={filing.sentiment} /><span><b className="filing-issuer">{stockName({ nameEn: filing.issuerNameEn, nameKo: filing.issuerNameKo })}</b><small>{filing.stockCode} · {filing.market}</small></span>
             <strong className={adaptiveTextClass(locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || "", "filing-title")}><span>{locale === "ko" ? filing.titleKo : verifiedEnglishText(filing.titleEn) || ""}</span></strong><span className="filing-row-badges"><IntelligenceBadges variant="filing" sentiment={filing.sentiment} importance={filing.importance} eventType={filing.eventType} /></span>
           </Link>)}
         </section>)}
