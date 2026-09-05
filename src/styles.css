@@ -28,9 +28,6 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
-body.agent-drawer-open {
-  overflow: hidden;
-}
 input,
 textarea,
 [contenteditable="true"],
