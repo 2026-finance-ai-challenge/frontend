@@ -11,6 +11,15 @@ test('업무 오류·인증 거부는 서버 장애로 바꾸지 않는다', asy
 test('통신 실패만 서버 연결 장애로 분리한다', async () => {
   await assert.rejects(backendFetch('', '/test', {}, async () => { throw new TypeError('Failed to fetch'); }), BackendUnavailableError);
 });
+test('개별 요청이 실패해도 백엔드가 응답하면 전체 장애로 전환하지 않는다', async () => {
+  const failure = new TypeError('Failed to fetch');
+  let calls = 0;
+  await assert.rejects(
+    backendFetch('', '/test', {}, async () => ++calls === 1 ? Promise.reject(failure) : new Response('[]', { status: 200 })),
+    error => error === failure,
+  );
+  assert.equal(calls, 2);
+});
 test('화면 이동으로 취소한 요청은 장애가 아니다', async () => {
   const controller = new AbortController(); controller.abort();
   await assert.rejects(backendFetch('', '/test', { signal: controller.signal }, async () => { throw controller.signal.reason; }), { name: 'AbortError' });

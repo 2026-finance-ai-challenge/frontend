@@ -24,6 +24,8 @@ export async function backendFetch(base: string, path: string, init: RequestInit
   } catch (error) {
     if (init.signal?.aborted && init.signal.reason?.name !== 'TimeoutError') throw error
     if (!(error instanceof TypeError) && !(error instanceof Error && error.name === 'TimeoutError')) throw error
+    // 개별 요청의 일시적 전송 실패를 서버 전체 장애로 확대하지 않는다.
+    if (await backendReachable(base, request)) throw error
     reportApiFailure('backend-unreachable')
     throw new BackendUnavailableError()
   }
